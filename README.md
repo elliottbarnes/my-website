@@ -1,6 +1,6 @@
 # Elliott N. Barnes - Personal Website
 
-Welcome to my personal website! This is a space where I showcase my projects, share insights, and connect with like-minded individuals. 
+Welcome to my personal website!
 
 ## Table of Contents
 - [Projects](#projects)
@@ -37,4 +37,4 @@ Feel free to reach out to me on social media or connect through email!
 
 ---
 
-Thanks for visiting my personal website! I'm excited to share my journey in technology and connect with you.
+Thanks for visiting :)
