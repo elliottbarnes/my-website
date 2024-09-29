@@ -11,7 +11,7 @@ Welcome to my personal website!
 ## Projects
 
 ### Brick Breaker Game
-Play a classic Brick Breaker game with colorful patterns, sound effects, and difficulty selection! 
+Play a classic!
 - [Play Now](projects/brick-breaker/index.html)
 
 ## Blog
