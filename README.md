@@ -60,8 +60,7 @@ A StarCraft: Brood War bot that specializes in cheesy strategies!
 
 🎨 Design Highlights
 
-- **Header Animation**: Custom GSAP-powered text typing animation that says "hey, I'm Elliott" before transitioning to "Welcome to my site."
-- **Fun Sorting Animation**: Tap into your inner computer science geek with playful sorting algorithms brought to life in the animation section!
+- **Header Animation**: Custom GSAP-powered text typing animation.
 - **Responsive Design**: Beautiful on any screen size, from mobile to desktop.
 
 Thanks for visiting my portfolio! Feel free to reach out to me through any of the links on my site. 😄
