@@ -4,10 +4,7 @@
 
 ## ✨ Features
 - **Slick Design**: Clean, modern, and fully responsive layout (looks amazing on any device 📱💻)!
-- **Interactive Animations**: Dynamic, GSAP-powered animations, including a playful typing effect and sorting animations 🎥.
-- **Dark Mode Friendly**: Optimized for night owls 🌙 (or just fans of dark mode).
 - **Projects Gallery**: Highlights my latest projects, from CNN-based emotion detection models to StarCraft AI bots 🎮🤖.
-- **Fun Easter Eggs**: Hidden gems scattered around the site (go explore! 🔍).
 
 ## 🚀 Technologies Used
 - **HTML5** & **CSS3** 🎨: The backbone of this elegant site, styled for simplicity and beauty.
