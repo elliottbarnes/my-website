@@ -1,4 +1,4 @@
-# 🌐 elliottbarnes.ca - Personal Portfolio 🎉
+# 🌐 [elliottbarnes.ca](http://elliottbarnes.ca/) - Personal Portfolio 🎉
 
 👋 welcome to the source code for **elliottbarnes.ca** 💻🚀
 
