@@ -1,10 +1,3 @@
-// Ensure GSAP is loaded
-if (typeof gsap === 'undefined') {
-  console.error('GSAP library not loaded.');
-} else {
-  console.log('GSAP loaded successfully.');
-}
-
 // ROT13 function for email hiding from spambots
 const rot13 = (message) => {
   const alpha = 'abcdefghijklmnopqrstuvwxyzabcdefghijklmABCDEFGHIJKLMNOPQRSTUVWXYZABCDEFGHIJKLM';
