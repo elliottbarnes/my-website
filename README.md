@@ -8,7 +8,7 @@
 
 ## 🚀 Technologies Used
 - **HTML5** & **CSS3** 🎨: The backbone of this elegant site, styled for simplicity and beauty.
-- **JavaScript** (GSAP) 💫: Bringing life to the page with stunning animations and effects.
+- **JavaScript** 💫: Bringing life to the page with stunning animations and effects.
 - **AWS** 💾: Deployed using Amazon S3 and Route 53 with full scalability and security.
   
 ## 🛠 Setup
