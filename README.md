@@ -21,8 +21,8 @@ Ready to dive into the code and see how it all works? Here's how to get it runni
 ### 1. Clone the repo:
 
 ```bash
-git clone https://github.com/elliottbarnes/elliottbarnes.ca.git
-cd elliottbarnes.ca
+git clone https://github.com/elliottbarnes/my-website.git
+cd my-website
 ```
 
 ### 2. Install dependencies:
