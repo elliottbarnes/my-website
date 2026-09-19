@@ -2,7 +2,7 @@
 
 ## Toolkit icons
 
-Eight local SVGs use recognizable [Devicon](https://github.com/devicons/devicon) marks, pinned to commit `7330accdbc47e2dc0c19789a48533c4a3c50fe58`. The original logo geometry is preserved; fills are unified to the site's pale cyan (`#bde8ef`), and unused SVG IDs and metadata are removed. CSS provides a fixed 40px icon area with optical sizing from 30–36px. No icon library, external CDN, font, script, or runtime dependency is required.
+Eight local SVGs use recognizable [Devicon](https://github.com/devicons/devicon) marks, pinned to commit `7330accdbc47e2dc0c19789a48533c4a3c50fe58`. The original logo geometry is preserved; source fills are unified to pale cyan (`#bde8ef`), and unused SVG IDs and metadata are removed. The console theme applies a monochrome dark CSS filter and consistent optical sizing. No icon library, external CDN, font, script, or runtime dependency is required.
 
 | Local asset | Upstream SVG |
 | --- | --- |

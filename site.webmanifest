@@ -1,10 +1,10 @@
 {
-  "name": "Elliott — AI Enthusiast & Curious Tinkerer",
+  "name": "Elliott — AI Enthusiast",
   "short_name": "EB.EXE",
   "start_url": "/",
   "display": "standalone",
-  "background_color": "#050b18",
-  "theme_color": "#050b18",
+  "background_color": "#efede8",
+  "theme_color": "#efede8",
   "icons": [
     {
       "src": "/assets/favicon.svg",

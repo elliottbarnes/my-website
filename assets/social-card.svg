@@ -1,31 +1,18 @@
 <svg xmlns="http://www.w3.org/2000/svg" width="1200" height="630" viewBox="0 0 1200 630" role="img" aria-labelledby="title desc">
-  <title id="title">Elliott | AI Enthusiast &amp; Curious Tinkerer</title>
-  <desc id="desc">Retro terminal-style social card for Elliott.</desc>
-  <defs>
-    <pattern id="grid" width="32" height="32" patternUnits="userSpaceOnUse">
-      <path d="M32 0H0v32" fill="none" stroke="#12dff3" stroke-opacity=".06"/>
-    </pattern>
-    <pattern id="checks" width="28" height="28" patternUnits="userSpaceOnUse">
-      <rect width="14" height="14" fill="#9f78ff"/>
-      <rect x="14" y="14" width="14" height="14" fill="#9f78ff"/>
-    </pattern>
-  </defs>
-  <rect width="1200" height="630" fill="#02050b"/>
-  <rect x="24" y="24" width="1152" height="582" rx="28" fill="#071225" stroke="#25384c" stroke-width="10"/>
-  <rect x="44" y="44" width="1112" height="542" rx="18" fill="url(#grid)" stroke="#12dff3" stroke-width="2"/>
-  <path d="M64 92H1136" stroke="#12dff3" stroke-width="2"/>
-  <text x="68" y="77" fill="#12dff3" font-family="monospace" font-size="22" font-weight="700">&gt; EB.EXE v1.0</text>
-  <circle cx="1070" cy="70" r="9" fill="#ff4ccf"/>
-  <circle cx="1100" cy="70" r="9" fill="#ffc247"/>
-  <circle cx="1130" cy="70" r="9" fill="#39f59a"/>
-  <text x="84" y="240" fill="#f4f9ff" font-family="Arial Black, sans-serif" font-size="102" font-weight="900" letter-spacing="2">ELLIOTT</text>
-  <text x="84" y="342" fill="#39f59a" font-family="monospace" font-size="82" font-weight="900" letter-spacing="2">EB.EXE</text>
-  <text x="88" y="394" fill="#39f59a" font-family="monospace" font-size="27" font-weight="700">AI Enthusiast &amp; Curious Tinkerer</text>
-  <text x="88" y="448" fill="#c1d2df" font-family="monospace" font-size="25">Financial technology by profession.</text>
-  <text x="88" y="482" fill="#c1d2df" font-family="monospace" font-size="25">AI, apps, and experiments by curiosity.</text>
-  <rect x="84" y="526" width="1032" height="20" fill="url(#checks)"/>
-  <rect x="880" y="160" width="200" height="154" fill="#ff4ccf" transform="rotate(-4 980 237)"/>
-  <text x="910" y="220" fill="#20031c" font-family="Arial Black, sans-serif" font-size="27" font-weight="900" transform="rotate(-4 980 237)">BUILD.</text>
-  <text x="910" y="256" fill="#20031c" font-family="Arial Black, sans-serif" font-size="27" font-weight="900" transform="rotate(-4 980 237)">EXPLORE.</text>
-  <text x="910" y="292" fill="#20031c" font-family="Arial Black, sans-serif" font-size="27" font-weight="900" transform="rotate(-4 980 237)">REPEAT.</text>
+  <title id="title">Elliott | AI Enthusiast</title>
+  <desc id="desc">Elliott, AI Enthusiast. A charcoal screen in a warm cream console, with a red power light and EB.EXE branding.</desc>
+  <rect width="1200" height="630" fill="#efede8"/>
+  <rect x="44" y="38" width="1112" height="554" rx="22" fill="#faf9f6" stroke="#d8d5cf" stroke-width="2"/>
+  <rect x="70" y="64" width="1060" height="438" rx="12" fill="#252629"/>
+  <text x="112" y="123" fill="#faf9f6" font-family="monospace" font-size="23" font-weight="700" letter-spacing="2">EB.EXE</text>
+  <path d="M112 153h976" stroke="#faf9f6" stroke-opacity=".15" stroke-width="2"/>
+  <text x="108" y="301" fill="#faf9f6" font-family="Arial, Helvetica, sans-serif" font-size="126" font-weight="700" letter-spacing="-5">Elliott</text>
+  <text x="114" y="366" fill="#faf9f6" font-family="Arial, Helvetica, sans-serif" font-size="38">AI Enthusiast</text>
+  <text x="115" y="446" fill="#faf9f6" fill-opacity=".65" font-family="monospace" font-size="23">Ideas. Experiments. Play.</text>
+  <rect x="1014" y="428" width="16" height="16" rx="2" fill="#e0bb54"/>
+  <rect x="1043" y="428" width="16" height="16" rx="2" fill="#558a9c"/>
+  <rect x="1072" y="428" width="16" height="16" rx="2" fill="#6b917b"/>
+  <circle cx="113" cy="547" r="7" fill="#d63c38"/>
+  <text x="136" y="553" fill="#252629" font-family="monospace" font-size="16" font-weight="700" letter-spacing="2">POWER</text>
+  <text x="1088" y="554" text-anchor="end" fill="#252629" font-family="monospace" font-size="22">elliottbarnes.ca</text>
 </svg>

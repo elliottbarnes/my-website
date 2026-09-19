@@ -1,6 +1,6 @@
 # Elliott / EB.EXE Portfolio
 
-A dependency-free, retro-terminal portfolio for [elliottbarnes.ca](https://elliottbarnes.ca).
+A dependency-free, retro-console portfolio for [elliottbarnes.ca](https://elliottbarnes.ca).
 
 ## Local preview
 
@@ -28,7 +28,7 @@ The build copies an explicit list of public files into `dist/` and refuses unexp
 ## Structure
 
 - `index.html`: page content, metadata, and structured data
-- `styles.css`: responsive visual system and CRT treatment
+- `styles.css`: responsive console-inspired layout and cartridge cards
 - `script.js`: current year, CRT preference, and keyboard shortcuts
 - `build.mjs`: creates the public deployment artifact
 - `404.html`: custom not-found page

@@ -4,36 +4,40 @@
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <meta name="robots" content="noindex">
-    <meta name="theme-color" content="#050b18">
-    <title>404 | Signal Lost</title>
+    <meta name="theme-color" content="#efede8">
+    <meta name="color-scheme" content="light">
+    <title>Cartridge not found | Elliott</title>
     <link rel="icon" href="/assets/favicon.svg" type="image/svg+xml">
-    <link rel="stylesheet" href="/styles.css">
     <style>
-      .lost-signal { display: grid; min-height: 75svh; place-items: center; padding: 50px 20px; text-align: center; }
-      .lost-signal h1 { margin: 0; color: var(--magenta); font-family: Impact, "Arial Black", sans-serif; font-size: clamp(6rem, 24vw, 14rem); line-height: .8; text-shadow: 5px 5px 0 var(--cyan); }
-      .lost-signal h2 { color: var(--green); font-size: clamp(1.3rem, 4vw, 2.2rem); }
-      .lost-signal p { max-width: 550px; color: var(--muted); }
-      .lost-signal a { display: inline-block; margin-top: 18px; border: 2px solid var(--cyan); color: var(--cyan); padding: 12px 18px; font-weight: 900; text-decoration: none; }
-      .lost-signal a:hover { background: var(--cyan); color: var(--ink); }
+      * { box-sizing: border-box; }
+      body { margin: 0; background: #efede8; color: #252629; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; }
+      .error-shell { width: min(960px, calc(100% - 40px)); margin: 0 auto; }
+      .error-header { display: flex; justify-content: space-between; align-items: center; gap: 20px; padding: 30px 0; border-bottom: 1px solid #ceccc6; }
+      .error-brand { color: #252629; font: 800 18px ui-monospace, "SFMono-Regular", Consolas, monospace; letter-spacing: -.04em; text-decoration: none; }
+      .error-brand span { color: #d63c38; }
+      .error-header p { margin: 0; font-size: 14px; }
+      .error-content { display: grid; min-height: 75svh; align-content: center; justify-items: start; padding: 64px 0 90px; }
+      .error-code { margin: 0 0 24px; color: #d63c38; font: 800 clamp(5rem, 17vw, 9rem)/.9 ui-monospace, "SFMono-Regular", Consolas, monospace; letter-spacing: -.08em; }
+      h1 { margin: 0; font-size: clamp(1.8rem, 5vw, 3rem); line-height: 1.15; letter-spacing: -.045em; }
+      .error-message { max-width: 460px; margin: 20px 0 0; color: #56575b; font-size: 17px; line-height: 1.6; }
+      .home-link { display: inline-flex; margin-top: 32px; padding: 13px 20px; border: 1px solid #252629; border-radius: 5px; background: #252629; color: #fff; font-size: 14px; font-weight: 600; text-decoration: none; }
+      .home-link:hover { background: #3b3c40; }
+      a:focus-visible { outline: 3px solid #d63c38; outline-offset: 5px; }
+      @media (max-width: 480px) { .error-shell { width: calc(100% - 32px); } .error-header { padding: 24px 0; } }
     </style>
   </head>
   <body>
-    <div class="crt-shell">
-      <div class="crt-screen">
-        <header class="site-header">
-          <a class="brand" href="/" aria-label="Elliott, home"><span class="brand-prompt">&gt;</span> EB.EXE</a>
-          <p class="header-mantra">ERROR <span>★</span> SIGNAL LOST</p>
-        </header>
-        <main class="lost-signal">
-          <div>
-            <p>ERR_ROUTE_NOT_FOUND</p>
-            <h1>404</h1>
-            <h2>THIS SECTOR OF THE INTERNET IS EMPTY.</h2>
-            <p>The page may have moved, or perhaps it was only ever a beautiful glitch.</p>
-            <a href="/">← RETURN TO BASE</a>
-          </div>
-        </main>
-      </div>
+    <div class="error-shell">
+      <header class="error-header">
+        <a class="error-brand" href="/" aria-label="Elliott, home">EB<span>.</span>EXE</a>
+        <p>Elliott</p>
+      </header>
+      <main class="error-content">
+        <p class="error-code" aria-label="Error 404">404</p>
+        <h1>Cartridge not found.</h1>
+        <p class="error-message">This page may have moved, or the address may be incorrect.</p>
+        <a class="home-link" href="/">Back to home <span aria-hidden="true">&nbsp;→</span></a>
+      </main>
     </div>
   </body>
 </html>

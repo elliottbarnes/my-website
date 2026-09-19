@@ -10,9 +10,10 @@ if (year) {
 const setEffects = (enabled) => {
   document.body.classList.toggle("fx-off", !enabled);
   fxToggle?.setAttribute("aria-pressed", String(enabled));
+  fxToggle?.setAttribute("aria-label", "Screen texture");
 
   if (fxLabel) {
-    fxLabel.textContent = enabled ? "CRT FX: ON" : "CRT FX: OFF";
+    fxLabel.textContent = enabled ? "Texture: on" : "Texture: off";
   }
 
   try {
@@ -23,12 +24,12 @@ const setEffects = (enabled) => {
 };
 
 if (fxToggle) {
-  let effectsEnabled = true;
+  let effectsEnabled = false;
 
   try {
-    effectsEnabled = localStorage.getItem("elliott-crt-effects") !== "off";
+    effectsEnabled = localStorage.getItem("elliott-crt-effects") === "on";
   } catch {
-    effectsEnabled = true;
+    effectsEnabled = false;
   }
 
   setEffects(effectsEnabled);
