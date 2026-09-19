@@ -30,12 +30,12 @@ git diff --quiet "$commit_sha" -- || {
 
 # The verifier checks exact membership, regular files, links and source-byte equality.
 verified="$(node scripts/verify-site.mjs "$artifact_dir" --source "$repo_root" --json)"
-jq -e '.files == 20 and (.sha256 | length == 20)' <<<"$verified" >/dev/null
+jq -e '.files == 21 and (.sha256 | length == 21)' <<<"$verified" >/dev/null
 public_files="$(node --input-type=module -e '
   import { PUBLIC_FILES, contentType } from "./scripts/public-files.mjs";
   console.log(JSON.stringify(PUBLIC_FILES.map(path => ({path, content_type: contentType(path)}))));
 ')"
-jq -e 'length == 20 and ([.[].path] | unique | length == 20)
+jq -e 'length == 21 and ([.[].path] | unique | length == 21)
   and all(.[]; (.path | test("^[a-zA-Z0-9_./-]+$"))
     and (.path | startswith("/") | not)
     and (.path | split("/") | all(. != ".." and . != "." and . != ""))
@@ -163,10 +163,10 @@ mv "$record.tmp" "$record"
 stage="verifying"
 node scripts/verify-live.mjs "$artifact_dir" --json > "$record_dir/live.json"
 jq -e --slurpfile original "$record" \
-  '.files == 20 and .sha256 == $original[0].artifact.sha256' "$record_dir/live.json" >/dev/null
+  '.files == 21 and .sha256 == $original[0].artifact.sha256' "$record_dir/live.json" >/dev/null
 jq --slurpfile live "$record_dir/live.json" \
   '.status="verified" | .live_verification=$live[0] | .finished_at=(now|todateiso8601)' \
   "$record" > "$record.tmp"
 mv "$record.tmp" "$record"
-echo "Verified https://elliottbarnes.ca/ against all 20 deployed files."
+echo "Verified https://elliottbarnes.ca/ against all 21 deployed files."
 echo "Retain this nonpublic deployment record for rollback: $record"

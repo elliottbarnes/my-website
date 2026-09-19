@@ -33,6 +33,12 @@ node scripts/verify-site.mjs dist --source .
 
 The build copies an explicit list of public files into `dist/` and refuses unexpected artifacts. Hosting uses HTTPS through CloudFront and a private S3 origin. [Deployment and recovery](DEPLOYMENT.md) explains the verified GitHub Actions workflow and temporary AWS access.
 
+## Favicon
+
+The transparent one-star Dragon Ball PNG is used for browser tabs, Apple touch icons, and the web manifest. It is served locally as `image/png`; no checkerboard is baked into the asset. The original social-card metadata is unchanged, and sharing apps choose their own preview layout and may cache older previews.
+
+Artwork by Musett.com, provided under CC BY-NC-ND 4.0 (non-commercial, attribution required, no derivatives). Source and license links appear in the site footer; see [asset sources](ASSET_SOURCES.md).
+
 ## Structure
 
 - `index.html`: page content, metadata, and structured data

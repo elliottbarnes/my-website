@@ -44,6 +44,21 @@ test("preview serves the artifact and versioned assets with correct types and HE
   }
 });
 
+test("preview serves the PNG favicon as unchanged binary bytes with the correct MIME type", async (t) => {
+  const { root, url } = await preview(t);
+  const bytes = await readFile(join(root, "assets/dragon-ball.png"));
+  const response = await fetch(`${url}/assets/dragon-ball.png`);
+  assert.equal(response.status, 200);
+  assert.equal(response.headers.get("content-type"), "image/png");
+  assert.equal(response.headers.get("content-length"), String(bytes.length));
+  assert.deepEqual(Buffer.from(await response.arrayBuffer()), bytes);
+  const head = await fetch(`${url}/assets/dragon-ball.png`, { method: "HEAD" });
+  assert.equal(head.status, 200);
+  assert.equal(head.headers.get("content-type"), "image/png");
+  assert.equal(head.headers.get("content-length"), String(bytes.length));
+  assert.equal((await head.arrayBuffer()).byteLength, 0);
+});
+
 test("missing and private routes return the custom 404, without exposing source", async (t) => {
   const { root, url } = await preview(t);
   const expected = await readFile(join(root, "404.html"), "utf8");

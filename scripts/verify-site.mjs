@@ -30,6 +30,16 @@ export async function verifySite(directory, { sourceRoot } = {}) {
     await assertRegularPublicFile(directory, file);
     const bytes = await readFile(join(directory, file));
     if (!bytes.length) throw new Error(`Empty public file: ${file}`);
+    if (file === "assets/dragon-ball.png") {
+      const signature = Buffer.from([137, 80, 78, 71, 13, 10, 26, 10]);
+      if (bytes.length < 33 || !bytes.subarray(0, 8).equals(signature)
+        || bytes.readUInt32BE(8) !== 13 || bytes.toString("ascii", 12, 16) !== "IHDR") {
+        throw new Error(`${file}: invalid PNG signature or IHDR header`);
+      }
+      if (bytes.readUInt32BE(16) !== 256 || bytes.readUInt32BE(20) !== 256) {
+        throw new Error(`${file}: favicon must be 256x256 pixels`);
+      }
+    }
     content.set(file, bytes.toString("utf8"));
     sha256[file] = createHash("sha256").update(bytes).digest("hex");
     if (sourceRoot) {
@@ -90,6 +100,13 @@ export async function verifySite(directory, { sourceRoot } = {}) {
         reference(tag.attrs.get("content"), file, { localOnly: true });
       }
     }
+    for (const rel of ["icon", "apple-touch-icon"]) {
+      const icons = document.parsed.filter((tag) => tag.name === "link" && tag.attrs.get("rel")?.split(/\s+/).includes(rel));
+      if (icons.length !== 1 || icons[0].attrs.get("href") !== "/assets/dragon-ball.png"
+        || icons[0].attrs.get("type") !== "image/png" || icons[0].attrs.get("sizes") !== "256x256") {
+        throw new Error(`${file}: expected exactly one ${rel} reference to the 256x256 image/png Dragon Ball favicon`);
+      }
+    }
   }
   const index = documents.get("index.html").parsed;
   const shortcuts = index.filter((tag) => tag.attrs.has("data-shortcut"));
@@ -142,6 +159,10 @@ export async function verifySite(directory, { sourceRoot } = {}) {
   if (!manifest || typeof manifest.name !== "string" || !manifest.name.trim() || !Array.isArray(manifest.icons) || !manifest.icons.length) throw new Error("site.webmanifest: missing name or icons");
   reference(manifest.start_url, "site.webmanifest", { localOnly: true });
   for (const icon of manifest.icons) reference(icon?.src, "site.webmanifest", { localOnly: true });
+  if (manifest.icons.length !== 1 || manifest.icons[0].src !== "/assets/dragon-ball.png"
+    || manifest.icons[0].type !== "image/png" || manifest.icons[0].sizes !== "256x256") {
+    throw new Error("site.webmanifest: expected exactly one 256x256 image/png Dragon Ball favicon");
+  }
 
   const structured = [...content.get("index.html").matchAll(/<script\b([^>]*)>([\s\S]*?)<\/script\s*>/gi)]
     .filter((match) => attributes(` script ${match[1]}`).get("type") === "application/ld+json");

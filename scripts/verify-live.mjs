@@ -16,8 +16,8 @@ const delay = (milliseconds) => new Promise((done) => setTimeout(done, milliseco
 export async function verifyLive(directory, { fetchImpl = fetch, attempts = 3, delayMs = 1000 } = {}) {
   const root = resolve(directory);
   const artifact = await verifySite(root);
-  if (PUBLIC_FILES.length !== 20 || artifact.files !== 20) {
-    throw new Error("Live verification requires the fixed 20-file public allowlist.");
+  if (PUBLIC_FILES.length !== 21 || artifact.files !== 21) {
+    throw new Error("Live verification requires the fixed 21-file public allowlist.");
   }
   if (!Number.isInteger(attempts) || attempts < 1 || attempts > 3) {
     throw new Error("Verification attempts must be between one and three.");

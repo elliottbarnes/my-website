@@ -56,11 +56,11 @@ async function fixture(t) {
   return { directory, files, requests, mockFetch };
 }
 
-test("live verification checks all 20 hashes, versioned assets, the apex, canonical redirect chains, and custom 404", async (t) => {
+test("live verification checks all 21 hashes, versioned assets, the apex, canonical redirect chains, and custom 404", async (t) => {
   const { directory, files, requests, mockFetch } = await fixture(t);
   const result = await verifyLive(directory, { fetchImpl: mockFetch(), delayMs: 0 });
   assert.equal(result.origin, origin);
-  assert.equal(result.files, 20);
+  assert.equal(result.files, 21);
   assert.deepEqual(Object.keys(result.sha256).sort(), [...PUBLIC_FILES].sort());
   for (const [key, bytes] of files) {
     assert.equal(result.sha256[key], digest(bytes));
@@ -84,7 +84,7 @@ test("live verification checks all 20 hashes, versioned assets, the apex, canoni
   assert.equal(result.not_found.status, 404);
   assert.equal(result.not_found.sha256, digest(files.get("404.html")));
   assert.equal(requests.at(-1), origin + result.not_found.path);
-  assert.equal(requests.length, 31);
+  assert.equal(requests.length, 32);
   assert.ok(Number.isFinite(Date.parse(result.checked_at)));
 });
 
@@ -148,7 +148,7 @@ test("live verification recovers from transient failures within three attempts",
     if (url === `${origin}/styles.css` && count < 3) throw new Error("temporary outage");
   });
   const result = await verifyLive(directory, { fetchImpl, delayMs: 0 });
-  assert.equal(result.files, 20);
+  assert.equal(result.files, 21);
   assert.equal(requests.filter((url) => url === `${origin}/styles.css`).length, 3);
 });
 

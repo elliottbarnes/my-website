@@ -20,15 +20,15 @@ async function fixture(t) {
   return root;
 }
 
-test("build publishes exactly 20 files and excludes unrelated source files", async (t) => {
+test("build publishes exactly 21 files and excludes unrelated source files", async (t) => {
   const root = await fixture(t);
   await writeFile(join(root, "private-notes.txt"), "not for publication");
   const destination = await buildSite({ root });
-  assert.equal(PUBLIC_FILES.length, 20);
+  assert.equal(PUBLIC_FILES.length, 21);
   assert.deepEqual(await inspectPublicTree(destination), [...PUBLIC_FILES].sort());
   const result = await verifySite(destination, { sourceRoot: root });
-  assert.equal(result.files, 20);
-  assert.equal(Object.keys(result.sha256).length, 20);
+  assert.equal(result.files, 21);
+  assert.equal(Object.keys(result.sha256).length, 21);
   assert.match(result.sha256["index.html"], /^[a-f0-9]{64}$/);
 });
 
@@ -124,7 +124,7 @@ test("verification catches broken links, metadata, shortcuts, and initial contro
     ["index.html", (s) => s.replace('data-theme-label', 'data-theme-toggle data-theme-label'), /theme must start light/],
     ["index.html", (s) => s.replace('"@type": "Person"', '"@type":'), /invalid Person JSON-LD/],
     ["site.webmanifest", () => "{broken", /invalid JSON/],
-    ["site.webmanifest", (s) => s.replace("/assets/favicon.svg", "/missing.svg"), /not published/],
+    ["site.webmanifest", (s) => s.replace("/assets/dragon-ball.png", "/missing.png"), /not published/],
     ["index.html", (s) => s.replace("https://elliottbarnes.ca/assets/social-card.svg", "https://elliottbarnes.ca/missing.svg"), /not published/],
     ["styles.css", (s) => s + '\nbody{background:url("/missing.svg")}\n', /not published/],
   ];
@@ -134,6 +134,69 @@ test("verification catches broken links, metadata, shortcuts, and initial contro
     const path = join(destination, file);
     await writeFile(path, change(await readFile(path, "utf8")));
     await assert.rejects(verifySite(destination), error);
+  }
+});
+
+test("verification requires PNG favicon and Apple touch icon metadata on both HTML pages", async (t) => {
+  for (const file of ["index.html", "404.html"]) {
+    for (const rel of ["icon", "apple-touch-icon"]) {
+      const tagPattern = new RegExp(`<link\\b[^>]*rel="${rel}"[^>]*>`);
+      const changes = [
+        () => "",
+        (tag) => tag + tag,
+        (tag) => tag.replace("/assets/dragon-ball.png", "/assets/favicon.svg"),
+        (tag) => tag.replace('type="image/png"', 'type="image/svg+xml"'),
+        (tag) => tag.replace('type="image/png"', ""),
+        (tag) => tag.replace('sizes="256x256"', 'sizes="180x180"'),
+        (tag) => tag.replace('sizes="256x256"', ""),
+      ];
+      for (const change of changes) {
+        const root = await fixture(t);
+        const path = join(root, file);
+        const original = await readFile(path, "utf8");
+        const modified = original.replace(tagPattern, change);
+        assert.notEqual(modified, original, `Fixture must change ${file} ${rel}`);
+        await writeFile(path, modified);
+        await assert.rejects(verifySite(root), new RegExp(`expected exactly one ${rel} reference`));
+      }
+    }
+  }
+});
+
+test("verification requires the matching PNG icon and dimensions in the manifest", async (t) => {
+  const changes = [
+    (manifest) => { manifest.icons = []; },
+    (manifest) => { manifest.icons.push({ ...manifest.icons[0] }); },
+    (manifest) => { manifest.icons[0].src = "/assets/favicon.svg"; },
+    (manifest) => { manifest.icons[0].type = "image/svg+xml"; },
+    (manifest) => { delete manifest.icons[0].type; },
+    (manifest) => { manifest.icons[0].sizes = "180x180"; },
+    (manifest) => { delete manifest.icons[0].sizes; },
+  ];
+  for (const change of changes) {
+    const root = await fixture(t);
+    const path = join(root, "site.webmanifest");
+    const manifest = JSON.parse(await readFile(path, "utf8"));
+    change(manifest);
+    await writeFile(path, JSON.stringify(manifest));
+    await assert.rejects(verifySite(root), /site\.webmanifest: (missing name or icons|expected exactly one 256x256 image\/png Dragon Ball favicon)/);
+  }
+});
+
+test("verification rejects malformed PNG headers and incorrect favicon dimensions", async (t) => {
+  const changes = [
+    [(bytes) => bytes.subarray(0, 24), /invalid PNG signature or IHDR header/],
+    [(bytes) => { bytes[0] = 0; return bytes; }, /invalid PNG signature or IHDR header/],
+    [(bytes) => { bytes.writeUInt32BE(12, 8); return bytes; }, /invalid PNG signature or IHDR header/],
+    [(bytes) => { bytes.write("IDAT", 12, "ascii"); return bytes; }, /invalid PNG signature or IHDR header/],
+    [(bytes) => { bytes.writeUInt32BE(128, 16); return bytes; }, /favicon must be 256x256 pixels/],
+    [(bytes) => { bytes.writeUInt32BE(128, 20); return bytes; }, /favicon must be 256x256 pixels/],
+  ];
+  for (const [change, error] of changes) {
+    const root = await fixture(t);
+    const path = join(root, "assets/dragon-ball.png");
+    await writeFile(path, change(await readFile(path)));
+    await assert.rejects(verifySite(root), error);
   }
 });
 

@@ -6,6 +6,12 @@ The interactive controller in `index.html`, cartridge shapes in `styles.css`, sh
 
 These illustrations take inspiration from Nintendo 64-era hardware; they do not use official Nintendo logos, game artwork, or product photography. The playful `ellitendo` and `ellitendo 64` markings identify this personal portfolio using original typography, not an official product or Nintendo wordmark. Nintendo names remain the property of their respective owners; no affiliation or endorsement is implied. The social card is self-contained SVG artwork and requires no external fonts or image assets.
 
+## Dragon Ball favicon
+
+`assets/dragon-ball.png` is the unmodified 256×256 transparent **Dragon Ball** icon by **Musett.com**, downloaded from [IconArchive](https://www.iconarchive.com/show/dragon-ballz-icons-by-musett/Dragon-Ball-icon.html). [Original PNG](https://www.iconarchive.com/download/i45735/musett/dragon-ballz/Dragon-Ball.256.png).
+
+The source lists [CC BY-NC-ND 4.0](https://creativecommons.org/licenses/by-nc-nd/4.0/): attribution required, non-commercial use only, no distribution of modified artwork. The depicted products or characters are © their respective copyright owners. No affiliation or endorsement is implied. The homepage footer publishes the author, source, and license links. The original PNG is used for browser, Apple touch, and web manifest icons without image edits; its transparent background contains no checkerboard. Do not reuse this asset for commercial purposes without appropriate permission.
+
 ## Toolkit icons
 
 Eight local SVGs use recognizable [Devicon](https://github.com/devicons/devicon) marks, pinned to commit `7330accdbc47e2dc0c19789a48533c4a3c50fe58`. The original logo geometry is preserved; source fills are unified to pale cyan (`#bde8ef`), and unused SVG IDs and metadata are removed. The console theme applies a monochrome dark CSS filter and consistent optical sizing. No icon library, external CDN, font, script, or runtime dependency is required.

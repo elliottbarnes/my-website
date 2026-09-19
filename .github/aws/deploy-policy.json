@@ -24,6 +24,7 @@
         "arn:aws:s3:::elliottbarnes.ca/sitemap.xml",
         "arn:aws:s3:::elliottbarnes.ca/site.webmanifest",
         "arn:aws:s3:::elliottbarnes.ca/assets/favicon.svg",
+        "arn:aws:s3:::elliottbarnes.ca/assets/dragon-ball.png",
         "arn:aws:s3:::elliottbarnes.ca/assets/social-card.svg",
         "arn:aws:s3:::elliottbarnes.ca/assets/toolkit/java.svg",
         "arn:aws:s3:::elliottbarnes.ca/assets/toolkit/python.svg",
