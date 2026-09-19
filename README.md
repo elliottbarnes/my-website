@@ -1,68 +1,38 @@
-# 🌐 [elliottbarnes.ca](http://elliottbarnes.ca/) - Personal Portfolio 🎉
+# Elliott Barnes Portfolio
 
-👋 welcome to the source code for **elliottbarnes.ca** 💻🚀
+A dependency-free, retro-terminal portfolio for [elliottbarnes.ca](https://elliottbarnes.ca).
 
-## ✨ Features
-- **Slick Design**: Clean, modern, and fully responsive layout (looks amazing on any device 📱💻)!
-- **Projects Gallery**: Highlights my latest projects, from CNN-based emotion detection models to StarCraft AI bots 🎮🤖.
-
-## 🚀 Technologies Used
-- **HTML5** & **CSS3** 🎨: The backbone of this elegant site, styled for simplicity and beauty.
-- **JavaScript** 💫: Bringing life to the page with stunning animations and effects.
-- **AWS** 💾: Deployed using Amazon S3 and Route 53 with full scalability and security.
-  
-## 🛠 Setup
-
-Ready to dive into the code and see how it all works? Here's how to get it running locally.
-
-### 1. Clone the repo:
+## Local preview
 
 ```bash
-git clone https://github.com/elliottbarnes/my-website.git
-cd my-website
+node server.mjs
 ```
 
-### 2. Install dependencies:
+Open `http://localhost:4173`.
 
-This project relies on GSAP for animations (already included in `index.html` via CDN). No additional dependencies are required.
+## Featured projects
 
-### 3. Customize:
+- [Batchline](https://github.com/elliottbarnes/batchline): inference-serving lab
+- [EvalDeck](https://github.com/elliottbarnes/evaldeck): repeatable AI response evaluations
+- [Reconcile Kit](https://github.com/elliottbarnes/reconcile-kit): Java/Gradle transaction reconciliation
+- [Prism Studio](https://github.com/elliottbarnes/prism-studio): local image-generation workbench
 
-Update the `index.html`, `style.css`, and `scripts.js` files with your own content, projects, and animations.
+## Build
 
-### 4. Deploy on AWS S3:
+```bash
+node build.mjs
+```
 
-I deployed the site using S3 and Route 53. Here’s a quick guide to get started with your own AWS setup:
+The build copies an explicit list of public files into `dist/` and refuses unexpected artifacts. Hosting uses HTTPS through CloudFront and a private S3 origin.
 
-	1.	Upload the files to an S3 bucket.
-	2.	Configure S3 static website hosting in your bucket settings.
-	3.	Link your custom domain using Route 53 for DNS management.
-	4.	Ensure HTTPS with a free SSL certificate using AWS Certificate Manager (for security 🔒).
+## Structure
 
-For more detailed AWS deployment steps, check out [Amazon S3 Static Hosting Guide](https://docs.aws.amazon.com/AmazonS3/latest/userguide/WebsiteHosting.html).
+- `index.html`: page content, metadata, and structured data
+- `styles.css`: responsive visual system and CRT treatment
+- `script.js`: current year, CRT preference, and keyboard shortcuts
+- `build.mjs`: creates the public deployment artifact
+- `404.html`: custom not-found page
+- `assets/`: favicon and social sharing artwork
+- Hosting, deployment, and rollback notes are kept in the local deployment workspace.
 
-🧠 Projects Featured
-
-💡 **Emotion Detection CNN**  
-A simple CNN model that detects real-time user emotion based on facial expressions.  
-[GitHub Repo](https://github.com/elliottbarnes/emotion-detection-cnn)  
-
-🖼️ **Text to Image**  
-Create stunning images from text prompts using Stable Diffusion.  
-[GitHub Repo](https://github.com/elliottbarnes/text_to_image_w_stable_diffusion)
-
-🎮 **Starcraft Cheese Bot**  
-A StarCraft: Brood War bot that specializes in cheesy strategies!  
-[GitHub Repo](https://github.com/elliottbarnes/cheese-bot)
-
-🎨 Design Highlights
-
-- **Header Animation**: Custom GSAP-powered text typing animation.
-- **Responsive Design**: Beautiful on any screen size, from mobile to desktop.
-
-Thanks for visiting my portfolio! Feel free to reach out to me through any of the links on my site. 😄
-
-👨‍💻 **Elliott Barnes**  
-[Twitter](https://twitter.com/elliottbarnesss) | [GitHub](https://github.com/elliottbarnes) | [LinkedIn](https://linkedin.com/in/elliottbarnes1)
-
-Enjoy exploring! 🎉
+The deployable artifact is generated in `dist/`; project notes and infrastructure snapshots are intentionally excluded.

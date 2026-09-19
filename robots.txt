@@ -1,0 +1,4 @@
+User-agent: *
+Allow: /
+
+Sitemap: https://elliottbarnes.ca/sitemap.xml

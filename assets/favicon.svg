@@ -1,0 +1,7 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 128 128" role="img" aria-label="EB terminal icon">
+  <rect width="128" height="128" rx="18" fill="#050b18"/>
+  <rect x="8" y="8" width="112" height="112" rx="12" fill="#071225" stroke="#12dff3" stroke-width="6"/>
+  <path d="M28 38h38v10H40v11h22v10H40v12h27v10H28V38Zm52 0h20c12 0 19 6 19 14 0 6-3 10-8 12 7 2 11 6 11 13 0 10-8 15-21 15H80V38Zm12 10v12h8c5 0 7-2 7-6s-3-6-8-6h-7Zm0 21v13h9c6 0 9-2 9-7 0-4-3-6-9-6h-9Z" fill="#39f59a"/>
+  <rect x="18" y="104" width="56" height="5" fill="#ff4ccf"/>
+  <rect x="78" y="104" width="15" height="5" fill="#ffc247"/>
+</svg>

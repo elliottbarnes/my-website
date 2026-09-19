@@ -3,3 +3,8 @@
 node_modules
 Dockerfile
 .dockerignore
+dist
+.design
+.project-work
+.rollback
+.aws-https-change

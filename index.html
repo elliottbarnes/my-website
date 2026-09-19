@@ -1,148 +1,246 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="en">
-<head>
-  <!-- Add FontAwesome for icons -->
-  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>elliott</title>
-  <link rel="stylesheet" href="style.css">
-</head>
-<body>
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="description" content="Elliott Barnes is a Senior Software Developer at Nasdaq Verafin who builds practical software and explores AI, apps, and developer tools.">
+    <meta name="theme-color" content="#050b18">
+    <meta name="color-scheme" content="dark">
 
-    <!-- Header Section -->
-    <div id="dhead" class="container">
-      <div class="row">
-        <div id="dpic">
-          <img src="/assets/me.jpg" class="ppic" alt="Me">
-        </div>
-        <div id="ddesc">
-        <h1 id="typed-text"></h1>
-          <h2>developer | day dreamer</h2>
-          <div id="dico">
-            <!-- Twitter Icon -->
-            <a href="https://twitter.com/elliottbarness" target="_blank">
-		<img src="/assets/twitter.svg" class="iico" alt="Twitter" width="30" height="30">
-            </a>
+    <meta property="og:type" content="website">
+    <meta property="og:url" content="https://elliottbarnes.ca/">
+    <meta property="og:title" content="Elliott Barnes | Senior Software Developer">
+    <meta property="og:description" content="Financial technology by profession. AI, apps, and experiments by curiosity.">
+    <meta property="og:image" content="https://elliottbarnes.ca/assets/social-card.svg">
+    <meta name="twitter:card" content="summary_large_image">
 
-            <!-- GitHub Icon -->
-            <a href="https://github.com/elliottbarnes" target="_blank">
-              <img src="/assets/github.svg" class="iico" alt="GitHub" width="30" height="30">
-            </a>
+    <title>Elliott Barnes | Senior Software Developer</title>
+    <link rel="canonical" href="https://elliottbarnes.ca/">
+    <link rel="icon" href="/assets/favicon.svg" type="image/svg+xml">
+    <link rel="manifest" href="/site.webmanifest">
+    <link rel="stylesheet" href="/styles.css">
 
-            <!-- Email Icon with ROT13 Protection -->
-            <a href="#">
-              <img src="/assets/email.svg" class="iico" id="iemail" title="Click to reveal email">
-            </a>
-            <div id="demail"></div> <!-- Email will be revealed here -->
-          </div>
-        </div>
+    <script type="application/ld+json">
+      {
+        "@context": "https://schema.org",
+        "@type": "Person",
+        "name": "Elliott Barnes",
+        "url": "https://elliottbarnes.ca/",
+        "jobTitle": "Senior Software Developer",
+        "worksFor": {
+          "@type": "Organization",
+          "name": "Nasdaq Verafin"
+        },
+        "sameAs": [
+          "https://github.com/elliottbarnes",
+          "https://www.linkedin.com/in/enbarnes/"
+        ],
+        "knowsAbout": ["Software development", "Financial technology", "Artificial intelligence", "Cloud computing"]
+      }
+    </script>
+  </head>
+
+  <body>
+    <a class="skip-link" href="#main">Skip to main content</a>
+
+    <div class="crt-shell">
+      <div class="crt-screen">
+        <header class="site-header" data-header>
+          <a class="brand" href="#top" aria-label="Elliott Barnes, home">
+            <span class="brand-prompt" aria-hidden="true">&gt;</span>
+            <span>EB.EXE</span>
+            <span class="brand-version">v1.0</span>
+          </a>
+
+          <p class="header-mantra">BUILD <span>★</span> EXPLORE <span>★</span> A MORE USEFUL TOMORROW</p>
+
+          <button class="fx-toggle" type="button" aria-label="Toggle CRT effects" aria-pressed="true" data-fx-toggle>
+            <span class="status-light" aria-hidden="true"></span>
+            <span class="fx-label" data-fx-label>CRT FX: ON</span>
+            <span class="fx-label-short" aria-hidden="true">FX</span>
+          </button>
+        </header>
+
+        <main id="main">
+          <section class="hero" id="top" aria-labelledby="hero-title">
+            <div class="hero-copy">
+              <p class="boot-line"><span aria-hidden="true">✓</span> PORTFOLIO SYSTEM READY</p>
+              <h1 id="hero-title"><span>ELLIOTT</span> <span>BARNES</span></h1>
+              <p class="role">Senior Software Developer <span aria-hidden="true">/</span> <strong>Nasdaq Verafin</strong></p>
+              <p class="hero-lede">Financial technology by profession.<br>AI, apps, and experiments by curiosity.</p>
+
+              <nav class="command-nav" aria-label="Primary navigation">
+                <a href="#work" data-shortcut="1"><span>[1]</span> WORK</a>
+                <a href="#toolkit" data-shortcut="2"><span>[2]</span> TOOLKIT</a>
+                <a href="#contact" data-shortcut="3"><span>[3]</span> CONTACT</a>
+              </nav>
+              <p class="keyboard-hint">Keyboard shortcuts enabled <span aria-hidden="true">↗</span></p>
+            </div>
+
+            <div class="hero-art" aria-hidden="true">
+              <div class="pixel-star star-one">+</div>
+              <div class="pixel-star star-two">×</div>
+              <div class="pixel-moon">◒</div>
+              <div class="computer">
+                <div class="monitor">
+                  <div class="monitor-screen">
+                    <div class="face"><span></span><span></span></div>
+                  </div>
+                </div>
+                <div class="computer-base">
+                  <span class="drive"></span>
+                  <i></i><i></i>
+                </div>
+              </div>
+              <div class="sticky-note">BETTER TOOLS<br>CREATE MORE<br>POSSIBILITIES</div>
+              <div class="pixel-plant"><span>╲│╱</span><strong>╰┴╯</strong></div>
+              <div class="stack-labels"><span>BUILD</span><span>LEARN</span><span>EXPERIMENT</span></div>
+            </div>
+          </section>
+
+          <div class="checker" aria-hidden="true"></div>
+
+          <section class="quest panel" aria-labelledby="quest-title">
+            <div class="panel-heading">
+              <p class="section-label amber">01 / CURRENT QUEST</p>
+              <h2 id="quest-title">Currently exploring</h2>
+            </div>
+
+            <div class="quest-copy">
+              <p>
+                I work in financial technology and keep a side bench full of experiments:
+                model evaluation, image generation, and tools that turn a promising idea
+                into something people can actually use.
+              </p>
+              <div class="meters" aria-label="Current areas of focus">
+                <div><span>BUILD</span><i style="--level: 82%"></i></div>
+                <div><span>LEARN</span><i style="--level: 68%"></i></div>
+                <div><span>EXPLORE</span><i style="--level: 54%"></i></div>
+              </div>
+            </div>
+
+            <aside class="system-status" aria-label="System status">
+              <p class="status-title">SYSTEM STATUS</p>
+              <dl>
+                <div><dt>STATUS</dt><dd><span class="online-dot"></span> ONLINE</dd></div>
+                <div><dt>ROLE</dt><dd>Senior Software Developer</dd></div>
+                <div><dt>COMPANY</dt><dd>Nasdaq Verafin</dd></div>
+                <div><dt>FOCUS</dt><dd>Useful software + AI workflows</dd></div>
+              </dl>
+              <p class="ready">→ ALL SYSTEMS READY!</p>
+            </aside>
+          </section>
+
+          <section class="work section-block" id="work" aria-labelledby="work-title">
+            <div class="section-title-row">
+              <div>
+                <p class="section-label magenta">02 / PROJECT CARTRIDGES</p>
+                <h2 id="work-title">Selected experiments</h2>
+              </div>
+              <p>REAL PROJECTS. REAL LEARNING.</p>
+            </div>
+
+            <div class="project-grid">
+              <a class="project-card amber-card" href="https://github.com/elliottbarnes/batchline" target="_blank" rel="noopener" aria-label="View Batchline on GitHub">
+                <span class="card-index">01</span>
+                <span class="card-code">PY</span>
+                <span class="card-icon" aria-hidden="true">⌁</span>
+                <h3>Batchline</h3>
+                <p>A dependency-free Python lab for inference serving, dynamic batching, backpressure, and observability.</p>
+                <ul aria-label="Batchline technologies"><li>Python</li><li>APIs</li><li>Prometheus</li></ul>
+                <span class="card-action">LOAD PROJECT ↗</span>
+              </a>
+
+              <a class="project-card cyan-card" href="https://github.com/elliottbarnes/evaldeck" target="_blank" rel="noopener" aria-label="View EvalDeck on GitHub">
+                <span class="card-index">02</span>
+                <span class="card-code">EVAL</span>
+                <span class="card-icon robot" aria-hidden="true">[:]</span>
+                <h3>EvalDeck</h3>
+                <p>A repeatable test bench for AI responses, with structured checks, baseline comparisons, and readable reports.</p>
+                <ul aria-label="EvalDeck technologies"><li>Python</li><li>JSONL</li><li>Evaluations</li></ul>
+                <span class="card-action">LOAD PROJECT ↗</span>
+              </a>
+
+              <a class="project-card magenta-card" href="https://github.com/elliottbarnes/reconcile-kit" target="_blank" rel="noopener" aria-label="View Reconcile Kit on GitHub">
+                <span class="card-index">03</span>
+                <span class="card-code">JAVA</span>
+                <span class="card-icon" aria-hidden="true">≍</span>
+                <h3>Reconcile Kit</h3>
+                <p>A transaction reconciliation CLI that catches missing records, duplicates, and amount or currency mismatches.</p>
+                <ul aria-label="Reconcile Kit technologies"><li>Java</li><li>Gradle</li><li>awk</li></ul>
+                <span class="card-action">LOAD PROJECT ↗</span>
+              </a>
+
+              <a class="project-card green-card" href="https://github.com/elliottbarnes/prism-studio" target="_blank" rel="noopener" aria-label="View Prism Studio on GitHub">
+                <span class="card-index">04</span>
+                <span class="card-code">IMG</span>
+                <span class="card-icon" aria-hidden="true">▧</span>
+                <h3>Prism Studio</h3>
+                <p>A local image-generation workbench with seeded runs, device-aware inference, and an exportable record of every image.</p>
+                <ul aria-label="Prism Studio technologies"><li>Diffusers</li><li>PyTorch</li><li>Streamlit</li></ul>
+                <span class="card-action">LOAD PROJECT ↗</span>
+              </a>
+            </div>
+          </section>
+
+          <section class="toolkit section-block" id="toolkit" aria-labelledby="toolkit-title">
+            <div class="section-title-row">
+              <div>
+                <p class="section-label cyan">03 / INVENTORY</p>
+                <h2 id="toolkit-title">Toolkit</h2>
+              </div>
+              <p>TOOLS FOR A BRIGHTER TOMORROW.</p>
+            </div>
+
+            <ul class="tool-grid">
+              <li><span aria-hidden="true">☕</span>Java</li>
+              <li><span aria-hidden="true">⌁</span>Python</li>
+              <li><span aria-hidden="true">◆</span>Gradle</li>
+              <li><span aria-hidden="true">awk</span>awk</li>
+              <li><span aria-hidden="true">C++</span>C++</li>
+              <li><span aria-hidden="true">◈</span>PyTorch</li>
+              <li><span aria-hidden="true">▲</span>Streamlit</li>
+              <li><span aria-hidden="true">▰</span>Docker</li>
+              <li><span aria-hidden="true">AWS</span>AWS</li>
+              <li><span aria-hidden="true">DF</span>Diffusers</li>
+            </ul>
+          </section>
+
+          <section class="contact section-block" id="contact" aria-labelledby="contact-title">
+            <div class="quote-panel">
+              <span aria-hidden="true">“</span>
+              <blockquote>Curiosity builds better software.</blockquote>
+              <cite>— E. BARNES</cite>
+            </div>
+
+            <div class="contact-main">
+              <p class="section-label magenta">04 / LET’S CONNECT</p>
+              <h2 id="contact-title">Say hello to the human behind the terminal.</h2>
+              <div class="contact-links">
+                <a href="https://github.com/elliottbarnes" target="_blank" rel="me noopener">
+                  <span aria-hidden="true">GH</span>
+                  <strong>GitHub</strong>
+                  <small>Code, projects, experiments</small>
+                  <i aria-hidden="true">→</i>
+                </a>
+                <a href="https://www.linkedin.com/in/enbarnes/" target="_blank" rel="me noopener">
+                  <span aria-hidden="true">in</span>
+                  <strong>LinkedIn</strong>
+                  <small>Professional profile</small>
+                  <i aria-hidden="true">→</i>
+                </a>
+              </div>
+            </div>
+          </section>
+        </main>
+
+        <footer class="site-footer">
+          <p>© <span data-current-year>2026</span> ELLIOTT BARNES</p>
+          <p>BUILD / EXPLORE / LEARN / WHAT’S NEXT?</p>
+        </footer>
       </div>
     </div>
-    <hr>
 
-<div id="history" class="container">
-    <!-- Career Entries -->
-    <div class="entry row">
-        <div class="timespan">
-            2021 -
-        </div>
-        <div class="ico">
-            <div class="entry-dot"></div>
-            <img src="/assets/verafin.jpeg" alt="Verafin Logo">
-        </div>
-        <div class="desc">
-            started my career with <a href="https://verafin.com/">Verafin</a>, focusing on AI-driven solutions for fraud and anti-money laundering
-        </div>
-    </div>
-
-    <div class="entry row">
-        <div class="timespan">
-            2019 - 2021
-        </div>
-        <div class="ico">
-            <div class="entry-dot"></div>
-            <img src="/assets/hackfrostnl.png" alt="hack frost logo">
-        </div>
-        <div class="desc">
-            co-founded Memorial University's community-wide hackathon <a href="https://hackfrostnl.ca/" target=_blank> Hack Frost NL </a>
-        </div>
-    </div>
-
-      <div class="entry row">
-        <div class="timespan">
-            2018 - 2021
-        </div>
-        <div class="ico">
-            <div class="entry-dot"></div>
-            <img src="/assets/muncs.svg" alt="CS Society Logo">
-        </div>
-        <div class="desc">
-           joined the <a href="https://muncompsci.ca/" target=_blank/>MUN Computer Science Society</a> as our social representative to assist with digital marketing & communication
-        </div>
-    </div>
-    
-    <div class="entry row">
-        <div class="timespan">
-            2016 - 2021
-        </div>
-        <div class="ico">
-            <div class="entry-dot"></div>
-            <img src="/assets/mun.svg" alt="MUN Logo">
-        </div>
-        <div class="desc">
-            bsc at the Memorial University of Newfoundland & Labradour with a major in computer science and a minor in math - this is where I first got into deep learning, attending <a href="https://www.cs.mun.ca/~dchurchill/" target="_blank">David Churchill's</a> class and twitch streams
-        </div>
-    </div>
-    
-        <div class="entry row">
-        <div class="timespan">
-            2012 - 2016
-        </div>
-        <div class="ico">
-            <div class="entry-dot"></div>
-            <img src="/assets/gonzaga.jpg" alt="Gonzaga Logo">
-        </div>
-        <div class="desc">
-            graduated highschool (hons.) before retiring from rugby
-        </div>
-    </div>
-        
-    <!-- Add more entries as needed -->
-</div>
-
-    <!-- Projects Section -->
-    <div id="projects" class="container">
-      <h2>projects</h2>
-      <div class="project">
-        <div class="pico_start"><img src="https://media.springernature.com/lw685/springer-static/image/art%3A10.1038%2Fs41598-022-11173-0/MediaObjects/41598_2022_11173_Fig7_HTML.png" alt="emotion detection cnn"></div>
-        <div class="pdesc">
-          <a href="https://github.com/elliottbarnes/emotion-detection-cnn">emotion detection cnn</a> – simple sequential model to determine real-time user emotion
-        </div>
-      </div>
-
-        <div class="pico"><img src="https://jalammar.github.io/images/stable-diffusion/Stable-diffusion-text-info-to-image-generator.png" alt="text to image"></div>
-        <div class="pdesc">
-          <a href="https://github.com/elliottbarnes/text_to_image_w_stable_diffusion">text to image</a> – open-source image generator using stable diffusion
-        </div>
-        
-                <div class="pico"><img src="https://satirist.org/pix/starcraft/blog/2021-06-30-steamhammer-joon-2.jpg" alt="starcraft cheese bot"></div>
-        <div class="pdesc">
-          <a href="https://github.com/elliottbarnes/cheese-bot">starcraft bot</a> – starcraft: broodwar photon cheese bot
-        </div>
-      <!-- More projects as needed -->
-    </div>
-
-    <!-- Footer Section -->
-    <footer>
-      <div class="container">
-        <p>&copy; 2024 Elliott Barnes. All rights reserved.</p>
-      </div>
-    </footer>
-
-    <!-- External JavaScript -->
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.9.1/gsap.min.js"></script>
-    <script src="scripts.js"></script>
-
-</body>
+    <script src="/script.js" defer></script>
+  </body>
 </html>
