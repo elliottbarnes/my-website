@@ -1,11 +1,19 @@
 <!doctype html>
-<html lang="en">
+<html lang="en" data-theme="light">
   <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <meta name="description" content="Elliott explores AI, builds practical software, and works in financial technology.">
     <meta name="theme-color" content="#efede8">
-    <meta name="color-scheme" content="light">
+    <meta name="color-scheme" content="light dark">
+    <script data-theme-bootstrap>
+      (() => {
+        let theme;
+        try { theme = localStorage.getItem("elliott-color-theme"); } catch {}
+        document.documentElement.dataset.theme = theme === "light" || theme === "dark"
+          ? theme : window.matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light";
+      })();
+    </script>
 
     <meta property="og:type" content="website">
     <meta property="og:url" content="https://elliottbarnes.ca/">
@@ -47,7 +55,7 @@
       <div class="page">
         <header class="site-header" data-header>
           <a class="brand" href="#top" aria-label="Elliott, home">
-            <span class="power-light" aria-hidden="true"></span>EB.EXE
+            <span class="power-light" aria-hidden="true"></span>ellitendo
           </a>
 
           <nav class="command-nav" aria-label="Primary navigation">
@@ -69,24 +77,50 @@
             </div>
 
             <div class="controller-area">
-              <div class="controller" role="group" aria-label="Portfolio controller">
-                <div class="controller-top"><span>EB.EXE</span><span>PERSONAL EDITION</span></div>
-                <div class="controller-face">
-                  <div class="direction-pad" aria-hidden="true"><i></i></div>
-                  <div class="controller-center">
-                    <span class="controller-stripe" aria-hidden="true"></span>
-                    <span class="controller-stripe" aria-hidden="true"></span>
-                    <button class="fx-toggle" type="button" aria-label="Screen texture" aria-pressed="false" data-fx-toggle>
-                      <span class="select-button" aria-hidden="true"></span>
-                      <span data-fx-label>Texture: off</span>
-                    </button>
-                  </div>
-                  <a class="game-button button-b" href="#contact" aria-label="B: Contact"><span>B</span><small>CONTACT</small></a>
-                  <a class="game-button button-a" href="#work" aria-label="A: Projects"><span>A</span><small>PROJECTS</small></a>
-                </div>
-                <div class="controller-bottom"><span>BUILD · EXPLORE · REPEAT</span><span aria-hidden="true">●</span></div>
+              <div class="controller" role="group" aria-label="Nintendo 64-inspired portfolio controller">
+                <svg class="controller-shell" viewBox="0 0 600 420" aria-hidden="true" focusable="false">
+                  <defs>
+                    <linearGradient id="shell-color" x1="0" y1="0" x2=".45" y2="1">
+                      <stop stop-color="#f5f4ef"/><stop offset=".5" stop-color="#d2d4d5"/><stop offset="1" stop-color="#a6abb1"/>
+                    </linearGradient>
+                    <pattern id="plastic-grain" width="4" height="4" patternUnits="userSpaceOnUse"><circle cx="1" cy="1" r=".5" fill="#454a52" opacity=".2"/></pattern>
+                    <path id="n64-shell" d="M77 45C104 29 140 35 161 47C179 42 201 42 219 47C244 34 279 28 305 45C332 68 345 107 353 145L367 221Q365 238 348 236L305 213L278 166C258 154 240 164 228 186L216 237Q212 252 195 252Q178 252 174 237L162 186C150 164 130 154 110 166L83 213L40 236Q23 238 21 221L35 145C43 106 53 68 77 45Z"/>
+                  </defs>
+                  <path class="controller-cable" d="M300 8V72" fill="none" stroke-width="9" stroke-linecap="round"/>
+                  <g transform="scale(1.54)">
+                    <use href="#n64-shell" transform="translate(0 5)" fill="#858b91"/>
+                    <use href="#n64-shell" fill="url(#shell-color)" stroke="#8e959c" stroke-width="1.4"/>
+                    <use class="controller-grain" href="#n64-shell" fill="url(#plastic-grain)"/>
+                    <path d="M81 48C105 36 135 39 159 51M224 51C250 38 281 34 302 48" fill="none" stroke="#fff" stroke-opacity=".75" stroke-width="2" stroke-linecap="round"/>
+                    <path d="M53 178L37 218M332 178L349 218M195 209V235" fill="none" stroke="#818b94" stroke-opacity=".4" stroke-width="2" stroke-linecap="round"/>
+                  </g>
+                </svg>
+                <span class="controller-wordmark" aria-hidden="true">ellitendo <b>64</b></span>
+                <div class="direction-pad" aria-hidden="true"><i></i></div>
+                <button class="theme-toggle" type="button" aria-label="START: Dark mode" aria-pressed="false" data-theme-toggle>
+                  <span class="start-button" aria-hidden="true"></span><small>START</small>
+                </button>
+                <button class="fx-toggle" type="button" aria-label="Screen texture" title="Press the stick to toggle texture" aria-pressed="false" data-fx-toggle>
+                  <span class="stick-well" aria-hidden="true"><span class="analog-stick"></span></span>
+                  <span class="visually-hidden" data-fx-label>Texture: off</span>
+                </button>
+                <a class="c-buttons" href="#toolkit" aria-label="C buttons: Toolkit">
+                  <svg viewBox="0 0 100 100" aria-hidden="true" focusable="false">
+                    <g fill="#aa861a" transform="translate(0 3)"><circle cx="50" cy="19" r="16"/><circle cx="19" cy="50" r="16"/><circle cx="81" cy="50" r="16"/><circle cx="50" cy="81" r="16"/></g>
+                    <g fill="#f6d343" stroke="#b99428" stroke-width="1.5"><circle cx="50" cy="19" r="16"/><circle cx="19" cy="50" r="16"/><circle cx="81" cy="50" r="16"/><circle cx="50" cy="81" r="16"/></g>
+                    <path d="m50 12 6 10H44Zm-38 38 10-6v12Zm76 0-10 6V44Zm-38 38-6-10h12Z" fill="#795e11"/>
+                  </svg>
+                </a>
+                <a class="game-button button-b" href="#contact" aria-label="B: Contact"><span>B</span></a>
+                <a class="game-button button-a" href="#work" aria-label="A: Projects"><span>A</span></a>
               </div>
-              <p class="keyboard-hint">Keyboard shortcuts <kbd>1</kbd> <kbd>2</kbd> <kbd>3</kbd></p>
+              <div class="controller-legend" aria-label="Controller guide">
+                <a href="#work"><span class="legend-a" aria-hidden="true">A</span>Projects</a>
+                <a href="#contact"><span class="legend-b" aria-hidden="true">B</span>Contact</a>
+                <a href="#toolkit"><span class="legend-c" aria-hidden="true">C</span>Toolkit</a>
+              </div>
+              <div class="controller-caption"><span>START switches light / dark</span><span data-theme-label aria-live="polite">Dark mode: off</span></div>
+              <p class="keyboard-hint">Or use your keyboard <kbd>1</kbd> <kbd>2</kbd> <kbd>3</kbd></p>
             </div>
           </section>
 
@@ -106,7 +140,7 @@
 
             <div class="project-grid">
               <a class="project-card amber-card" href="https://github.com/elliottbarnes/batchline" target="_blank" rel="noopener" aria-label="View Batchline on GitHub">
-                <span class="cartridge-ridges" aria-hidden="true"></span>
+                <span class="cartridge-spine" aria-hidden="true">ellitendo 64</span>
                 <div class="cartridge-label">
                 <div class="card-meta"><span>01</span><span>INFERENCE LAB</span></div>
                 <h3>Batchline</h3>
@@ -117,7 +151,7 @@
               </a>
 
               <a class="project-card cyan-card" href="https://github.com/elliottbarnes/evaldeck" target="_blank" rel="noopener" aria-label="View EvalDeck on GitHub">
-                <span class="cartridge-ridges" aria-hidden="true"></span>
+                <span class="cartridge-spine" aria-hidden="true">ellitendo 64</span>
                 <div class="cartridge-label">
                 <div class="card-meta"><span>02</span><span>AI EVALUATION</span></div>
                 <h3>EvalDeck</h3>
@@ -128,7 +162,7 @@
               </a>
 
               <a class="project-card magenta-card" href="https://github.com/elliottbarnes/reconcile-kit" target="_blank" rel="noopener" aria-label="View Reconcile Kit on GitHub">
-                <span class="cartridge-ridges" aria-hidden="true"></span>
+                <span class="cartridge-spine" aria-hidden="true">ellitendo 64</span>
                 <div class="cartridge-label">
                 <div class="card-meta"><span>03</span><span>DATA TOOLING</span></div>
                 <h3>Reconcile Kit</h3>
@@ -139,7 +173,7 @@
               </a>
 
               <a class="project-card green-card" href="https://github.com/elliottbarnes/prism-studio" target="_blank" rel="noopener" aria-label="View Prism Studio on GitHub">
-                <span class="cartridge-ridges" aria-hidden="true"></span>
+                <span class="cartridge-spine" aria-hidden="true">ellitendo 64</span>
                 <div class="cartridge-label">
                 <div class="card-meta"><span>04</span><span>IMAGE GENERATION</span></div>
                 <h3>Prism Studio</h3>

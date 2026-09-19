@@ -106,6 +106,12 @@ export async function verifySite(directory, { sourceRoot } = {}) {
   if (toggle.length !== 1 || toggle[0].name !== "button" || toggle[0].attrs.get("aria-pressed") !== "false" || !toggle[0].attrs.get("aria-label") || label.length !== 1 || !body?.attrs.get("class")?.split(/\s+/).includes("fx-off")) {
     throw new Error("index.html: screen texture must start off with one labeled toggle and label");
   }
+  const themeToggle = index.filter((tag) => tag.attrs.has("data-theme-toggle"));
+  const themeLabel = index.filter((tag) => tag.attrs.has("data-theme-label"));
+  const root = index.find((tag) => tag.name === "html");
+  if (themeToggle.length !== 1 || themeToggle[0].name !== "button" || themeToggle[0].attrs.get("type") !== "button" || themeToggle[0].attrs.get("aria-pressed") !== "false" || themeToggle[0].attrs.get("aria-label") !== "START: Dark mode" || themeLabel.length !== 1 || root?.attrs.get("data-theme") !== "light") {
+    throw new Error("index.html: theme must start light with one labeled toggle and label");
+  }
   for (const match of content.get("styles.css").matchAll(/url\(\s*(?:"([^"]*)"|'([^']*)'|([^\s)]+))\s*\)/gi)) {
     reference(match[1] ?? match[2] ?? match[3], "styles.css", { localOnly: true });
   }

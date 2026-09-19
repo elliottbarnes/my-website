@@ -110,12 +110,18 @@ test("verification rejects source/build drift", async (t) => {
   await assert.rejects(verifySite(destination, { sourceRoot: root }), /differs from source: styles.css/);
 });
 
-test("verification catches broken links, metadata, shortcuts, and initial texture state", async (t) => {
+test("verification catches broken links, metadata, shortcuts, and initial controller states", async (t) => {
   const cases = [
     ["index.html", (s) => s.replace('href="#work"', 'href="#missing"'), /missing fragment/],
     ["index.html", (s) => s.replace('src="/script.js"', 'src="/unpublished.js"'), /not published/],
     ["index.html", (s) => s.replace('data-shortcut="2"', 'data-shortcut="1"'), /unique shortcuts/],
-    ["index.html", (s) => s.replace('aria-pressed="false"', 'aria-pressed="true"'), /texture must start off/],
+    ["index.html", (s) => s.replace(/<button\b[^>]*\bdata-fx-toggle\b[^>]*>/, (tag) => tag.replace('aria-pressed="false"', 'aria-pressed="true"')), /texture must start off/],
+    ["index.html", (s) => s.replace(/<button\b[^>]*\bdata-theme-toggle\b[^>]*>/, (tag) => tag.replace('aria-pressed="false"', 'aria-pressed="true"')), /theme must start light/],
+    ["index.html", (s) => s.replace(/<button\b[^>]*\bdata-theme-toggle\b[^>]*>/, (tag) => tag.replace('aria-label="START: Dark mode"', 'aria-label=""')), /theme must start light/],
+    ["index.html", (s) => s.replace(/<button\b[^>]*\bdata-theme-toggle\b[^>]*>/, (tag) => tag.replace('type="button"', 'type="submit"')), /theme must start light/],
+    ["index.html", (s) => s.replace('data-theme-label', 'data-missing-theme-label'), /theme must start light/],
+    ["index.html", (s) => s.replace('data-theme="light"', 'data-theme="dark"'), /theme must start light/],
+    ["index.html", (s) => s.replace('data-theme-label', 'data-theme-toggle data-theme-label'), /theme must start light/],
     ["index.html", (s) => s.replace('"@type": "Person"', '"@type":'), /invalid Person JSON-LD/],
     ["site.webmanifest", () => "{broken", /invalid JSON/],
     ["site.webmanifest", (s) => s.replace("/assets/favicon.svg", "/missing.svg"), /not published/],

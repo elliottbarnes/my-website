@@ -1,6 +1,12 @@
-# Elliott / EB.EXE Portfolio
+# Elliott / ellitendo Portfolio
 
 A dependency-free, retro-console portfolio for [elliottbarnes.ca](https://elliottbarnes.ca).
+
+## Controller
+
+The original N64-inspired controller is functional: A opens projects, B opens contact, and the yellow C buttons open the toolkit. START toggles dark mode, and the analog stick toggles the optional plastic texture. Keyboard shortcuts 1–3 navigate to the same sections.
+
+The color theme follows the system until a visitor makes a choice. That choice is remembered locally when storage is available, with no account or tracking required. Controls remain keyboard-accessible, and reduced-motion preferences are respected.
 
 ## Local preview
 
@@ -31,7 +37,7 @@ The build copies an explicit list of public files into `dist/` and refuses unexp
 
 - `index.html`: page content, metadata, and structured data
 - `styles.css`: responsive console-inspired layout and cartridge cards
-- `script.js`: current year, CRT preference, and keyboard shortcuts
+- `script.js`: current year, color/texture preferences, and keyboard shortcuts
 - `build.mjs`: creates the public deployment artifact
 - `404.html`: custom not-found page
 - `assets/`: favicon and social sharing artwork

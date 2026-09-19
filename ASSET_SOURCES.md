@@ -1,5 +1,11 @@
 # Asset sources
 
+## Portfolio artwork
+
+The interactive controller in `index.html`, cartridge shapes in `styles.css`, share artwork in `assets/social-card.svg`, and `e`/`64` favicon in `assets/favicon.svg` are original vector/CSS illustrations for this portfolio. The three-grip controller silhouette is adapted from Elliott's own [GitHub profile header](https://github.com/elliottbarnes/elliottbarnes/blob/main/assets/profile-header.svg), with matching gray hardware and blue, green, yellow, and red controls.
+
+These illustrations take inspiration from Nintendo 64-era hardware; they do not use official Nintendo logos, game artwork, or product photography. The playful `ellitendo` and `ellitendo 64` markings identify this personal portfolio using original typography, not an official product or Nintendo wordmark. Nintendo names remain the property of their respective owners; no affiliation or endorsement is implied. The social card is self-contained SVG artwork and requires no external fonts or image assets.
+
 ## Toolkit icons
 
 Eight local SVGs use recognizable [Devicon](https://github.com/devicons/devicon) marks, pinned to commit `7330accdbc47e2dc0c19789a48533c4a3c50fe58`. The original logo geometry is preserved; source fills are unified to pale cyan (`#bde8ef`), and unused SVG IDs and metadata are removed. The console theme applies a monochrome dark CSS filter and consistent optical sizing. No icon library, external CDN, font, script, or runtime dependency is required.
