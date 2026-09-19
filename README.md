@@ -1,4 +1,4 @@
-# Elliott Barnes Portfolio
+# Elliott / EB.EXE Portfolio
 
 A dependency-free, retro-terminal portfolio for [elliottbarnes.ca](https://elliottbarnes.ca).
 
