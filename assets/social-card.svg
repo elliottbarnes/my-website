@@ -1,5 +1,5 @@
 <svg xmlns="http://www.w3.org/2000/svg" width="1200" height="630" viewBox="0 0 1200 630" role="img" aria-labelledby="title desc">
-  <title id="title">Elliott | Senior Software Developer</title>
+  <title id="title">Elliott | AI Enthusiast &amp; Curious Tinkerer</title>
   <desc id="desc">Retro terminal-style social card for Elliott.</desc>
   <defs>
     <pattern id="grid" width="32" height="32" patternUnits="userSpaceOnUse">
@@ -20,7 +20,7 @@
   <circle cx="1130" cy="70" r="9" fill="#39f59a"/>
   <text x="84" y="240" fill="#f4f9ff" font-family="Arial Black, sans-serif" font-size="102" font-weight="900" letter-spacing="2">ELLIOTT</text>
   <text x="84" y="342" fill="#39f59a" font-family="monospace" font-size="82" font-weight="900" letter-spacing="2">EB.EXE</text>
-  <text x="88" y="394" fill="#39f59a" font-family="monospace" font-size="27" font-weight="700">Senior Software Developer / Nasdaq Verafin</text>
+  <text x="88" y="394" fill="#39f59a" font-family="monospace" font-size="27" font-weight="700">AI Enthusiast &amp; Curious Tinkerer</text>
   <text x="88" y="448" fill="#c1d2df" font-family="monospace" font-size="25">Financial technology by profession.</text>
   <text x="88" y="482" fill="#c1d2df" font-family="monospace" font-size="25">AI, apps, and experiments by curiosity.</text>
   <rect x="84" y="526" width="1032" height="20" fill="url(#checks)"/>
