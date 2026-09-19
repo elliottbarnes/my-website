@@ -4,3 +4,5 @@ dist/
 .project-work/
 .rollback/
 .aws-https-change/
+.aws-workflow-change/
+.deployments/

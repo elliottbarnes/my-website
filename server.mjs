@@ -1,50 +1,72 @@
 import { createServer } from "node:http";
-import { extname, join, normalize, relative } from "node:path";
+import { join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
-import { readFile, stat } from "node:fs/promises";
+import { readFile } from "node:fs/promises";
+import { PUBLIC_FILES, assertRegularPublicFile, contentType } from "./scripts/public-files.mjs";
 
-const root = fileURLToPath(new URL(".", import.meta.url));
-const port = Number(process.env.PORT || 4173);
-const host = process.env.HOST || "127.0.0.1";
+const projectRoot = fileURLToPath(new URL(".", import.meta.url));
 
-const types = {
-  ".css": "text/css; charset=utf-8",
-  ".html": "text/html; charset=utf-8",
-  ".js": "text/javascript; charset=utf-8",
-  ".json": "application/json; charset=utf-8",
-  ".svg": "image/svg+xml",
-  ".txt": "text/plain; charset=utf-8",
-  ".webmanifest": "application/manifest+json; charset=utf-8",
-  ".xml": "application/xml; charset=utf-8",
-};
-
-const server = createServer(async (request, response) => {
-  try {
-    const url = new URL(request.url || "/", `http://${request.headers.host}`);
-    const cleanPath = normalize(decodeURIComponent(url.pathname)).replace(/^(\.\.[/\\])+/, "");
-    const target = join(root, cleanPath === "/" ? "index.html" : cleanPath);
-
-    if (relative(root, target).startsWith("..")) {
-      response.writeHead(403);
-      response.end("Forbidden");
-      return;
+export function createPreviewServer({ root = projectRoot } = {}) {
+  return createServer(async (request, response) => {
+    function send(status, body, type, headers = {}) {
+      response.writeHead(status, {
+        "Content-Type": type,
+        "Content-Length": Buffer.byteLength(body),
+        "Cache-Control": "no-store",
+        "X-Content-Type-Options": "nosniff",
+        ...headers,
+      });
+      response.end(request.method === "HEAD" ? undefined : body);
     }
 
-    const targetStat = await stat(target);
-    const filePath = targetStat.isDirectory() ? join(target, "index.html") : target;
-    const body = await readFile(filePath);
+    if (!["GET", "HEAD"].includes(request.method)) {
+      send(405, "Method not allowed", "text/plain; charset=utf-8", { Allow: "GET, HEAD" });
+      return;
+    }
+    let file;
+    try {
+      const url = new URL(request.url || "/", "http://localhost");
+      file = decodeURIComponent(url.pathname).replace(/^\//, "") || "index.html";
+    } catch {
+      send(400, "Invalid URL", "text/plain; charset=utf-8");
+      return;
+    }
+    try {
+      // Serve only the publication allowlist, even in source-preview mode.
+      await assertRegularPublicFile(root, file);
+      send(200, await readFile(join(root, file)), contentType(file));
+    } catch {
+      try {
+        await assertRegularPublicFile(root, "404.html");
+        send(404, await readFile(join(root, "404.html")), contentType("404.html"));
+      } catch {
+        send(404, "Not found", "text/plain; charset=utf-8");
+      }
+    }
+  });
+}
 
-    response.writeHead(200, {
-      "Content-Type": types[extname(filePath)] || "application/octet-stream",
-      "Cache-Control": "no-store",
+if (process.argv[1] && resolve(process.argv[1]) === fileURLToPath(import.meta.url)) {
+  try {
+    const args = process.argv.slice(2);
+    if (args.length && (args.length !== 2 || args[0] !== "--dir")) {
+      throw new Error("Usage: node server.mjs [--dir dist]");
+    }
+    const root = args.length ? resolve(args[1]) : projectRoot;
+    for (const file of PUBLIC_FILES) await assertRegularPublicFile(root, file);
+    const port = Number(process.env.PORT || 4173);
+    if (!Number.isInteger(port) || port < 0 || port > 65535) throw new Error("PORT must be an integer from 0 to 65535");
+    const host = process.env.HOST || "127.0.0.1";
+    const server = createPreviewServer({ root });
+    server.on("error", (error) => {
+      console.error(`Preview failed: ${error.message}`);
+      process.exitCode = 1;
     });
-    response.end(body);
-  } catch {
-    response.writeHead(404, { "Content-Type": "text/plain; charset=utf-8" });
-    response.end("Not found");
+    server.listen(port, host, () => {
+      console.log(`Portfolio preview: http://${host}:${server.address().port} (${root})`);
+    });
+  } catch (error) {
+    console.error(`Preview failed: ${error.message}`);
+    process.exitCode = 1;
   }
-});
-
-server.listen(port, host, () => {
-  console.log(`Portfolio preview: http://${host}:${port}`);
-});
+}

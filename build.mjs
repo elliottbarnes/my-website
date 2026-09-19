@@ -1,34 +1,30 @@
-import { copyFile, mkdir, readdir } from "node:fs/promises";
-import { dirname, join } from "node:path";
+import { copyFile, mkdir } from "node:fs/promises";
+import { dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
+import { PUBLIC_FILES, assertRegularPublicFile, inspectPublicTree } from "./scripts/public-files.mjs";
 
-const root = fileURLToPath(new URL(".", import.meta.url));
-const files = [
-  "index.html", "404.html", "styles.css", "script.js", "robots.txt",
-  "sitemap.xml", "site.webmanifest", "assets/favicon.svg", "assets/social-card.svg",
-  "assets/toolkit/java.svg", "assets/toolkit/python.svg", "assets/toolkit/gradle.svg",
-  "assets/toolkit/awk.svg", "assets/toolkit/cplusplus.svg", "assets/toolkit/pytorch.svg",
-  "assets/toolkit/streamlit.svg", "assets/toolkit/docker.svg", "assets/toolkit/aws.svg",
-  "assets/toolkit/diffusers.svg", "assets/toolkit/LICENSE.txt",
-];
-const destination = join(root, "dist");
-await mkdir(destination, { recursive: true });
+const projectRoot = fileURLToPath(new URL(".", import.meta.url));
 
-// Refuse unexpected files so a deployment cannot accidentally publish local notes.
-async function inspect(directory, prefix = "") {
-  for (const entry of await readdir(directory, { withFileTypes: true })) {
-    const relative = prefix + entry.name;
-    if (entry.isDirectory() && files.some((file) => file.startsWith(relative + "/"))) {
-      await inspect(join(directory, entry.name), relative + "/");
-    } else if (!entry.isFile() || !files.includes(relative)) {
-      throw new Error(`Unexpected artifact in dist: ${relative}. Inspect it before building.`);
-    }
+export async function buildSite({ root = projectRoot, destination = join(root, "dist") } = {}) {
+  // Validate every source and existing destination before replacing any file.
+  // Never follow a source symlink into private files outside the website.
+  for (const file of PUBLIC_FILES) await assertRegularPublicFile(root, file);
+  await inspectPublicTree(destination, { allowMissing: true });
+  await mkdir(destination, { recursive: true });
+  for (const file of PUBLIC_FILES) {
+    await mkdir(dirname(join(destination, file)), { recursive: true });
+    await copyFile(join(root, file), join(destination, file));
+  }
+  await inspectPublicTree(destination);
+  return destination;
+}
+
+if (process.argv[1] && resolve(process.argv[1]) === fileURLToPath(import.meta.url)) {
+  try {
+    await buildSite();
+    console.log(`Built ${PUBLIC_FILES.length} public files in dist/.`);
+  } catch (error) {
+    console.error(`Build failed: ${error.message}`);
+    process.exitCode = 1;
   }
 }
-
-await inspect(destination);
-for (const file of files) {
-  await mkdir(dirname(join(destination, file)), { recursive: true });
-  await copyFile(join(root, file), join(destination, file));
-}
-console.log(`Built ${files.length} public files in dist/.`);

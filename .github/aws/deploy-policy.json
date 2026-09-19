@@ -1,0 +1,51 @@
+{
+  "Version": "2012-10-17",
+  "Statement": [
+    {
+      "Sid": "VerifyBucketVersioning",
+      "Effect": "Allow",
+      "Action": "s3:GetBucketVersioning",
+      "Resource": "arn:aws:s3:::elliottbarnes.ca"
+    },
+    {
+      "Sid": "DeployAndRecoverOnlyPublicFiles",
+      "Effect": "Allow",
+      "Action": [
+        "s3:GetObject",
+        "s3:GetObjectVersion",
+        "s3:PutObject"
+      ],
+      "Resource": [
+        "arn:aws:s3:::elliottbarnes.ca/index.html",
+        "arn:aws:s3:::elliottbarnes.ca/404.html",
+        "arn:aws:s3:::elliottbarnes.ca/styles.css",
+        "arn:aws:s3:::elliottbarnes.ca/script.js",
+        "arn:aws:s3:::elliottbarnes.ca/robots.txt",
+        "arn:aws:s3:::elliottbarnes.ca/sitemap.xml",
+        "arn:aws:s3:::elliottbarnes.ca/site.webmanifest",
+        "arn:aws:s3:::elliottbarnes.ca/assets/favicon.svg",
+        "arn:aws:s3:::elliottbarnes.ca/assets/social-card.svg",
+        "arn:aws:s3:::elliottbarnes.ca/assets/toolkit/java.svg",
+        "arn:aws:s3:::elliottbarnes.ca/assets/toolkit/python.svg",
+        "arn:aws:s3:::elliottbarnes.ca/assets/toolkit/gradle.svg",
+        "arn:aws:s3:::elliottbarnes.ca/assets/toolkit/awk.svg",
+        "arn:aws:s3:::elliottbarnes.ca/assets/toolkit/cplusplus.svg",
+        "arn:aws:s3:::elliottbarnes.ca/assets/toolkit/pytorch.svg",
+        "arn:aws:s3:::elliottbarnes.ca/assets/toolkit/streamlit.svg",
+        "arn:aws:s3:::elliottbarnes.ca/assets/toolkit/docker.svg",
+        "arn:aws:s3:::elliottbarnes.ca/assets/toolkit/aws.svg",
+        "arn:aws:s3:::elliottbarnes.ca/assets/toolkit/diffusers.svg",
+        "arn:aws:s3:::elliottbarnes.ca/assets/toolkit/LICENSE.txt"
+      ]
+    },
+    {
+      "Sid": "RefreshOnlyWebsiteDistribution",
+      "Effect": "Allow",
+      "Action": [
+        "cloudfront:CreateInvalidation",
+        "cloudfront:GetInvalidation"
+      ],
+      "Resource": "arn:aws:cloudfront::247222972014:distribution/E2SJR1NL1E5LJX"
+    }
+  ]
+}

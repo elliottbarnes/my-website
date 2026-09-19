@@ -21,9 +21,11 @@ Open `http://localhost:4173`.
 
 ```bash
 node build.mjs
+node --test
+node scripts/verify-site.mjs dist --source .
 ```
 
-The build copies an explicit list of public files into `dist/` and refuses unexpected artifacts. Hosting uses HTTPS through CloudFront and a private S3 origin.
+The build copies an explicit list of public files into `dist/` and refuses unexpected artifacts. Hosting uses HTTPS through CloudFront and a private S3 origin. [Deployment and recovery](DEPLOYMENT.md) explains the verified GitHub Actions workflow and temporary AWS access.
 
 ## Structure
 
@@ -35,6 +37,8 @@ The build copies an explicit list of public files into `dist/` and refuses unexp
 - `assets/`: favicon and social sharing artwork
 - `assets/toolkit/`: local, consistently styled technology icons
 - `ASSET_SOURCES.md`: icon provenance and licensing
-- Hosting, deployment, and rollback notes are kept in the local deployment workspace.
+- `scripts/` and `tests/`: artifact verification, deployment, and behavior checks
+- `.github/`: read-only PR checks and main-only production deployment
+- `DEPLOYMENT.md`: hosting, deployment, and version-based recovery
 
 The deployable artifact is generated in `dist/`; project notes and infrastructure snapshots are intentionally excluded.

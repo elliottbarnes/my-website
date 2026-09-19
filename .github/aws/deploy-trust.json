@@ -1,0 +1,23 @@
+{
+  "Version": "2012-10-17",
+  "Statement": [
+    {
+      "Sid": "OnlyWebsiteProductionEnvironment",
+      "Effect": "Allow",
+      "Principal": {
+        "Federated": "arn:aws:iam::247222972014:oidc-provider/token.actions.githubusercontent.com"
+      },
+      "Action": "sts:AssumeRoleWithWebIdentity",
+      "Condition": {
+        "StringEquals": {
+          "token.actions.githubusercontent.com:aud": "sts.amazonaws.com",
+          "token.actions.githubusercontent.com:sub": "repo:elliottbarnes/my-website:environment:production",
+          "token.actions.githubusercontent.com:ref": "refs/heads/main",
+          "token.actions.githubusercontent.com:repository_id": "864756156",
+          "token.actions.githubusercontent.com:repository_owner_id": "54964377",
+          "token.actions.githubusercontent.com:environment": "production"
+        }
+      }
+    }
+  ]
+}

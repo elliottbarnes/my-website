@@ -1,0 +1,96 @@
+name: Portfolio checks and deployment
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  check:
+    name: Verify public artifact
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38 # v6
+        with:
+          node-version: '24'
+      - name: Syntax and behavior checks
+        run: |
+          node --check script.js
+          bash -n scripts/deploy.sh
+          node --test
+      - name: Build and verify exact public files
+        run: |
+          node build.mjs
+          node scripts/verify-site.mjs dist --source .
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: website-${{ github.sha }}
+          path: dist/
+          if-no-files-found: error
+          retention-days: 14
+
+  deploy:
+    name: Deploy production
+    needs: check
+    if: >-
+      github.repository == 'elliottbarnes/my-website' &&
+      github.ref == 'refs/heads/main' &&
+      (github.event_name == 'push' || github.event_name == 'workflow_dispatch')
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    environment:
+      name: production
+      url: https://elliottbarnes.ca/
+    concurrency:
+      group: portfolio-production
+      cancel-in-progress: false
+    permissions:
+      contents: read
+      id-token: write
+    steps:
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38 # v6
+        with:
+          node-version: '24'
+      - uses: actions/download-artifact@634f93cb2916e3fdff6788551b99b062d0335ce0 # v5
+        with:
+          name: website-${{ github.sha }}
+          path: dist/
+      - name: Verify checked artifact and refuse superseded commits
+        env:
+          DEPLOY_COMMIT: ${{ github.sha }}
+        run: |
+          node scripts/verify-site.mjs dist --source .
+          test "$(git ls-remote origin refs/heads/main | cut -f1)" = "$DEPLOY_COMMIT"
+      - uses: aws-actions/configure-aws-credentials@61815dcd50bd041e203e49132bacad1fd04d2708 # v5
+        with:
+          role-to-assume: arn:aws:iam::247222972014:role/ElliottWebsiteGitHubDeploy
+          role-session-name: GitHub-${{ github.run_id }}
+          aws-region: ca-central-1
+          role-duration-seconds: 1800
+          allowed-account-ids: '247222972014'
+          unset-current-credentials: true
+          retry-max-attempts: 2
+      - name: Publish assets, then HTML, and verify HTTPS
+        env:
+          DEPLOY_COMMIT: ${{ github.sha }}
+        run: bash scripts/deploy.sh "$DEPLOY_COMMIT"
+      - name: Retain version-based recovery record
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: deployment-record-${{ github.run_id }}-${{ github.run_attempt }}
+          path: .deployments/**/deployment-record.json
+          include-hidden-files: true
+          if-no-files-found: warn
+          retention-days: 90
