@@ -1,13 +1,13 @@
 <svg xmlns="http://www.w3.org/2000/svg" width="1200" height="630" viewBox="0 0 1200 630" role="img" aria-labelledby="title desc">
-  <title id="title">Elliott | AI Enthusiast</title>
-  <desc id="desc">Elliott, AI Enthusiast. A charcoal screen in a warm cream console, with a red power light and EB.EXE branding.</desc>
+  <title id="title">Elliott | ai connoisseur</title>
+  <desc id="desc">Elliott, ai connoisseur. A charcoal screen in a warm cream console, with a red power light and EB.EXE branding.</desc>
   <rect width="1200" height="630" fill="#efede8"/>
   <rect x="44" y="38" width="1112" height="554" rx="22" fill="#faf9f6" stroke="#d8d5cf" stroke-width="2"/>
   <rect x="70" y="64" width="1060" height="438" rx="12" fill="#252629"/>
   <text x="112" y="123" fill="#faf9f6" font-family="monospace" font-size="23" font-weight="700" letter-spacing="2">EB.EXE</text>
   <path d="M112 153h976" stroke="#faf9f6" stroke-opacity=".15" stroke-width="2"/>
   <text x="108" y="301" fill="#faf9f6" font-family="Arial, Helvetica, sans-serif" font-size="126" font-weight="700" letter-spacing="-5">Elliott</text>
-  <text x="114" y="366" fill="#faf9f6" font-family="Arial, Helvetica, sans-serif" font-size="38">AI Enthusiast</text>
+  <text x="114" y="366" fill="#faf9f6" font-family="Arial, Helvetica, sans-serif" font-size="38">ai connoisseur</text>
   <text x="115" y="446" fill="#faf9f6" fill-opacity=".65" font-family="monospace" font-size="23">Ideas. Experiments. Play.</text>
   <rect x="1014" y="428" width="16" height="16" rx="2" fill="#e0bb54"/>
   <rect x="1043" y="428" width="16" height="16" rx="2" fill="#558a9c"/>
