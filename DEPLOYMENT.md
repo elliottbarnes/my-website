@@ -28,7 +28,7 @@ The production job:
 5. Checks artifact hashes against the checked-out source and verifies bucket ownership/versioning.
 6. Records all existing object versions before uploading anything.
 7. Uploads non-HTML files first, then `404.html`, then `index.html`. It never deletes objects.
-8. Invalidates the website distribution and verifies all 20 HTTPS file hashes, the apex homepage, HTTP/www redirects, and the custom 404.
+8. Invalidates the website distribution and verifies all 20 HTTPS file hashes, the versioned CSS/JavaScript URLs, the apex homepage, HTTP/www redirects, and the custom 404.
 
 All Actions are pinned to full commit SHAs. The check job has only `contents: read`; only the production job can request an OIDC token.
 
@@ -47,7 +47,15 @@ Sources: [GitHub OIDC on AWS](https://docs.github.com/en/actions/how-tos/secure-
 
 ## Caching and verification
 
-Fixed-name assets use a five-minute cache lifetime. HTML asks caches to revalidate; the CloudFront policy may impose its minimum TTL, so the workflow also invalidates the entire small site and waits for completion. HTTPS verification checks actual bytes, not only status codes.
+HTML, CSS, and JavaScript ask caches to revalidate; other assets use a five-minute cache lifetime. The HTML references CSS and JavaScript with a `?v=` query containing the first 12 characters of that file's SHA-256 hash. A new URL prevents a browser from reusing the old release's locally cached stylesheet or script. The verifier rejects missing or stale versions, and live checks request the exact versioned URLs as well as the fixed filenames.
+
+After editing `styles.css` or `script.js`, update its version in `index.html` before verifying:
+
+```bash
+shasum -a 256 styles.css script.js
+```
+
+This preserves the 20-object publication boundary. Query versions distinguish browser cache entries; they do not create immutable S3 objects or guarantee separate CloudFront cache entries. The CloudFront policy may impose its minimum TTL, so the workflow still invalidates the entire small site and waits for completion. HTTPS verification checks actual bytes, not only status codes. CloudFront invalidation alone does not clear copies already cached on visitors' devices. See [AWS's explanation of invalidation and browser caches](https://docs.aws.amazon.com/AmazonCloudFront/latest/DeveloperGuide/Invalidation.html).
 
 This is not an atomic release: requests during an upload can briefly mix old HTML with new fixed-name assets. Keep file changes backward-compatible. Avoid manual uploads while an Actions deployment is running.
 

@@ -113,7 +113,7 @@ test("verification rejects source/build drift", async (t) => {
 test("verification catches broken links, metadata, shortcuts, and initial controller states", async (t) => {
   const cases = [
     ["index.html", (s) => s.replace('href="#work"', 'href="#missing"'), /missing fragment/],
-    ["index.html", (s) => s.replace('src="/script.js"', 'src="/unpublished.js"'), /not published/],
+    ["index.html", (s) => s.replace(/src="\/script\.js(?:\?[^"]*)?"/, 'src="/unpublished.js"'), /not published/],
     ["index.html", (s) => s.replace('data-shortcut="2"', 'data-shortcut="1"'), /unique shortcuts/],
     ["index.html", (s) => s.replace(/<button\b[^>]*\bdata-fx-toggle\b[^>]*>/, (tag) => tag.replace('aria-pressed="false"', 'aria-pressed="true"')), /texture must start off/],
     ["index.html", (s) => s.replace(/<button\b[^>]*\bdata-theme-toggle\b[^>]*>/, (tag) => tag.replace('aria-pressed="false"', 'aria-pressed="true"')), /theme must start light/],
@@ -134,5 +134,49 @@ test("verification catches broken links, metadata, shortcuts, and initial contro
     const path = join(destination, file);
     await writeFile(path, change(await readFile(path, "utf8")));
     await assert.rejects(verifySite(destination), error);
+  }
+});
+
+test("verification requires exactly one correctly content-versioned CSS and JS reference", async (t) => {
+  for (const file of ["styles.css", "script.js"]) {
+    const tagPattern = file === "styles.css" ? /<link\b[^>]*rel="stylesheet"[^>]*>/ : /<script\b[^>]*src="[^\"]*"[^>]*><\/script>/;
+    const attributePattern = file === "styles.css" ? /href="[^"]*"/ : /src="[^"]*"/;
+    const attribute = file === "styles.css" ? "href" : "src";
+    const changes = [
+      (tag) => tag.replace(attributePattern, `${attribute}="/${file}"`),
+      (tag) => tag.replace(attributePattern, `${attribute}="/${file}?v=000000000000"`),
+      (tag) => tag.replace(attributePattern, `${attribute}="/${file}?v=wrong-version"`),
+      (tag) => tag.replace("?v=", "?release="),
+      (tag) => tag.replace(attributePattern, (value) => value.slice(0, -1) + '&extra=1"'),
+      (tag) => tag + tag,
+      () => "",
+    ];
+    for (const change of changes) {
+      const root = await fixture(t);
+      const path = join(root, "index.html");
+      const original = await readFile(path, "utf8");
+      const modified = original.replace(tagPattern, change);
+      assert.notEqual(modified, original, `Fixture must change the ${file} reference`);
+      await writeFile(path, modified);
+      await assert.rejects(verifySite(root), new RegExp(`${file.replace(".", "\\.")} must have exactly one reference with its content hash`));
+    }
+  }
+});
+
+test("verification rejects CSS or JS edits unless their HTML content version is updated", async (t) => {
+  for (const file of ["styles.css", "script.js"]) {
+    const root = await fixture(t);
+    const path = join(root, file);
+    await writeFile(path, await readFile(path, "utf8") + "\n/* changed bytes */\n");
+    await assert.rejects(verifySite(root), new RegExp(`${file.replace(".", "\\.")} must have exactly one reference with its content hash`));
+  }
+});
+
+test("verification requires the content-versioned script to remain deferred", async (t) => {
+  for (const change of [(tag) => tag.replace(" defer", ""), (tag) => tag.replace(" defer", " defer async")]) {
+    const root = await fixture(t);
+    const path = join(root, "index.html");
+    await writeFile(path, (await readFile(path, "utf8")).replace(/<script\b[^>]*src="[^"]*"[^>]*>/, change));
+    await assert.rejects(verifySite(root), /script\.js must use defer without async/);
   }
 });

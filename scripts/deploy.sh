@@ -119,14 +119,15 @@ stage="uploading"
 jq '.status = "uploading"' "$record" > "$record.tmp"
 mv "$record.tmp" "$record"
 
-# Fixed filenames get short cache lifetimes. HTML entrypoints are uploaded last.
+# HTML and fixed-name code must revalidate; versioned URLs bypass older browser entries.
+# Other assets get short cache lifetimes. HTML entrypoints are uploaded last.
 while IFS= read -r key; do
   current_key="$key"
   content_type="$(jq -r --arg key "$key" '.objects[] | select(.key==$key) | .content_type' "$record")"
   sha256="$(jq -r --arg key "$key" '.objects[] | select(.key==$key) | .sha256' "$record")"
   checksum="$(node -e 'process.stdout.write(Buffer.from(process.argv[1],"hex").toString("base64"))' "$sha256")"
   cache_control="public,max-age=300,must-revalidate"
-  if [[ "$key" == "index.html" || "$key" == "404.html" ]]; then
+  if [[ "$key" == "index.html" || "$key" == "404.html" || "$key" == "styles.css" || "$key" == "script.js" ]]; then
     cache_control="no-cache,max-age=0,must-revalidate"
   fi
   echo "Uploading $key"

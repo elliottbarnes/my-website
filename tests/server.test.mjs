@@ -21,8 +21,8 @@ async function preview(t) {
   return { root, url: `http://127.0.0.1:${server.address().port}` };
 }
 
-test("preview serves the artifact with correct types and HEAD semantics", async (t) => {
-  const { url } = await preview(t);
+test("preview serves the artifact and versioned assets with correct types and HEAD semantics", async (t) => {
+  const { root, url } = await preview(t);
   const page = await fetch(url);
   assert.equal(page.status, 200);
   assert.match(page.headers.get("content-type"), /^text\/html/);
@@ -34,6 +34,14 @@ test("preview serves the artifact with correct types and HEAD semantics", async 
   const css = await fetch(`${url}/styles.css`);
   assert.match(css.headers.get("content-type"), /^text\/css/);
   await css.arrayBuffer();
+  for (const [file, type] of [["styles.css", "text/css"], ["script.js", "text/javascript"]]) {
+    const path = content.match(new RegExp(`/${file.replace(".", "\\.")}\\?v=[a-f0-9]{12}`))?.[0];
+    assert.ok(path, `HTML must reference versioned ${file}`);
+    const response = await fetch(url + path);
+    assert.equal(response.status, 200);
+    assert.ok(response.headers.get("content-type").startsWith(type));
+    assert.equal(await response.text(), await readFile(join(root, file), "utf8"));
+  }
 });
 
 test("missing and private routes return the custom 404, without exposing source", async (t) => {

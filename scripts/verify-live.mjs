@@ -67,6 +67,15 @@ export async function verifyLive(directory, { fetchImpl = fetch, attempts = 3, d
       ));
     }));
   }
+  // verifySite has already required these exact, content-versioned references in HTML.
+  // Also check their actual public responses, not just the underlying S3 filenames.
+  const versionedAssets = {};
+  for (const key of ["styles.css", "script.js"]) {
+    const path = `/${key}?v=${artifact.sha256[key].slice(0, 12)}`;
+    versionedAssets[path] = await retry(path, () => verifyBytes(
+      `${ORIGIN}${path}`, 200, artifact.sha256[key], contentType(key),
+    ));
+  }
   await retry("Apex homepage", () => verifyBytes(
     `${ORIGIN}/`, 200, artifact.sha256["index.html"], contentType("index.html"),
   ));
@@ -112,6 +121,7 @@ export async function verifyLive(directory, { fetchImpl = fetch, attempts = 3, d
     origin: ORIGIN,
     files: PUBLIC_FILES.length,
     sha256: hashes,
+    versioned_assets: versionedAssets,
     redirects,
     not_found: { path: missingPath, status: 404, sha256: missingHash },
     checked_at: new Date().toISOString(),
@@ -129,7 +139,7 @@ if (process.argv[1] && resolve(process.argv[1]) === fileURLToPath(import.meta.ur
     try {
       const result = await verifyLive(paths[0] ?? "dist");
       console.log(json ? JSON.stringify(result) :
-        `Verified ${result.files} HTTPS file hashes, canonical redirects and the custom 404.`);
+        `Verified ${result.files} HTTPS file hashes, versioned CSS/JS, canonical redirects and the custom 404.`);
     } catch (error) {
       console.error(`Live verification failed: ${error.message}`);
       process.exitCode = 1;

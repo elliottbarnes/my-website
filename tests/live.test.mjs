@@ -39,11 +39,14 @@ async function fixture(t) {
       if (redirects[url]) return new Response(null, { status: 301, headers: { location: redirects[url] } });
       const parsed = new URL(url);
       assert.equal(parsed.origin, origin, `Unexpected network destination: ${url}`);
-      assert.equal(parsed.search, "");
       assert.equal(parsed.hash, "");
       const missing = missingPath.test(parsed.pathname);
       const key = missing ? "404.html" : parsed.pathname === "/" ? "index.html" : parsed.pathname.slice(1);
       assert.ok(files.has(key), `Unexpected public file: ${url}`);
+      if (parsed.search) {
+        assert.ok(["styles.css", "script.js"].includes(key), `Unexpected versioned asset: ${url}`);
+        assert.equal(parsed.search, `?v=${digest(files.get(key)).slice(0, 12)}`);
+      }
       return new Response(files.get(key), {
         status: missing ? 404 : 200,
         headers: { "content-type": contentType(key) },
@@ -53,7 +56,7 @@ async function fixture(t) {
   return { directory, files, requests, mockFetch };
 }
 
-test("live verification checks all 20 hashes, the apex, canonical redirect chains, and custom 404", async (t) => {
+test("live verification checks all 20 hashes, versioned assets, the apex, canonical redirect chains, and custom 404", async (t) => {
   const { directory, files, requests, mockFetch } = await fixture(t);
   const result = await verifyLive(directory, { fetchImpl: mockFetch(), delayMs: 0 });
   assert.equal(result.origin, origin);
@@ -62,6 +65,12 @@ test("live verification checks all 20 hashes, the apex, canonical redirect chain
   for (const [key, bytes] of files) {
     assert.equal(result.sha256[key], digest(bytes));
     assert.equal(requests.filter((url) => url === `${origin}/${key}`).length, 1);
+  }
+  assert.equal(Object.keys(result.versioned_assets).length, 2);
+  for (const key of ["styles.css", "script.js"]) {
+    const path = `/${key}?v=${digest(files.get(key)).slice(0, 12)}`;
+    assert.equal(result.versioned_assets[path], digest(files.get(key)));
+    assert.equal(requests.filter((url) => url === origin + path).length, 1);
   }
   assert.deepEqual(result.redirects.map(({ start, hops }) => ({
     start, urls: hops.map((hop) => hop.url), statuses: hops.map((hop) => hop.status),
@@ -75,8 +84,24 @@ test("live verification checks all 20 hashes, the apex, canonical redirect chain
   assert.equal(result.not_found.status, 404);
   assert.equal(result.not_found.sha256, digest(files.get("404.html")));
   assert.equal(requests.at(-1), origin + result.not_found.path);
-  assert.equal(requests.length, 29);
+  assert.equal(requests.length, 31);
   assert.ok(Number.isFinite(Date.parse(result.checked_at)));
+});
+
+test("live verification rejects stale bytes and wrong content types at the exact versioned asset URLs", async (t) => {
+  for (const key of ["styles.css", "script.js"]) {
+    for (const failure of ["stale", "wrong-type", "missing-type"]) {
+      const { directory, files, requests, mockFetch } = await fixture(t);
+      const path = `/${key}?v=${digest(files.get(key)).slice(0, 12)}`;
+      const fetchImpl = mockFetch((url) => url === origin + path ? new Response(
+        failure === "stale" ? "stale deployment" : files.get(key),
+        { headers: failure === "missing-type" ? {} : { "content-type": failure === "wrong-type" ? "text/plain" : contentType(key) } },
+      ) : undefined);
+      const error = failure === "stale" ? /Byte hash differs/ : /Unexpected content type/;
+      await assert.rejects(verifyLive(directory, { fetchImpl, attempts: 1 }), error);
+      assert.equal(requests.filter((url) => url === origin + path).length, 1);
+    }
+  }
 });
 
 test("live verification rejects stale bytes for public files, the apex, and custom 404", async (t) => {

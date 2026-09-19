@@ -116,6 +116,23 @@ export async function verifySite(directory, { sourceRoot } = {}) {
     reference(match[1] ?? match[2] ?? match[3], "styles.css", { localOnly: true });
   }
 
+  // A new URL prevents cached CSS/JS from being paired with another release's HTML.
+  // Check the bytes, not a manually maintained release label, so stale versions fail the build.
+  const stylesheets = index.filter((tag) => tag.name === "link" && tag.attrs.get("rel")?.split(/\s+/).includes("stylesheet"));
+  const scripts = index.filter((tag) => tag.name === "script" && tag.attrs.has("src"));
+  for (const [file, references, attribute] of [
+    ["styles.css", stylesheets, "href"],
+    ["script.js", scripts, "src"],
+  ]) {
+    const expected = `/${file}?v=${sha256[file].slice(0, 12)}`;
+    if (references.length !== 1 || references[0].attrs.get(attribute) !== expected) {
+      throw new Error(`index.html: ${file} must have exactly one reference with its content hash: ${expected}`);
+    }
+  }
+  if (!scripts[0].attrs.has("defer") || scripts[0].attrs.has("async")) {
+    throw new Error("index.html: the versioned script.js must use defer without async");
+  }
+
   let manifest;
   try {
     manifest = JSON.parse(content.get("site.webmanifest"));
