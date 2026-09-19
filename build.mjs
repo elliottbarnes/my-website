@@ -6,6 +6,10 @@ const root = fileURLToPath(new URL(".", import.meta.url));
 const files = [
   "index.html", "404.html", "styles.css", "script.js", "robots.txt",
   "sitemap.xml", "site.webmanifest", "assets/favicon.svg", "assets/social-card.svg",
+  "assets/toolkit/java.svg", "assets/toolkit/python.svg", "assets/toolkit/gradle.svg",
+  "assets/toolkit/awk.svg", "assets/toolkit/cplusplus.svg", "assets/toolkit/pytorch.svg",
+  "assets/toolkit/streamlit.svg", "assets/toolkit/docker.svg", "assets/toolkit/aws.svg",
+  "assets/toolkit/diffusers.svg", "assets/toolkit/LICENSE.txt",
 ];
 const destination = join(root, "dist");
 await mkdir(destination, { recursive: true });

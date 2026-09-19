@@ -33,6 +33,8 @@ The build copies an explicit list of public files into `dist/` and refuses unexp
 - `build.mjs`: creates the public deployment artifact
 - `404.html`: custom not-found page
 - `assets/`: favicon and social sharing artwork
+- `assets/toolkit/`: local, consistently styled technology icons
+- `ASSET_SOURCES.md`: icon provenance and licensing
 - Hosting, deployment, and rollback notes are kept in the local deployment workspace.
 
 The deployable artifact is generated in `dist/`; project notes and infrastructure snapshots are intentionally excluded.
