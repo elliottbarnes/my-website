@@ -25,6 +25,7 @@ jobs:
         run: |
           node --check script.js
           bash -n scripts/deploy.sh
+          bash -n scripts/snapshot-object.sh
           node --test
       - name: Build and verify exact public files
         run: |

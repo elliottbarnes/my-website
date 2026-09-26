@@ -37,11 +37,13 @@ All Actions are pinned to full commit SHAs. The check job has only `contents: re
 The role `ElliottWebsiteGitHubDeploy` uses the complete reviewed policies in:
 
 - [deploy-trust.json](.github/aws/deploy-trust.json): exact repository/environment subject, AWS STS audience, main ref, and immutable repository/owner IDs.
-- [deploy-policy.json](.github/aws/deploy-policy.json): inspect bucket versioning, read/write/recover only the 21 named public objects, and invalidate/read invalidations for the one website distribution.
+- [deploy-policy.json](.github/aws/deploy-policy.json): inspect bucket versioning; read/write/recover the seven named root files and objects under this website's `assets/` prefix; list only asset-prefixed keys to establish whether a new asset exists; and invalidate/read invalidations for the one website distribution.
 
 There are no delete, IAM administration, role-passing, bucket-policy, or unrelated-bucket permissions. GitHub's environment branch restriction also prevents untrusted PR deployments. AWS policy validation and allowed/denied object simulations are part of setup verification.
 
-The role intentionally cannot list the bucket. All 21 keys must already exist with version IDs. A missing or new key requires an administrator to review the allowlist/policy change and bootstrap a versioned object; any failed prior-version lookup aborts before uploads.
+The role cannot list outside `assets/`. Existing objects must have version IDs. A new allowlisted asset needs no administrator bootstrap: after a failed HEAD lookup, the deployment checks an exact-key prefix listing (without requesting owner information). A denied, malformed, or contradictory response aborts before uploads. Proven-absent assets are recorded as `prior.exists: false` and uploaded with `If-None-Match: *`, so a concurrent creation causes failure rather than an overwrite. Missing root files still require administrator intervention.
+
+IAM's assets prefix does not automatically publish local files. Add each intended public asset to `scripts/public-files.mjs`, update the exact-count guards/tests, and commit it. The build still excludes everything outside that explicit allowlist. IAM changes, new root paths, other buckets, deletion, and account administration remain outside the workflow's authority. No permanent AWS credentials are stored in GitHub or added to the Mac.
 
 Sources: [GitHub OIDC on AWS](https://docs.github.com/en/actions/how-tos/secure-your-work/security-harden-deployments/oidc-in-aws), [AWS GitHub OIDC condition keys](https://docs.aws.amazon.com/IAM/latest/UserGuide/reference_policies_iam-condition-keys.html), [S3 HeadObject permission behavior](https://docs.aws.amazon.com/AmazonS3/latest/API/API_HeadObject.html).
 
@@ -68,6 +70,8 @@ node scripts/verify-live.mjs dist
 Each deployment writes `.deployments/run-.../deployment-record.json`, outside the public artifact. It records the source commit, hashes, previous/new S3 version IDs, run identity, invalidation, and final verification. GitHub retains the record artifact for 90 days, including partial failures. Download important records before that retention expires. The workflow does not delete S3 objects or versions.
 
 For an actual rollback, choose a verified earlier commit and its deployment record. Prefer redeploying a reviewed source change on `main`; otherwise an authorized operator can restore each record's `prior.version_id` as a new current version with `aws s3api copy-object`. Use the exact recorded key/version; do not delete current versions or add delete markers. Restore non-HTML files first, then 404 and index last, invalidate CloudFront, and verify against the chosen earlier artifact.
+
+For objects recorded with `prior.exists: false`, there is no prior version to restore. Rollback restores the old pages and references but leaves the newly added, unused public assets in S3. Removing those assets requires separately authorized cleanup; the deployment role has no delete permission. Post-deploy health checks remain automatic; rollback is deliberate, not an automatic destructive response to a transient failure.
 
 Example for one reviewed object (substitute a real recorded version; this is not a complete rollback):
 

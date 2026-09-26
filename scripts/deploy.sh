@@ -17,6 +17,7 @@ script_dir="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)"
 readonly repo_root="$(dirname -- "$script_dir")"
 readonly artifact_dir="$repo_root/dist"
 cd "$repo_root"
+source "$script_dir/snapshot-object.sh"
 
 for command in aws node jq git; do
   command -v "$command" >/dev/null || { echo "Missing required command: $command" >&2; exit 1; }
@@ -89,20 +90,9 @@ echo "Deployment record: $record"
 
 while IFS= read -r key; do
   current_key="$key"
-  if aws s3api head-object --bucket "$bucket" --key "$key" \
-      --expected-bucket-owner "$account" --region "$region" --output json \
-      > "$record_dir/head.json" 2> "$record_dir/head.err"; then
-    jq -e '.VersionId | type == "string" and length > 0 and . != "null"' "$record_dir/head.json" >/dev/null || {
-      echo "Prior version is missing for $key; administrator bootstrap is required before deployment." >&2
-      exit 1
-    }
-    prior="$(jq '{exists:true, version_id:.VersionId, etag:.ETag,
-      last_modified:.LastModified}' "$record_dir/head.json")"
-  else
-    echo "Cannot read prior version for $key; no uploads have started. Missing keys require administrator bootstrap." >&2
-    cat "$record_dir/head.err" >&2
-    exit 1
-  fi
+  prior="$(snapshot_public_object "$key")" || {
+    echo "Cannot safely snapshot $key; no uploads have started." >&2; exit 1;
+  }
   content_type="$(jq -r --arg key "$key" '.[] | select(.path == $key) | .content_type' <<<"$public_files")"
   sha256="$(jq -r --arg key "$key" '.sha256[$key]' <<<"$verified")"
   jq --arg key "$key" --arg type "$content_type" --arg sha "$sha256" --argjson prior "$prior" \
@@ -131,7 +121,12 @@ while IFS= read -r key; do
     cache_control="no-cache,max-age=0,must-revalidate"
   fi
   echo "Uploading $key"
+  create_only=()
+  if jq -e --arg key "$key" '.objects[] | select(.key==$key) | .prior.exists == false' "$record" >/dev/null; then
+    create_only=(--if-none-match '*')
+  fi
   aws s3api put-object --bucket "$bucket" --key "$key" --body "$artifact_dir/$key" \
+    "${create_only[@]}" \
     --expected-bucket-owner "$account" --region "$region" --content-type "$content_type" \
     --cache-control "$cache_control" --metadata "git-sha=$commit_sha" \
     --checksum-algorithm SHA256 --checksum-sha256 "$checksum" --output json \
