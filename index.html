@@ -29,6 +29,10 @@
     <link rel="manifest" href="/site.webmanifest">
     <link rel="stylesheet" href="/styles.css?v=be8ba4995eaa">
 
+    <link rel="stylesheet" href="/assets/interactive/playground.css?v=734addc2ebc2">
+    <link rel="stylesheet" href="/assets/interactive/arcade.css?v=d38619e2bc85">
+    <link rel="stylesheet" href="/assets/interactive/interactions.css?v=0f922e51db50">
+
     <script type="application/ld+json">
       {
         "@context": "https://schema.org",
@@ -72,9 +76,10 @@
               <p class="eyebrow">PLAYER 01</p>
               <h1 id="hero-title">Elliott<span class="name-dot">.</span></h1>
               <p class="role">ai connoisseur</p>
-              <p class="hero-lede">Financial technology by profession.<br>AI, apps, and experiments by curiosity.</p>
+              <p class="hero-lede"><strong>Senior Software Developer at Nasdaq Verafin.</strong><br>AI, apps, and experiments by curiosity.</p>
 
-              <a class="start-link" href="#work"><span aria-hidden="true">▶</span> Select a project</a>
+              <a class="start-link" href="#work"><span aria-hidden="true">▶</span> Play with a project</a>
+              <button class="text-button terminal-launch" type="button" data-terminal-open hidden>Open terminal <kbd>/</kbd></button>
             </div>
 
             <div class="controller-area">
@@ -98,6 +103,10 @@
                 </svg>
                 <span class="controller-wordmark" aria-hidden="true">ellitendo <b>64</b></span>
                 <div class="direction-pad" aria-hidden="true"><i></i></div>
+                <div class="dpad-controls" role="group" aria-label="Select a cartridge" hidden>
+                  <button type="button" data-select-step="-1" class="dpad-up" aria-label="Previous cartridge">↑</button>
+                  <button type="button" data-select-step="1" class="dpad-down" aria-label="Next cartridge">↓</button>
+                </div>
                 <button class="theme-toggle" type="button" aria-label="START: Dark mode" aria-pressed="false" data-theme-toggle>
                   <span class="start-button" aria-hidden="true"></span><small>START</small>
                 </button>
@@ -112,20 +121,25 @@
                     <path d="m50 12 6 10H44Zm-38 38 10-6v12Zm76 0-10 6V44Zm-38 38-6-10h12Z" fill="#795e11"/>
                   </svg>
                 </a>
-                <a class="game-button button-b" href="#contact" aria-label="B: Contact"><span>B</span></a>
-                <a class="game-button button-a" href="#work" aria-label="A: Projects"><span>A</span></a>
+                <a class="game-button button-b" href="#top" aria-label="B: Back to start" data-controller-back><span>B</span></a>
+                <a class="game-button button-a" href="#work" aria-label="A: Load selected cartridge" data-controller-open><span>A</span></a>
               </div>
               <div class="controller-legend" aria-label="Controller guide">
-                <a href="#work"><span class="legend-a" aria-hidden="true">A</span>Projects</a>
-                <a href="#contact"><span class="legend-b" aria-hidden="true">B</span>Contact</a>
+                <a href="#work" data-controller-open><span class="legend-a" aria-hidden="true">A</span>Load</a>
+                <a href="#top" data-controller-back><span class="legend-b" aria-hidden="true">B</span>Back</a>
                 <a href="#toolkit"><span class="legend-c" aria-hidden="true">C</span>Toolkit</a>
               </div>
               <div class="controller-caption"><span>START switches light / dark</span><span data-theme-label aria-live="polite">Dark mode: off</span></div>
-              <p class="keyboard-hint">Or use your keyboard <kbd>1</kbd> <kbd>2</kbd> <kbd>3</kbd></p>
+              <p class="selection-status" data-selection-status hidden aria-live="polite">01 / Batchline selected</p>
+              <p class="keyboard-hint" hidden>Arrow keys select · A loads · B returns</p>
+              <div class="comfort-controls" hidden>
+                <button type="button" class="text-button" data-sound-toggle aria-pressed="false">Sound: off</button>
+                <button type="button" class="text-button" data-motion-toggle aria-pressed="false">Motion: on</button>
+              </div>
             </div>
           </section>
 
-          <aside class="about-strip" aria-label="About Elliott">
+          <aside id="about" class="about-strip" aria-label="About Elliott">
             <p class="eyebrow">A LITTLE CONTEXT</p>
             <p>I work in financial technology at <strong>Nasdaq Verafin</strong>.<br> Here, I share independent experiments in AI and developer tools.</p>
           </aside>
@@ -136,22 +150,22 @@
                 <p class="eyebrow">01 / THE COLLECTION</p>
                 <h2 id="work-title">Select a cartridge.</h2>
               </div>
-              <p>Four projects. Ready to explore.</p>
+              <p>Four experiments. Pick one and try it.</p>
             </div>
 
             <div class="project-grid">
-              <a class="project-card amber-card" href="https://github.com/elliottbarnes/batchline" target="_blank" rel="noopener" aria-label="View Batchline on GitHub">
+              <a class="project-card amber-card" data-project="batchline" href="https://github.com/elliottbarnes/batchline" target="_blank" rel="noopener" aria-label="View Batchline on GitHub">
                 <span class="cartridge-spine" aria-hidden="true">ellitendo 64</span>
                 <div class="cartridge-label">
                 <div class="card-meta"><span>01</span><span>INFERENCE LAB</span></div>
                 <h3>Batchline</h3>
-                <p>A tiny model. Real batching, bounded queues, and observable behavior.</p>
+                <p>Explore how batching keeps a busy AI service moving without an endless queue.</p>
                 <ul aria-label="Batchline technologies"><li>Python</li><li>APIs</li><li>Prometheus</li></ul>
                 </div>
-                <span class="card-action">OPEN PROJECT <span aria-hidden="true">↗</span></span>
+                <span class="card-action">EXPLORE PROJECT <span aria-hidden="true">↗</span></span>
               </a>
 
-              <a class="project-card cyan-card" href="https://github.com/elliottbarnes/evaldeck" target="_blank" rel="noopener" aria-label="View EvalDeck on GitHub">
+              <a class="project-card cyan-card" data-project="evaldeck" href="https://github.com/elliottbarnes/evaldeck" target="_blank" rel="noopener" aria-label="View EvalDeck on GitHub">
                 <span class="cartridge-spine" aria-hidden="true">ellitendo 64</span>
                 <div class="cartridge-label">
                 <div class="card-meta"><span>02</span><span>AI EVALUATION</span></div>
@@ -159,10 +173,10 @@
                 <p>Replay AI outputs, catch regressions, and see exactly what changed.</p>
                 <ul aria-label="EvalDeck technologies"><li>Python</li><li>JSONL</li><li>Evaluations</li></ul>
                 </div>
-                <span class="card-action">OPEN PROJECT <span aria-hidden="true">↗</span></span>
+                <span class="card-action">EXPLORE PROJECT <span aria-hidden="true">↗</span></span>
               </a>
 
-              <a class="project-card magenta-card" href="https://github.com/elliottbarnes/reconcile-kit" target="_blank" rel="noopener" aria-label="View Reconcile Kit on GitHub">
+              <a class="project-card magenta-card" data-project="reconcile-kit" href="https://github.com/elliottbarnes/reconcile-kit" target="_blank" rel="noopener" aria-label="View Reconcile Kit on GitHub">
                 <span class="cartridge-spine" aria-hidden="true">ellitendo 64</span>
                 <div class="cartridge-label">
                 <div class="card-meta"><span>03</span><span>DATA TOOLING</span></div>
@@ -170,10 +184,10 @@
                 <p>Find missing records, duplicates, and exact-money mismatches in CSV exports.</p>
                 <ul aria-label="Reconcile Kit technologies"><li>Java</li><li>Gradle</li><li>awk</li></ul>
                 </div>
-                <span class="card-action">OPEN PROJECT <span aria-hidden="true">↗</span></span>
+                <span class="card-action">EXPLORE PROJECT <span aria-hidden="true">↗</span></span>
               </a>
 
-              <a class="project-card green-card" href="https://github.com/elliottbarnes/prism-studio" target="_blank" rel="noopener" aria-label="View Prism Studio on GitHub">
+              <a class="project-card green-card" data-project="prism-studio" href="https://github.com/elliottbarnes/prism-studio" target="_blank" rel="noopener" aria-label="View Prism Studio on GitHub">
                 <span class="cartridge-spine" aria-hidden="true">ellitendo 64</span>
                 <div class="cartridge-label">
                 <div class="card-meta"><span>04</span><span>IMAGE GENERATION</span></div>
@@ -181,7 +195,7 @@
                 <p>A local image workbench with seeded runs and a record of each experiment.</p>
                 <ul aria-label="Prism Studio technologies"><li>Diffusers</li><li>PyTorch</li><li>Streamlit</li></ul>
                 </div>
-                <span class="card-action">OPEN PROJECT <span aria-hidden="true">↗</span></span>
+                <span class="card-action">EXPLORE PROJECT <span aria-hidden="true">↗</span></span>
               </a>
             </div>
           </section>
@@ -192,21 +206,26 @@
                 <p class="eyebrow">02 / INVENTORY</p>
                 <h2 id="toolkit-title">Toolkit</h2>
               </div>
-              <p>The tools behind the experiments.</p>
+              <p data-tool-hint>The tools behind the experiments.</p>
             </div>
 
             <ul class="tool-grid">
-              <li><span class="tool-icon" aria-hidden="true"><img class="tool-logo tool-logo--java" src="assets/toolkit/java.svg" alt="" width="36" height="36" loading="lazy" decoding="async"></span>Java</li>
-              <li><span class="tool-icon" aria-hidden="true"><img class="tool-logo tool-logo--dense" src="assets/toolkit/python.svg" alt="" width="36" height="36" loading="lazy" decoding="async"></span>Python</li>
-              <li><span class="tool-icon" aria-hidden="true"><img class="tool-logo tool-logo--wide" src="assets/toolkit/gradle.svg" alt="" width="36" height="36" loading="lazy" decoding="async"></span>Gradle</li>
-              <li><span class="tool-icon" aria-hidden="true"><img class="tool-logo" src="assets/toolkit/awk.svg" alt="" width="36" height="36" loading="lazy" decoding="async"></span>awk</li>
-              <li><span class="tool-icon" aria-hidden="true"><img class="tool-logo tool-logo--dense" src="assets/toolkit/cplusplus.svg" alt="" width="36" height="36" loading="lazy" decoding="async"></span>C++</li>
-              <li><span class="tool-icon" aria-hidden="true"><img class="tool-logo" src="assets/toolkit/pytorch.svg" alt="" width="36" height="36" loading="lazy" decoding="async"></span>PyTorch</li>
-              <li><span class="tool-icon" aria-hidden="true"><img class="tool-logo tool-logo--wide" src="assets/toolkit/streamlit.svg" alt="" width="36" height="36" loading="lazy" decoding="async"></span>Streamlit</li>
-              <li><span class="tool-icon" aria-hidden="true"><img class="tool-logo tool-logo--wide" src="assets/toolkit/docker.svg" alt="" width="36" height="36" loading="lazy" decoding="async"></span>Docker</li>
-              <li><span class="tool-icon" aria-hidden="true"><img class="tool-logo tool-logo--wide" src="assets/toolkit/aws.svg" alt="" width="36" height="36" loading="lazy" decoding="async"></span>AWS</li>
-              <li><span class="tool-icon" aria-hidden="true"><img class="tool-logo" src="assets/toolkit/diffusers.svg" alt="" width="36" height="36" loading="lazy" decoding="async"></span>Diffusers</li>
+              <li><button type="button" class="tool-button" disabled data-tool="Java" aria-pressed="false"><span class="tool-icon" aria-hidden="true"><img class="tool-logo tool-logo--java" src="assets/toolkit/java.svg" alt="" width="36" height="36" loading="lazy" decoding="async"></span>Java</button></li>
+              <li><button type="button" class="tool-button" disabled data-tool="Python" aria-pressed="false"><span class="tool-icon" aria-hidden="true"><img class="tool-logo tool-logo--dense" src="assets/toolkit/python.svg" alt="" width="36" height="36" loading="lazy" decoding="async"></span>Python</button></li>
+              <li><button type="button" class="tool-button" disabled data-tool="Gradle" aria-pressed="false"><span class="tool-icon" aria-hidden="true"><img class="tool-logo tool-logo--wide" src="assets/toolkit/gradle.svg" alt="" width="36" height="36" loading="lazy" decoding="async"></span>Gradle</button></li>
+              <li><button type="button" class="tool-button" disabled data-tool="awk" aria-pressed="false"><span class="tool-icon" aria-hidden="true"><img class="tool-logo" src="assets/toolkit/awk.svg" alt="" width="36" height="36" loading="lazy" decoding="async"></span>awk</button></li>
+              <li><button type="button" class="tool-button" disabled data-tool="C++" aria-pressed="false"><span class="tool-icon" aria-hidden="true"><img class="tool-logo tool-logo--dense" src="assets/toolkit/cplusplus.svg" alt="" width="36" height="36" loading="lazy" decoding="async"></span>C++</button></li>
+              <li><button type="button" class="tool-button" disabled data-tool="PyTorch" aria-pressed="false"><span class="tool-icon" aria-hidden="true"><img class="tool-logo" src="assets/toolkit/pytorch.svg" alt="" width="36" height="36" loading="lazy" decoding="async"></span>PyTorch</button></li>
+              <li><button type="button" class="tool-button" disabled data-tool="Streamlit" aria-pressed="false"><span class="tool-icon" aria-hidden="true"><img class="tool-logo tool-logo--wide" src="assets/toolkit/streamlit.svg" alt="" width="36" height="36" loading="lazy" decoding="async"></span>Streamlit</button></li>
+              <li><button type="button" class="tool-button" disabled data-tool="Docker" aria-pressed="false"><span class="tool-icon" aria-hidden="true"><img class="tool-logo tool-logo--wide" src="assets/toolkit/docker.svg" alt="" width="36" height="36" loading="lazy" decoding="async"></span>Docker</button></li>
+              <li><button type="button" class="tool-button" disabled data-tool="AWS" aria-pressed="false"><span class="tool-icon" aria-hidden="true"><img class="tool-logo tool-logo--wide" src="assets/toolkit/aws.svg" alt="" width="36" height="36" loading="lazy" decoding="async"></span>AWS</button></li>
+              <li><button type="button" class="tool-button" disabled data-tool="Diffusers" aria-pressed="false"><span class="tool-icon" aria-hidden="true"><img class="tool-logo" src="assets/toolkit/diffusers.svg" alt="" width="36" height="36" loading="lazy" decoding="async"></span>Diffusers</button></li>
             </ul>
+            <div class="tool-detail" id="tool-detail" hidden aria-live="polite">
+              <p data-tool-description>Choose a tool to explore its role in these projects.</p>
+              <div data-tool-projects></div>
+              <button type="button" class="text-button" data-tool-reset hidden>Clear selection</button>
+            </div>
           </section>
 
           <section class="contact section-block" id="contact" aria-labelledby="contact-title">
@@ -227,8 +246,8 @@
                 </a>
                 <a href="https://www.linkedin.com/in/elliottbarnes1/" target="_blank" rel="me noopener">
                   <span aria-hidden="true">in</span>
-                  <strong>LinkedIn</strong>
-                  <small>Professional profile</small>
+                  <strong>Message on LinkedIn</strong>
+                  <small>Open my profile to connect</small>
                   <i aria-hidden="true">→</i>
                 </a>
               </div>
@@ -237,6 +256,7 @@
         </main>
 
         <footer class="site-footer">
+          <button class="text-button secret-cartridge" type="button" data-arcade-open aria-label="Open secret arcade cartridge" hidden>Cartridge 05: ?</button>
           <p>© <span data-current-year>2026</span> ELLIOTT<br><a href="https://www.iconarchive.com/show/dragon-ballz-icons-by-musett/Dragon-Ball-icon.html">Icon: Musett.com</a> · <a href="https://creativecommons.org/licenses/by-nc-nd/4.0/">CC BY-NC-ND 4.0</a></p>
           <!-- Dragon Ball icon: unmodified artwork by Musett.com. Characters depicted are © their respective copyright owners. No affiliation or endorsement implied. -->
           <a href="#top">BACK TO START <span aria-hidden="true">↑</span></a>
@@ -244,6 +264,9 @@
       </div>
     </div>
 
-    <script src="/script.js?v=5792855e84a3" defer></script>
+    <script src="/assets/interactive/playground.js?v=d0667a2310c3" defer></script>
+    <script src="/assets/interactive/arcade.js?v=7a6237b4bfaf" defer></script>
+    <script src="/assets/interactive/interactions.js?v=790c191ad7f6" defer></script>
+    <script src="/script.js?v=01453347f1a6" defer></script>
   </body>
 </html>
