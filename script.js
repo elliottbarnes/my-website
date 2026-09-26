@@ -99,7 +99,7 @@ document.addEventListener("keydown", (event) => {
     target instanceof HTMLElement &&
     (target.isContentEditable || ["INPUT", "TEXTAREA", "SELECT"].includes(target.tagName));
 
-  if (isTyping || event.altKey || event.ctrlKey || event.metaKey) {
+  if (document.querySelector("dialog[open]") || isTyping || event.altKey || event.ctrlKey || event.metaKey) {
     return;
   }
 
@@ -108,7 +108,7 @@ document.addEventListener("keydown", (event) => {
   if (matchingLink) {
     event.preventDefault();
     document.querySelector(matchingLink.getAttribute("href"))?.scrollIntoView({
-      behavior: window.matchMedia("(prefers-reduced-motion: reduce)").matches ? "auto" : "smooth",
+      behavior: (window.matchMedia("(prefers-reduced-motion: reduce)").matches || document.documentElement.dataset.motion === "reduced") ? "auto" : "smooth",
     });
   }
 });

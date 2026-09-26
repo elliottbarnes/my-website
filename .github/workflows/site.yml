@@ -24,6 +24,7 @@ jobs:
       - name: Syntax and behavior checks
         run: |
           node --check script.js
+          for script in assets/interactive/*.js; do node --check "$script"; done
           bash -n scripts/deploy.sh
           bash -n scripts/snapshot-object.sh
           node --test
