@@ -70,8 +70,6 @@ h1, h2, h3, p, blockquote { margin: 0; }
 [data-theme="dark"] .controller-cable { stroke: #878b94; }
 [data-theme="dark"] .controller-shell { filter: drop-shadow(0 18px 14px #0006); }
 .fx-off .controller-grain { display: none; }
-.controller-wordmark { position: absolute; left: 50%; top: 20%; transform: translate(-50%, -50%); color: #5b6168; font: 700 clamp(8px, 2cqw, 12px)/1 var(--mono); letter-spacing: -.05em; }
-.controller-wordmark b { margin-left: 5px; color: #41484f; }
 .direction-pad { position: absolute; left: 25%; top: 40%; width: 17%; aspect-ratio: 1; transform: translate(-50%, -50%); filter: drop-shadow(0 3px 1px #0006); }
 .direction-pad::before, .direction-pad::after { position: absolute; content: ""; background: #50555c; border: 1px solid #747b84; border-radius: 3px; box-shadow: inset 0 2px 0 #ffffff24; }
 .direction-pad::before { width: 34%; height: 100%; left: 33%; }
@@ -114,7 +112,6 @@ kbd { border: 1px solid var(--line); border-radius: 3px; padding: 1px 5px; backg
 
 /* The same physical layout scales down without labels spilling onto the grips. */
 @container (max-width: 360px) {
-  .controller-wordmark { top: 19%; }
   .theme-toggle { top: 35%; }
   .fx-toggle { width: 16%; }
 }
