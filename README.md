@@ -19,6 +19,16 @@ Sound starts off on every visit. Motion follows reduced-motion system settings a
 
 ## Local preview
 
+### Side project: Live Demo Lab
+
+An isolated prototype lives in [side-projects/live-demo-lab](side-projects/live-demo-lab/README.md). It explores custom text/CSV inputs and a future prompt-and-seed image workflow. It is excluded from the public website build; its local preview blocks outbound API calls, and no AWS resources have been deployed for it.
+
+```bash
+node side-projects/live-demo-lab/server.mjs
+```
+
+Open `http://127.0.0.1:4190` for the lab. Use the command below for the portfolio itself.
+
 ```bash
 node server.mjs
 ```

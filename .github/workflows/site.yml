@@ -28,6 +28,7 @@ jobs:
           bash -n scripts/deploy.sh
           bash -n scripts/snapshot-object.sh
           node --test
+          PYTHONDONTWRITEBYTECODE=1 python3 -m unittest discover -s side-projects/live-demo-lab/tests -p 'test_live_backend.py'
       - name: Build and verify exact public files
         run: |
           node build.mjs

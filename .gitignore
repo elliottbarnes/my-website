@@ -6,3 +6,5 @@ dist/
 .aws-https-change/
 .aws-workflow-change/
 .deployments/
+.aws-live/
+__pycache__/
