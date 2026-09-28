@@ -6,11 +6,11 @@ import test from "node:test";
 
 const helper = fileURLToPath(new URL("../scripts/snapshot-object.sh", import.meta.url));
 const key = "assets/new-icon.png";
-const listing = (contents = []) => JSON.stringify({ Name: "elliottbarnes.ca", Prefix: key, MaxKeys: 1, IsTruncated: false, KeyCount: contents.length, Contents: contents });
+const listing = (contents = []) => JSON.stringify({ Name: "example-website-bucket", Prefix: key, MaxKeys: 1, IsTruncated: false, KeyCount: contents.length, Contents: contents });
 function snapshot(overrides = {}, objectKey = key) {
   return spawnSync("bash", ["-c", `
     source "$1"
-    bucket=elliottbarnes.ca account=247222972014 region=ca-central-1
+    bucket=example-website-bucket account=123456789012 region=ca-central-1
     aws() {
       case "$2" in
         head-object) printf '%s' "$TEST_HEAD"; return "$TEST_HEAD_STATUS" ;;

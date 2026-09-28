@@ -73,14 +73,16 @@ For an actual rollback, choose a verified earlier commit and its deployment reco
 
 For objects recorded with `prior.exists: false`, there is no prior version to restore. Rollback restores the old pages and references but leaves the newly added, unused public assets in S3. Removing those assets requires separately authorized cleanup; the deployment role has no delete permission. Post-deploy health checks remain automatic; rollback is deliberate, not an automatic destructive response to a transient failure.
 
-Example for one reviewed object (substitute a real recorded version; this is not a complete rollback):
+Example for one reviewed object. Every value below is a placeholder; replace it with the bucket, owner account, region, and recorded version for the deployment you are authorized to restore. This is not a complete rollback.
 
 ```bash
 aws s3api copy-object \
-  --bucket elliottbarnes.ca --key index.html \
-  --copy-source 'elliottbarnes.ca/index.html?versionId=RECORDED_VERSION_ID' \
-  --expected-bucket-owner 247222972014 \
-  --region ca-central-1
+  --bucket 'YOUR_WEBSITE_BUCKET' --key index.html \
+  --copy-source 'YOUR_WEBSITE_BUCKET/index.html?versionId=RECORDED_VERSION_ID' \
+  --expected-bucket-owner 'YOUR_AWS_ACCOUNT_ID' \
+  --region 'YOUR_AWS_REGION'
 ```
+
+Keep credentials and deployment records out of source control. AWS account IDs, bucket names, role ARNs, and distribution IDs identify resources; they do not grant access by themselves. The checked-in workflow, IAM policies, and deployment script intentionally bind deployment to this website. Their real identifiers must remain consistent with the configured AWS resources; illustrative commands and test fixtures should use placeholders.
 
 A failed deployment record indicates which objects were uploaded. Resolve the failure or restore the complete consistent prior set before treating the release as recovered. No automatic rollback or deletion is performed.

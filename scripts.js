@@ -7,7 +7,7 @@ const rot13 = (message) => {
 let e_is_shown = false;
 document.getElementById('iemail').addEventListener('click', function () {
   let demail = document.getElementById('demail');
-  let msg = 'ryyvbg@ryyvbgonearf.pn';  // Correct ROT13-encoded "elliottnb55@icloud.com"
+  let msg = 'pbagnpg@rknzcyr.pbz';  // ROT13-encoded contact@example.com for this unused legacy example
   demail.innerHTML = e_is_shown ? '' : rot13(msg); // Decodes and displays email
   e_is_shown = !e_is_shown; // Toggle between showing and hiding the email
 });
