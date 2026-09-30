@@ -27,11 +27,11 @@
     <link rel="icon" href="/assets/dragon-ball.png" type="image/png" sizes="256x256">
     <link rel="apple-touch-icon" href="/assets/dragon-ball.png" type="image/png" sizes="256x256">
     <link rel="manifest" href="/site.webmanifest">
-    <link rel="stylesheet" href="/styles.css?v=c16c0f69378f">
+    <link rel="stylesheet" href="/styles.css?v=1d05d4a6e6a0">
 
     <link rel="stylesheet" href="/assets/interactive/playground.css?v=e8536b4fd21a">
     <link rel="stylesheet" href="/assets/interactive/arcade.css?v=d38619e2bc85">
-    <link rel="stylesheet" href="/assets/interactive/interactions.css?v=0f922e51db50">
+    <link rel="stylesheet" href="/assets/interactive/interactions.css?v=d0097d2fe30c">
 
     <script type="application/ld+json">
       {
@@ -83,45 +83,17 @@
             </div>
 
             <div class="controller-area">
-              <div class="controller" role="group" aria-label="Nintendo 64-inspired portfolio controller">
-                <svg class="controller-shell" viewBox="0 0 600 420" aria-hidden="true" focusable="false">
-                  <defs>
-                    <linearGradient id="shell-color" x1="0" y1="0" x2=".45" y2="1">
-                      <stop stop-color="#ffdc78"/><stop offset=".5" stop-color="#ffa32e"/><stop offset="1" stop-color="#e16616"/>
-                    </linearGradient>
-                    <pattern id="plastic-grain" width="4" height="4" patternUnits="userSpaceOnUse"><circle cx="1" cy="1" r=".5" fill="#95400b" opacity=".2"/></pattern>
-                    <path id="n64-shell" d="M77 45C104 29 140 35 161 47C179 42 201 42 219 47C244 34 279 28 305 45C332 68 345 107 353 145L367 221Q365 238 348 236L305 213L278 166C258 154 240 164 228 186L216 237Q212 252 195 252Q178 252 174 237L162 186C150 164 130 154 110 166L83 213L40 236Q23 238 21 221L35 145C43 106 53 68 77 45Z"/>
-                  </defs>
-                  <path class="controller-cable" d="M300 8V72" fill="none" stroke-width="9" stroke-linecap="round"/>
-                  <g transform="scale(1.54)">
-                    <use href="#n64-shell" transform="translate(0 5)" fill="#a64713"/>
-                    <use href="#n64-shell" fill="url(#shell-color)" stroke="#b75617" stroke-width="1.4"/>
-                    <use class="controller-grain" href="#n64-shell" fill="url(#plastic-grain)"/>
-                    <path d="M81 48C105 36 135 39 159 51M224 51C250 38 281 34 302 48" fill="none" stroke="#fff" stroke-opacity=".75" stroke-width="2" stroke-linecap="round"/>
-                    <path d="M53 178L37 218M332 178L349 218M195 209V235" fill="none" stroke="#a34a11" stroke-opacity=".4" stroke-width="2" stroke-linecap="round"/>
-                  </g>
-                </svg>
-                <div class="direction-pad" aria-hidden="true"><i></i></div>
+              <div class="controller" role="group" aria-label="Barnes Nintendo 64-inspired portfolio controller">
+                <img class="controller-art" src="/assets/barnes-controller.webp" width="1254" height="1254" fetchpriority="high" draggable="false" alt="Orange three-grip controller with a molded Barnes badge, navy D-pad, ivory stick, red START and B buttons, blue A button, and four yellow C buttons.">
                 <div class="dpad-controls" role="group" aria-label="Select a cartridge" hidden>
-                  <button type="button" data-select-step="-1" class="dpad-up" aria-label="Previous cartridge">↑</button>
-                  <button type="button" data-select-step="1" class="dpad-down" aria-label="Next cartridge">↓</button>
+                  <button class="controller-hit dpad-up" type="button" data-select-step="-1" aria-label="Previous cartridge" title="Previous cartridge"><span class="visually-hidden">Previous cartridge</span></button>
+                  <button class="controller-hit dpad-down" type="button" data-select-step="1" aria-label="Next cartridge" title="Next cartridge"><span class="visually-hidden">Next cartridge</span></button>
                 </div>
-                <button class="theme-toggle" type="button" aria-label="START: Dark mode" aria-pressed="false" data-theme-toggle>
-                  <span class="start-button" aria-hidden="true"></span><small>START</small>
-                </button>
-                <button class="fx-toggle" type="button" aria-label="Screen texture" title="Press the stick to toggle texture" aria-pressed="false" data-fx-toggle>
-                  <span class="stick-well" aria-hidden="true"><span class="analog-stick"></span></span>
-                  <span class="visually-hidden" data-fx-label>Texture: off</span>
-                </button>
-                <a class="c-buttons" href="#toolkit" aria-label="C buttons: Toolkit">
-                  <svg viewBox="0 0 100 100" aria-hidden="true" focusable="false">
-                    <g fill="#aa861a" transform="translate(0 3)"><circle cx="50" cy="19" r="16"/><circle cx="19" cy="50" r="16"/><circle cx="81" cy="50" r="16"/><circle cx="50" cy="81" r="16"/></g>
-                    <g fill="#f6d343" stroke="#b99428" stroke-width="1.5"><circle cx="50" cy="19" r="16"/><circle cx="19" cy="50" r="16"/><circle cx="81" cy="50" r="16"/><circle cx="50" cy="81" r="16"/></g>
-                    <path d="m50 12 6 10H44Zm-38 38 10-6v12Zm76 0-10 6V44Zm-38 38-6-10h12Z" fill="#795e11"/>
-                  </svg>
-                </a>
-                <a class="game-button button-b" href="#top" aria-label="B: Back to start" data-controller-back><span>B</span></a>
-                <a class="game-button button-a" href="#work" aria-label="A: Load selected cartridge" data-controller-open><span>A</span></a>
+                <button class="controller-hit theme-toggle" type="button" aria-label="START: Dark mode" title="START: toggle dark mode" aria-pressed="false" data-theme-toggle><span class="visually-hidden">START</span></button>
+                <button class="controller-hit fx-toggle" type="button" aria-label="Screen texture" title="Press the stick to toggle texture" aria-pressed="false" data-fx-toggle><span class="visually-hidden" data-fx-label>Texture: off</span></button>
+                <a class="controller-hit c-buttons" href="#toolkit" aria-label="C buttons: Toolkit" title="C: toolkit"><span class="visually-hidden">C buttons</span></a>
+                <a class="controller-hit game-button button-b" href="#top" aria-label="B: Back to start" title="B: back to start" data-controller-back><span class="visually-hidden">B</span></a>
+                <a class="controller-hit game-button button-a" href="#work" aria-label="A: Load selected cartridge" title="A: load selected cartridge" data-controller-open><span class="visually-hidden">A</span></a>
               </div>
               <div class="controller-legend" aria-label="Controller guide">
                 <a href="#work" data-controller-open><span class="legend-a" aria-hidden="true">A</span>Load</a>
