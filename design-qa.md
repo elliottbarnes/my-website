@@ -1,42 +1,45 @@
-# Barnes controller refinement review
+# Compact Barnes controller review
 
 final result: passed
 
-Scope: replace the portfolio controller with a reference-based three-grip render, retain the existing Dragon Ball palette, add an embossed Barnes badge, and preserve all controller actions. This is a scoped visual and interaction review, not physical-device or accessibility certification.
+Scope: replace the tall three-grip controller with a compact SNES-inspired gamepad chosen for its horizontal silhouette; retain the orange/navy identity and Barnes badge. Adapt visible control labels to the new layout. No project content, favicon, backend, or publication boundary changes.
 
-## Evidence and normalization
+## Findings and fixes
 
-Source visual truth: `.design/barnes-controller/reference.jpg`, the user-supplied front-view controller photograph (1206×1272). Implementation: the local portfolio at `http://127.0.0.1:4187/`, captured in the Codex in-app browser.
+- Initial review found the inherited 44px circular hit regions overlapped at phone widths. Targets now scale to 10% of the artwork width, bounded at 28–44px. At the 320px viewport every target measured 28.8px, all eight centers hit their intended control, and no circular regions overlapped. The separate Load/Back/Toolkit guide retains 44px height. Physical touch-device usability remains untested.
+- Updated the social image description to remove the old three-grip reference.
+- No remaining actionable P0/P1/P2 findings. The normalized image comparison after these fixes passed.
 
-- `desktop-dark.png` and `desktop-light.png`: 1280×1000 CSS viewport and pixel captures, density 1.
-- `tablet-light.png`: 768×1000 viewport and pixel capture.
-- `mobile-light.png` and `mobile-focus.png`: 320×840 viewport and pixel captures; the hero is scrolled into view.
-- `mobile-dark.png`: 390×950 viewport and pixel capture, page at top.
-- `reference-comparison.png`: 980×540 comparison board, source left and browser-rendered controller right. Source and the 462×462 controller crop were independently scaled to fit 480×520 cells with aspect ratios preserved. Background and shell colors intentionally differ from the photograph.
-- `social.png`: self-contained sharing SVG inspected in the same browser. Embedded artwork renders without external dependencies.
+## Source and evidence
 
-Full page composition and a focused controller comparison were both inspected. A provider screenshot-clip attempt returned the wrong region and was discarded; the final focused crop came from the saved full desktop screenshot using its measured controller bounds. An initial preview image 404 was resolved by restarting the server to reload its publication allowlist before visual comparison.
+Source visual truth: `.design/compact-controller/generated-master.png` (1738×905), generated using the earlier Barnes artwork as a material/palette reference. The user delegated the controller design choice. Exact built-in Image Gen prompt: `assets/BARNES_CONTROLLER.md`.
 
-## Findings
+Implementation: local site at `http://127.0.0.1:4187/`, captured and exercised in the Codex in-app browser. Evidence lives in the ignored `.design/compact-controller/` directory.
 
-No remaining actionable P0/P1/P2 findings in this scope. The first valid source/implementation comparison passed without requiring a visual correction.
+- `desktop-light.png` and `desktop-dark.png`: 1280×1000 CSS/pixel views, density 1. Full hero, navigation and beginning of project collection inspected.
+- `tablet-dark.png`: 768×1000.
+- `mobile-320.png` and `mobile-focus.png`: 320×840, light and dark focus states. The focus view is intentionally scrolled to the hero.
+- `mobile-390-dark.png`: 390×844, page at top.
+- `social.png`: sharing SVG rendered with the new image embedded; no external image dependencies.
+- `reference-comparison.png`: source at left, browser controller at right. Source scaled to 440px wide; screenshot cropped from x716/y188 at 422×220 and scaled to 440px. Both preserve aspect ratio on the same navy background. The browser crop is slightly wider than the 420×218.7 CSS image to include fractional bounds. This is the focused comparison; full hero screenshots establish page composition separately.
+- `before-desktop.png` and `before-mobile.png`: original device footprint for comparison; not the new asset fidelity target.
 
-- Typography: existing site text is unchanged. The oval badge reads Barnes with a capital B, molded into the shell where the reference has its manufacturer badge. A, B, START and C remain in the artwork; the controls retain accessible names.
-- Spacing/layout: raised upper center, broad shoulders, side grips, longer tapered center grip, diagonal A/B, recessed D-pad and circular stick well follow the reference. Square artwork scales without stretching. The accurate silhouette intentionally makes the desktop controller taller than the old simplified drawing.
-- Colors/tokens: orange/gold shell, navy details, ivory stick, red B/START, blue A, yellow C, and existing page colors are retained. The reference's gray shell and green B are intentionally not adopted.
-- Image fidelity: true transparency with no checkerboard; no visible background rectangle or distracting halo in either theme. The 1254×1254 source is encoded as a 217,842-byte WebP. The controller is raster artwork, not a code approximation. The short cable meets the upper edge, as in the reference.
-- Copy/content: only the requested Barnes badge and descriptive image alternative are new. Professional details, project content, navigation, and favicon remain intact.
+## Required fidelity surfaces
+
+- Typography: existing site font, weights and copy remain unchanged. Barnes, SELECT, START and X/Y/A/B are legible raster lettering from the source. Semantic labels match the rendered controls.
+- Spacing and layout: complete rounded horizontal silhouette, no cable or handles. Artwork retains its 1738:905 ratio without cropping or stretching. Desktop controller is 420×218.7 versus the previous 460×460; hero height is 560.3 versus 801.6. At 390px, controller height is 186.4 versus 358 and hero height is 836.0 versus 1007.6. Navigation and project cards remain reachable with no horizontal overflow at inspected phone widths.
+- Colors/tokens: orange shell, navy D-pad/shoulders, gold X, ivory Y, blue A and red B match the generated source and existing theme. Both page themes inspected.
+- Image quality: true alpha preserved in a 257,348-byte WebP. No baked background/checkerboard or visible edge halo. Source/rendered comparison shows the intended silhouette and markings with expected browser downsampling. Site shadow remains intentional.
+- Copy/content: role and project content unchanged. The legend uses X for Toolkit; SELECT switches theme; Y changes texture. START is now a second launch action alongside A.
 
 ## Verification
 
-- All 126 existing JavaScript tests and 43 offline backend tests passed.
-- Build and source-byte verification passed for 31 public files; the image is the only new public asset. Live Demo Lab remains outside production.
-- At 320px, no horizontal overflow; all seven controller hit areas have at least 44px bounding dimensions and their center points hit the intended control. Circular hit shapes follow tightly spaced hardware controls; the separate Load/Back/Toolkit legend remains available.
-- Browser clicks verified previous/next selection, A opening the selected demo, B returning to the hero, C navigating to Toolkit, START switching themes, and the stick toggling its texture state.
-- Keyboard focus ring inspected at 320px; existing keyboard behavior and semantic hooks remain intact.
-- 390px, 768px and 1280px layouts inspected; both themes checked.
-- Final browser console inspection returned no warnings or errors.
+- All 126 JavaScript tests and 43 offline backend tests passed. The first sandboxed JS run could not bind localhost; the same suite passed with local-server permission.
+- Build/source verification passed for the unchanged 31-file public allowlist; git diff --check passed after removing a documentation EOF blank line.
+- Actual browser actions checked D-pad previous/next, START opening selected EvalDeck, A opening selected Prism Studio, keyboard B closing the dialog, X navigating to Toolkit, B returning to the hero, SELECT changing theme and Y changing texture.
+- Keyboard focus ring visibly inspected at 320px. Eight hit-target centers and circular separation checked at 320px.
+- Final browser console showed no warnings or errors.
 
-## Limits
+## Limits and handoff
 
-Physical iPhone/Android touch input and assistive technologies were not tested. Preview screenshots and the reference are local review evidence and excluded from the public artifact. Deployment and live byte verification are performed separately after this local gate.
+No physical phone, screen-reader, or full accessibility audit was performed. This change does not activate the excluded Live Demo Lab. Preview evidence and original image master remain outside the publication allowlist. Production deployment and HTTPS byte verification are tracked separately.

@@ -16,9 +16,9 @@
 .comfort-controls { display: flex; justify-content: center; flex-wrap: wrap; gap: 8px; margin-top: 14px; }
 .comfort-controls .text-button { font-size: 12px; }
 .dpad-controls { position: absolute; inset: 0; pointer-events: none; }
-.dpad-controls button { pointer-events: auto; left: 21.132%; }
-.dpad-up { top: 33.174%; }
-.dpad-down { top: 42.743%; }
+.dpad-controls button { pointer-events: auto; left: 21.461%; }
+.dpad-up { top: 40.331%; }
+.dpad-down { top: 62.32%; }
 .project-card.is-selected { outline: 3px solid var(--red); outline-offset: 5px; }
 .project-card.tool-match .cartridge-label { box-shadow: inset 0 0 0 3px var(--label); }
 .cartridge-spine, .card-action { font-size: 11px; }
@@ -52,7 +52,7 @@ body:has(dialog[open]) { overflow: hidden; }
   .hero h1 { font-size: clamp(64px, 18vw, 100px); }
   .hero-copy .eyebrow { margin-bottom: 10px; }
   .hero-lede { margin-top: 14px; }
-  .controller { max-width: 390px; margin-inline: auto; transform: none; }
+  .controller { max-width: 360px; margin-inline: auto; transform: none; }
   .page { width: calc(100% - 32px); }
   .site-header { flex-wrap: wrap; gap: 8px 16px; padding-block: 12px; min-height: 76px; }
   .command-nav { gap: 14px; }
