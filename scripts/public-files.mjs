@@ -6,7 +6,7 @@ import { extname, join } from "node:path";
 export const PUBLIC_FILES = Object.freeze([
   "index.html", "404.html", "styles.css", "script.js", "robots.txt",
   "sitemap.xml", "site.webmanifest", "assets/favicon.svg", "assets/social-card.svg",
-  "assets/dragon-ball.png", "assets/barnes-controller.webp",
+  "assets/dragon-ball.png", "assets/barnes-controller.webp", "assets/barnes-handheld.webp",
   "assets/toolkit/java.svg", "assets/toolkit/python.svg", "assets/toolkit/gradle.svg",
   "assets/toolkit/awk.svg", "assets/toolkit/cplusplus.svg", "assets/toolkit/pytorch.svg",
   "assets/toolkit/streamlit.svg", "assets/toolkit/docker.svg", "assets/toolkit/aws.svg",

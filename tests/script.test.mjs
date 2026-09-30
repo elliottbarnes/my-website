@@ -21,6 +21,8 @@ function browser({
   const label = { textContent: "" }, themeLabel = { textContent: "" }, year = { textContent: "" };
   const themeMeta = { setAttribute: (key, value) => { assert.equal(key, "content"); state.themeColor = value; } };
   const links = ["work", "toolkit", "contact"].map((id, index) => ({ dataset: { shortcut: String(index + 1) }, getAttribute: () => `#${id}` }));
+  const activations = [];
+  links.forEach(link => { link.click = () => activations.push(link.dataset.shortcut); });
   const root = { dataset: { theme: "light" } };
   class Element {
     constructor(tagName = "BODY", editable = false) { this.tagName = tagName; this.isContentEditable = editable; }
@@ -82,14 +84,14 @@ function browser({
   function storageChange(newValue, key = "elliott-color-theme", extra = {}) {
     windowListeners.storage({ key, newValue, storageArea: localStorage, ...extra });
   }
-  return { state, attrs, themeAttrs, label, themeLabel, year, listeners, themeListeners, scrolls, key, Element, root, systemTheme, storageChange };
+  return { state, attrs, themeAttrs, label, themeLabel, year, listeners, themeListeners, scrolls, activations, key, Element, root, systemTheme, storageChange };
 }
 
 function expectTheme(current, theme) {
   const dark = theme === "dark";
   assert.equal(current.root.dataset.theme, theme);
   assert.equal(current.themeAttrs["aria-pressed"], String(dark));
-  assert.equal(current.themeAttrs["aria-label"], "SELECT: Dark mode");
+  assert.equal(current.themeAttrs["aria-label"], "Dark mode");
   assert.equal(current.themeLabel.textContent, dark ? "Dark mode: on" : "Dark mode: off");
   assert.equal(current.state.themeColor, dark ? "#0d1b35" : "#fff3dc");
 }
@@ -251,17 +253,18 @@ test("theme and texture settings remain independent", () => {
   assert.equal(current.state.stored, "on");
 });
 
-test("shortcuts 1–3 navigate to the corresponding sections", () => {
+test("shortcuts 1–3 activate the same links as ordinary navigation", () => {
   const current = browser();
   for (const key of ["1", "2", "3"]) assert.equal(current.key(key), true);
-  assert.deepEqual(current.scrolls, ["#work", "#toolkit", "#contact"].map((selector) => ({ selector, behavior: "smooth" })));
+  assert.deepEqual(current.activations, ["1", "2", "3"]);
   assert.equal(current.key("9"), false);
 });
 
-test("reduced-motion preference disables smooth shortcut scrolling", () => {
-  const current = browser({ reducedMotion: true });
-  current.key("1");
-  assert.deepEqual(current.scrolls, [{ selector: "#work", behavior: "auto" }]);
+test("handled keys and repeated presses do not activate navigation twice", () => {
+  const current = browser();
+  assert.equal(current.key("1", { defaultPrevented: true }), false);
+  assert.equal(current.key("1", { repeat: true }), false);
+  assert.deepEqual(current.activations, []);
 });
 
 test("typing targets and modified keys retain their normal behavior", () => {
@@ -269,7 +272,7 @@ test("typing targets and modified keys retain their normal behavior", () => {
   for (const tag of ["INPUT", "TEXTAREA", "SELECT"]) assert.equal(current.key("1", { target: new current.Element(tag) }), false);
   assert.equal(current.key("1", { target: new current.Element("DIV", true) }), false);
   for (const modifier of ["altKey", "ctrlKey", "metaKey"]) assert.equal(current.key("1", { [modifier]: true }), false);
-  assert.deepEqual(current.scrolls, []);
+  assert.deepEqual(current.activations, []);
 });
 
 test("optional missing controls do not break theme, shortcuts, or year", () => {

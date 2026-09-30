@@ -29,9 +29,9 @@
     <link rel="manifest" href="/site.webmanifest">
     <link rel="stylesheet" href="/styles.css?v=dc91dbc374a8">
 
-    <link rel="stylesheet" href="/assets/interactive/playground.css?v=e8536b4fd21a">
+    <link rel="stylesheet" href="/assets/interactive/playground.css?v=bd390cb97f2a">
     <link rel="stylesheet" href="/assets/interactive/arcade.css?v=d38619e2bc85">
-    <link rel="stylesheet" href="/assets/interactive/interactions.css?v=5c7e31305443">
+    <link rel="stylesheet" href="/assets/interactive/interactions.css?v=fb2eb0559f74">
 
     <script type="application/ld+json">
       {
@@ -58,119 +58,74 @@
 
     <div class="site-shell">
       <div class="page">
-        <header class="site-header" data-header>
-          <a class="brand" href="#top" aria-label="Elliott, home">
-            <span class="power-light" aria-hidden="true"></span>ellitendo
-          </a>
-
-          <nav class="command-nav" aria-label="Primary navigation">
-            <a href="#work" data-shortcut="1">Projects<span aria-hidden="true">01</span></a>
-            <a href="#toolkit" data-shortcut="2">Toolkit<span aria-hidden="true">02</span></a>
-            <a href="#contact" data-shortcut="3">Contact<span aria-hidden="true">03</span></a>
-          </nav>
-        </header>
-
         <main id="main">
-          <section class="hero" id="top" aria-labelledby="hero-title">
-            <div class="hero-copy">
-              <p class="eyebrow">PLAYER 01</p>
-              <h1 id="hero-title">Elliott<span class="name-dot">.</span></h1>
-              <p class="role">ai connoisseur</p>
-              <p class="hero-lede"><strong>Senior Software Developer at Nasdaq Verafin.</strong><br>AI, apps, and experiments by curiosity.</p>
-
-              <a class="start-link" href="#work"><span aria-hidden="true">▶</span> Play with a project</a>
-              <button class="text-button terminal-launch" type="button" data-terminal-open hidden>Open terminal <kbd>/</kbd></button>
-            </div>
-
-            <div class="controller-area">
-              <div class="controller" role="group" aria-label="Barnes compact portfolio controller">
-                <img class="controller-art" src="/assets/barnes-controller.webp" width="1738" height="905" fetchpriority="high" draggable="false" alt="Compact orange controller with a molded Barnes badge, navy D-pad and SELECT/START buttons, yellow X, ivory Y, blue A, and red B buttons.">
-                <div class="dpad-controls" role="group" aria-label="Select a cartridge" hidden>
-                  <button class="controller-hit dpad-up" type="button" data-select-step="-1" aria-label="Previous cartridge" title="Previous cartridge"><span class="visually-hidden">Previous cartridge</span></button>
-                  <button class="controller-hit dpad-down" type="button" data-select-step="1" aria-label="Next cartridge" title="Next cartridge"><span class="visually-hidden">Next cartridge</span></button>
+          <section class="console-stage" id="top" aria-labelledby="hero-title">
+            <div class="device-frame controller-area">
+              <img class="device-art" src="/assets/barnes-handheld.webp" width="1774" height="887" fetchpriority="high" draggable="false" alt="Orange Barnes handheld with a navy D-pad and blue A and red B buttons.">
+              <div class="hardware-controls" role="group" aria-label="Optional controller shortcuts" hidden>
+                <button class="hardware-hit device-previous" type="button" data-select-step="-1" aria-label="Previous project" title="Previous project"></button>
+                <button class="hardware-hit device-next" type="button" data-select-step="1" aria-label="Next project" title="Next project"></button>
+                <button class="hardware-hit device-left" type="button" data-select-step="-1" aria-label="Previous project (left)" title="Previous project"></button>
+                <button class="hardware-hit device-right" type="button" data-select-step="1" aria-label="Next project (right)" title="Next project"></button>
+                <button class="hardware-hit device-open" type="button" data-controller-open aria-label="A: Open selected demo" title="Open selected demo"></button>
+                <button class="hardware-hit device-back" type="button" data-controller-back aria-label="B: Back to projects" title="Back to projects"></button>
+              </div>
+              <div class="console-screen">
+                <header class="console-header" data-header>
+                  <div class="console-identity">
+                    <h1 id="hero-title">Elliott <span>Barnes.</span></h1>
+                    <p class="console-role">ai connoisseur</p>
+                  </div>
+                  <nav class="command-nav" aria-label="Primary navigation">
+                    <a href="#work" data-shortcut="1" data-projects-home>Projects</a>
+                    <a href="#about" data-shortcut="2">About</a>
+                    <a href="#contact" data-shortcut="3">Contact</a>
+                  </nav>
+                  <p class="console-intro">Senior Software Developer at Nasdaq Verafin.<br>AI, apps, and experiments by curiosity.</p>
+                </header>
+                <div id="work" data-console-home>
+                  <div class="project-grid" role="group" aria-label="Choose a project">
+                    <button class="project-card project-choice" type="button" data-project="batchline" aria-pressed="true" disabled><span class="project-number">01</span><span data-project-name>Batchline</span><span class="project-kind">INFERENCE LAB</span></button>
+                    <button class="project-card project-choice" type="button" data-project="evaldeck" aria-pressed="false" disabled><span class="project-number">02</span><span data-project-name>EvalDeck</span><span class="project-kind">AI EVALUATION</span></button>
+                    <button class="project-card project-choice" type="button" data-project="reconcile-kit" aria-pressed="false" disabled><span class="project-number">03</span><span data-project-name>Reconcile Kit</span><span class="project-kind">DATA TOOLING</span></button>
+                    <button class="project-card project-choice" type="button" data-project="prism-studio" aria-pressed="false" disabled><span class="project-number">04</span><span data-project-name>Prism Studio</span><span class="project-kind">IMAGE GENERATION</span></button>
+                  </div>
+                  <section class="featured-project" aria-labelledby="work-title">
+                    <div class="featured-copy">
+                      <p class="eyebrow" data-feature-category>01 / INFERENCE LAB</p>
+                      <h2 id="work-title" data-feature-title>Batchline</h2>
+                      <p data-feature-description>Explore how batching keeps a busy AI service moving without an endless queue.</p>
+                      <div class="featured-actions">
+                        <a class="demo-launch" href="https://github.com/elliottbarnes/batchline" data-controller-open><span aria-hidden="true">▶</span> Try demo</a>
+                        <a class="source-link" data-feature-source href="https://github.com/elliottbarnes/batchline" target="_blank" rel="noopener">View source <span aria-hidden="true">↗</span></a>
+                      </div>
+                    </div>
+                    <div class="project-preview" data-feature-preview>
+                      <div class="preview-top"><span>Request queue</span><span>2 / 18</span></div>
+                      <div class="queue-preview" aria-label="Illustration: two of eighteen queue slots occupied"><span class="occupied"></span><span class="occupied"></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span></div>
+                      <p>Batch requests. Keep things moving.</p>
+                      <small>Concept preview · sample data</small>
+                    </div>
+                  </section>
+                  <p class="selection-status visually-hidden" data-selection-status aria-live="polite" hidden>01 / Batchline selected</p>
+                  <p class="keyboard-hint" hidden>Arrow keys: choose <span>·</span> A: open <span>·</span> B: back <span class="hint-optional">· Or just click.</span></p>
                 </div>
-                <button class="controller-hit theme-toggle" type="button" aria-label="SELECT: Dark mode" title="SELECT: toggle dark mode" aria-pressed="false" data-theme-toggle><span class="visually-hidden">SELECT</span></button>
-                <a class="controller-hit start-button" href="#work" aria-label="START: Load selected cartridge" title="START: load selected cartridge" data-controller-open><span class="visually-hidden">START</span></a>
-                <button class="controller-hit fx-toggle" type="button" aria-label="Screen texture" title="Y: toggle texture" aria-pressed="false" data-fx-toggle><span class="visually-hidden" data-fx-label>Texture: off</span></button>
-                <a class="controller-hit button-x" href="#toolkit" aria-label="X: Toolkit" title="X: toolkit"><span class="visually-hidden">X</span></a>
-                <a class="controller-hit game-button button-b" href="#top" aria-label="B: Back to start" title="B: back to start" data-controller-back><span class="visually-hidden">B</span></a>
-                <a class="controller-hit game-button button-a" href="#work" aria-label="A: Load selected cartridge" title="A: load selected cartridge" data-controller-open><span class="visually-hidden">A</span></a>
-              </div>
-              <div class="controller-legend" aria-label="Controller guide">
-                <a href="#work" data-controller-open><span class="legend-a" aria-hidden="true">A</span>Load</a>
-                <a href="#top" data-controller-back><span class="legend-b" aria-hidden="true">B</span>Back</a>
-                <a href="#toolkit"><span class="legend-x" aria-hidden="true">X</span>Toolkit</a>
-              </div>
-              <div class="controller-caption"><span>SELECT: theme · Y: texture</span><span data-theme-label aria-live="polite">Dark mode: off</span></div>
-              <p class="selection-status" data-selection-status hidden aria-live="polite">01 / Batchline selected</p>
-              <p class="keyboard-hint" hidden>Arrow keys select · A loads · B returns</p>
-              <div class="comfort-controls" hidden>
-                <button type="button" class="text-button" data-sound-toggle aria-pressed="false">Sound: off</button>
-                <button type="button" class="text-button" data-motion-toggle aria-pressed="false">Motion: on</button>
+                <section data-console-demo hidden aria-label="Project demo"></section>
               </div>
             </div>
+            <noscript>
+              <div class="console-fallback">
+                <p>Interactive demos need JavaScript. Explore the project source instead:</p>
+                <p><a href="https://github.com/elliottbarnes/batchline">Batchline</a> · <a href="https://github.com/elliottbarnes/evaldeck">EvalDeck</a> · <a href="https://github.com/elliottbarnes/reconcile-kit">Reconcile Kit</a> · <a href="https://github.com/elliottbarnes/prism-studio">Prism Studio</a></p>
+              </div>
+            </noscript>
+            <div class="console-caption"><span>Independent experiments. A little curiosity, a lot of craft.</span><a href="#about">Meet the player <span aria-hidden="true">↓</span></a></div>
           </section>
 
           <aside id="about" class="about-strip" aria-label="About Elliott">
-            <p class="eyebrow">A LITTLE CONTEXT</p>
-            <p>I work in financial technology at <strong>Nasdaq Verafin</strong>.<br> Here, I share independent experiments in AI and developer tools.</p>
+            <div><p class="eyebrow">BEHIND THE SCREEN</p><p class="about-name">Hi, I’m Elliott.</p></div>
+            <div><p>I work in financial technology at <strong>Nasdaq Verafin</strong>. Here, I share independent experiments in AI and developer tools.</p><p class="about-links"><a href="#toolkit">Explore my toolkit ↓</a><button class="text-button terminal-launch" type="button" data-terminal-open hidden>Open terminal <kbd>/</kbd></button></p></div>
           </aside>
-
-          <section class="work section-block" id="work" aria-labelledby="work-title">
-            <div class="section-title-row">
-              <div>
-                <p class="eyebrow">01 / THE COLLECTION</p>
-                <h2 id="work-title">Select a cartridge.</h2>
-              </div>
-              <p>Four experiments. Pick one and try it.</p>
-            </div>
-
-            <div class="project-grid">
-              <a class="project-card amber-card" data-project="batchline" href="https://github.com/elliottbarnes/batchline" target="_blank" rel="noopener" aria-label="View Batchline on GitHub">
-                <span class="cartridge-spine" aria-hidden="true">ellitendo 64</span>
-                <div class="cartridge-label">
-                <div class="card-meta"><span>01</span><span>INFERENCE LAB</span></div>
-                <h3>Batchline</h3>
-                <p>Explore how batching keeps a busy AI service moving without an endless queue.</p>
-                <ul aria-label="Batchline technologies"><li>Python</li><li>APIs</li><li>Prometheus</li></ul>
-                </div>
-                <span class="card-action">EXPLORE PROJECT <span aria-hidden="true">↗</span></span>
-              </a>
-
-              <a class="project-card cyan-card" data-project="evaldeck" href="https://github.com/elliottbarnes/evaldeck" target="_blank" rel="noopener" aria-label="View EvalDeck on GitHub">
-                <span class="cartridge-spine" aria-hidden="true">ellitendo 64</span>
-                <div class="cartridge-label">
-                <div class="card-meta"><span>02</span><span>AI EVALUATION</span></div>
-                <h3>EvalDeck</h3>
-                <p>Replay AI outputs, catch regressions, and see exactly what changed.</p>
-                <ul aria-label="EvalDeck technologies"><li>Python</li><li>JSONL</li><li>Evaluations</li></ul>
-                </div>
-                <span class="card-action">EXPLORE PROJECT <span aria-hidden="true">↗</span></span>
-              </a>
-
-              <a class="project-card magenta-card" data-project="reconcile-kit" href="https://github.com/elliottbarnes/reconcile-kit" target="_blank" rel="noopener" aria-label="View Reconcile Kit on GitHub">
-                <span class="cartridge-spine" aria-hidden="true">ellitendo 64</span>
-                <div class="cartridge-label">
-                <div class="card-meta"><span>03</span><span>DATA TOOLING</span></div>
-                <h3>Reconcile Kit</h3>
-                <p>Find missing records, duplicates, and exact-money mismatches in CSV exports.</p>
-                <ul aria-label="Reconcile Kit technologies"><li>Java</li><li>Gradle</li><li>awk</li></ul>
-                </div>
-                <span class="card-action">EXPLORE PROJECT <span aria-hidden="true">↗</span></span>
-              </a>
-
-              <a class="project-card green-card" data-project="prism-studio" href="https://github.com/elliottbarnes/prism-studio" target="_blank" rel="noopener" aria-label="View Prism Studio on GitHub">
-                <span class="cartridge-spine" aria-hidden="true">ellitendo 64</span>
-                <div class="cartridge-label">
-                <div class="card-meta"><span>04</span><span>IMAGE GENERATION</span></div>
-                <h3>Prism Studio</h3>
-                <p>A local image workbench with seeded runs and a record of each experiment.</p>
-                <ul aria-label="Prism Studio technologies"><li>Diffusers</li><li>PyTorch</li><li>Streamlit</li></ul>
-                </div>
-                <span class="card-action">EXPLORE PROJECT <span aria-hidden="true">↗</span></span>
-              </a>
-            </div>
-          </section>
 
           <section class="toolkit section-block" id="toolkit" aria-labelledby="toolkit-title">
             <div class="section-title-row">
@@ -227,6 +182,14 @@
           </section>
         </main>
 
+        <div class="preferences" aria-label="Display and sound preferences">
+          <button class="text-button" type="button" aria-label="Dark mode" aria-pressed="false" data-theme-toggle><span data-theme-label>Dark mode: off</span></button>
+          <button class="text-button" type="button" aria-label="Screen texture" aria-pressed="false" data-fx-toggle><span data-fx-label>Texture: off</span></button>
+          <div class="comfort-controls" hidden>
+            <button type="button" class="text-button" data-sound-toggle aria-pressed="false">Sound: off</button>
+            <button type="button" class="text-button" data-motion-toggle aria-pressed="false">Motion: on</button>
+          </div>
+        </div>
         <footer class="site-footer">
           <button class="text-button secret-cartridge" type="button" data-arcade-open aria-label="Open secret arcade cartridge" hidden>Cartridge 05: ?</button>
           <p>© <span data-current-year>2026</span> ELLIOTT<br><a href="https://www.iconarchive.com/show/dragon-ballz-icons-by-musett/Dragon-Ball-icon.html">Icon: Musett.com</a> · <a href="https://creativecommons.org/licenses/by-nc-nd/4.0/">CC BY-NC-ND 4.0</a></p>
@@ -236,9 +199,9 @@
       </div>
     </div>
 
-    <script src="/assets/interactive/playground.js?v=d0667a2310c3" defer></script>
+    <script src="/assets/interactive/playground.js?v=1b356a30fb0d" defer></script>
     <script src="/assets/interactive/arcade.js?v=7a6237b4bfaf" defer></script>
-    <script src="/assets/interactive/interactions.js?v=790c191ad7f6" defer></script>
-    <script src="/script.js?v=2aa3dd8a4c22" defer></script>
+    <script src="/assets/interactive/interactions.js?v=581dffe3dbd0" defer></script>
+    <script src="/script.js?v=40217ba812f8" defer></script>
   </body>
 </html>

@@ -1,8 +1,10 @@
 /* The cartridge opens into a touch-first, self-contained console screen. */
 body.playground-open { overflow: hidden; }
-.playground-dialog {
+.playground-dialog, .playground-inline {
   --demo-accent: #ffc44d;
   --demo-accent-ink: #132e59;
+}
+.playground-dialog {
   width: calc(100% - 20px); max-width: 850px;
   max-height: calc(100vh - 20px); max-height: calc(100dvh - 20px);
   padding: 0; margin: auto; border: 1px solid var(--line); border-radius: 16px;
@@ -11,12 +13,12 @@ body.playground-open { overflow: hidden; }
   scrollbar-width: thin;
 }
 .playground-dialog::backdrop { background: #12151bc9; backdrop-filter: blur(5px); }
-.playground-dialog[data-color="cyan"] { --demo-accent: #8fc9f6; --demo-accent-ink: #132e59; }
-.playground-dialog[data-color="coral"] { --demo-accent: #ffb36b; --demo-accent-ink: #132e59; }
-.playground-dialog[data-color="green"] { --demo-accent: #f6a393; --demo-accent-ink: #132e59; }
-.playground-dialog [hidden] { display: none !important; }
-.playground-dialog :is(button, a, input, select):focus-visible { outline: 3px solid var(--focus); outline-offset: 3px; }
-.playground-dialog :is(button, a, input, select) { touch-action: manipulation; }
+:is(.playground-dialog, .playground-inline)[data-color="cyan"] { --demo-accent: #8fc9f6; --demo-accent-ink: #132e59; }
+:is(.playground-dialog, .playground-inline)[data-color="coral"] { --demo-accent: #ffb36b; --demo-accent-ink: #132e59; }
+:is(.playground-dialog, .playground-inline)[data-color="green"] { --demo-accent: #f6a393; --demo-accent-ink: #132e59; }
+:is(.playground-dialog, .playground-inline) [hidden] { display: none !important; }
+:is(.playground-dialog, .playground-inline) :is(button, a, input, select):focus-visible { outline: 3px solid var(--focus); outline-offset: 3px; }
+:is(.playground-dialog, .playground-inline) :is(button, a, input, select) { touch-action: manipulation; }
 .playground-topbar {
   display: flex; align-items: center; justify-content: space-between; gap: 8px;
   position: sticky; top: 0; z-index: 2; padding: 8px 12px;
@@ -104,7 +106,7 @@ body.playground-open { overflow: hidden; }
 .prism-settings div { display: grid; grid-template-columns: 105px 1fr; gap: 10px; font-size: 12px; }
 .prism-settings dt { color: var(--muted); }
 .prism-settings dd { margin: 0; font-family: var(--mono); }
-:root[data-motion="reduced"] .playground-dialog *, :root[data-motion="reduced"] .playground-dialog *::before, :root[data-motion="reduced"] .playground-dialog *::after { scroll-behavior: auto !important; transition: none !important; animation: none !important; }
+:root[data-motion="reduced"] :is(.playground-dialog, .playground-inline) *, :root[data-motion="reduced"] :is(.playground-dialog, .playground-inline) *::before, :root[data-motion="reduced"] :is(.playground-dialog, .playground-inline) *::after { scroll-behavior: auto !important; transition: none !important; animation: none !important; }
 :root[data-motion="reduced"] .demo-button:active { transform: none; }
 @media (min-width: 540px) {
   .playground-dialog { width: calc(100% - 48px); max-height: calc(100vh - 48px); max-height: calc(100dvh - 48px); }
@@ -120,10 +122,27 @@ body.playground-open { overflow: hidden; }
   .prism-seeds { max-width: 500px; margin-inline: auto; }
 }
 @media (prefers-reduced-motion: reduce) {
-  .playground-dialog *, .playground-dialog *::before, .playground-dialog *::after { scroll-behavior: auto !important; transition: none !important; animation: none !important; }
+  :is(.playground-dialog, .playground-inline) *, :is(.playground-dialog, .playground-inline) *::before, :is(.playground-dialog, .playground-inline) *::after { scroll-behavior: auto !important; transition: none !important; animation: none !important; }
   .demo-button:active { transform: none; }
 }
 @media (forced-colors: active) {
   .batch-slot.is-filled { background: Highlight; forced-color-adjust: none; }
   .demo-button.is-selected { outline: 2px solid Highlight; }
+}
+
+/* The handheld uses ordinary document flow, including for long demos. */
+.playground-inline { min-width: 0; scroll-margin-top: 24px; }
+.playground-inline .playground-topbar { position: static; padding: 0 0 14px; background: transparent; }
+.playground-inline .playground-content { padding: 22px 0 0; }
+.playground-inline .playground-intro h2 { font-size: clamp(30px, 4vw, 46px); }
+.playground-inline .playground-detail { display: none; }
+.playground-inline .playground-links { margin-block: 16px 24px; }
+.playground-inline .playground-screen { padding: clamp(16px, 3vw, 26px); scroll-margin-top: 24px; }
+.playground-inline .playground-close span { font-size: 18px; }
+@media (max-width: 640px) {
+  .playground-inline .demo-sliders,
+  .playground-inline .eval-outputs,
+  .playground-inline .reconcile-tables { grid-template-columns: minmax(0, 1fr); }
+  .playground-inline .batch-queue { grid-template-columns: repeat(9, minmax(0, 1fr)); }
+  .playground-inline .batch-slot { aspect-ratio: 1.5; }
 }
