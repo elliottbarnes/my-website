@@ -17,7 +17,7 @@ The optional D-pad controls select a project; **A** opens its demo and **B** ret
 
 The terminal opens with `/` or its visible button. Commands: `projects`, `about`, `contact`, `toolkit`, `theme`, `help`, `clear`, `arcade`, and each project slug. Escape closes a panel. The footer’s fifth cartridge opens Signal Match, a turn-based memory game with an optional device-local best score.
 
-Labelled preferences below the main content control dark mode, screen texture, sound, and motion. Sound starts off on every visit. Motion follows reduced-motion system settings and can be reduced manually. Theme and texture preferences are stored locally when available; blocked storage does not prevent use. There are no analytics, remote model calls, or new server dependencies.
+The screen’s texture toggle adds scanlines, a phosphor glow, and a single gentle sweep when enabled. It sits beside the screen navigation and works inside project demos. The sweep is disabled with reduced motion. Labelled preferences below the main content control dark mode, sound, and motion. Sound starts off on every visit. Motion follows reduced-motion system settings and can be reduced manually. Theme and texture preferences are stored locally when available; blocked storage does not prevent use. There are no analytics, remote model calls, or new server dependencies.
 
 ## Local preview
 
