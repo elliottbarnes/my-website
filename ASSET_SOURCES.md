@@ -4,15 +4,15 @@
 
 The current homepage housing is `assets/barnes-handheld.webp`, generated with the built-in Image Gen tool from the user-selected **Option 1: Barnes handheld console** concept. It preserves the orange molded shell, navy D-pad and screen bezel, blue A button, red B button, and embossed “Barnes” badge. The dark screen is blank in the artwork: its text, project choices, demos, and navigation are semantic HTML. WebP encoding preserves the generated transparency. [Handheld provenance](assets/BARNES_HANDHELD.md) records the exact prompts, encoding, and screen/control bounds.
 
-The earlier compact SNES-style gamepad remains at `assets/barnes-controller.webp` for the social-card artwork. The same WebP bytes are embedded in `assets/social-card.svg`, making the sharing image self-contained. It is no longer the homepage navigation device. [Compact-controller provenance](assets/BARNES_CONTROLLER.md) describes that earlier design. Earlier controller versions remain in Git history; `assets/favicon.svg` remains original portfolio artwork.
+The earlier compact SNES-style gamepad remains at `assets/barnes-controller.webp` as archived artwork and is no longer displayed by the site or its sharing metadata. [Compact-controller provenance](assets/BARNES_CONTROLLER.md) describes that earlier design.
 
-These illustrations take inspiration from classic game hardware and use original Barnes branding. They do not include official Nintendo logos, game artwork, or product photography. No affiliation or endorsement is implied. The social card requires no external fonts or image assets.
+The housing takes inspiration from classic game hardware with original branding. It does not include official Nintendo logos, game artwork, or product photography. No affiliation or endorsement is implied.
 
 ## Dragon Ball favicon
 
 `assets/dragon-ball.png` is the unmodified 256×256 transparent **Dragon Ball** icon by **Musett.com**, downloaded from [IconArchive](https://www.iconarchive.com/show/dragon-ballz-icons-by-musett/Dragon-Ball-icon.html). [Original PNG](https://www.iconarchive.com/download/i45735/musett/dragon-ballz/Dragon-Ball.256.png).
 
-The source lists [CC BY-NC-ND 4.0](https://creativecommons.org/licenses/by-nc-nd/4.0/): attribution required, non-commercial use only, no distribution of modified artwork. The depicted products or characters are © their respective copyright owners. No affiliation or endorsement is implied. The homepage footer publishes the author, source, and license links. The original PNG is used for browser, Apple touch, and web manifest icons without image edits; its transparent background contains no checkerboard. Do not reuse this asset for commercial purposes without appropriate permission.
+The source lists [CC BY-NC-ND 4.0](https://creativecommons.org/licenses/by-nc-nd/4.0/): attribution required, non-commercial use only, no distribution of modified artwork. The depicted products or characters are © their respective copyright owners. No affiliation or endorsement is implied. The homepage footer’s Icon credits disclosure publishes the author, source, and license links. The original PNG is used for browser, Apple touch, and web manifest icons and link previews without image edits; its transparent background contains no checkerboard. The legacy `assets/favicon.svg` and `assets/social-card.svg` paths embed the same unmodified PNG bytes so old references also receive the current icon. Do not reuse this asset for commercial purposes without appropriate permission.
 
 ## Toolkit icons
 

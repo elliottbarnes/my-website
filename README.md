@@ -1,10 +1,10 @@
-# Elliott / Barnes Handheld Portfolio
+# elliott / Handheld Portfolio
 
 A dependency-free, retro-console portfolio for [elliottbarnes.ca](https://elliottbarnes.ca).
 
 ## Playable portfolio
 
-The homepage is a Barnes handheld console. Select one of four projects on its screen, then choose **Try demo** to open a browser-only demonstration inside the screen. **Back to projects** returns to the selected project and restores focus. Each project has a separate GitHub source link; with JavaScript disabled, links below the device keep all four sources available.
+The homepage is an elliott handheld console. Select one of four projects on its screen, then choose **Try demo** to open a browser-only demonstration inside the screen. **Back to projects** returns to the selected project and restores focus. Each project has a separate GitHub source link; with JavaScript disabled, links below the device keep all four sources available.
 
 On smaller screens the housing becomes a compact orange frame around ordinary page content. Demos grow with their content and use normal page scrolling.
 
@@ -57,9 +57,9 @@ The build copies an explicit list of public files into `dist/` and refuses unexp
 
 ## Favicon
 
-The transparent one-star Dragon Ball PNG is used for browser tabs, Apple touch icons, and the web manifest. It is served locally as `image/png`; no checkerboard is baked into the asset. The social card retains the earlier compact Barnes controller artwork. Sharing apps choose their own preview layout and may cache older previews.
+The transparent one-star Dragon Ball PNG is used for browser tabs, Apple touch icons, and the web manifest. It is served locally as `image/png`; no checkerboard is baked into the asset. Link previews also request the Dragon Ball icon. The legacy SVG icon and sharing-image paths embed the same original PNG for older references. Sharing apps choose their own preview layout and may cache older previews.
 
-Artwork by Musett.com, provided under CC BY-NC-ND 4.0 (non-commercial, attribution required, no derivatives). Source and license links appear in the site footer; see [asset sources](ASSET_SOURCES.md).
+Artwork by Musett.com, provided under CC BY-NC-ND 4.0 (non-commercial, attribution required, no derivatives). Source and license links appear inside the site footer’s Icon credits disclosure; see [asset sources](ASSET_SOURCES.md).
 
 ## Structure
 
@@ -68,7 +68,7 @@ Artwork by Musett.com, provided under CC BY-NC-ND 4.0 (non-commercial, attributi
 - `script.js`: current year, color/texture preferences, and section shortcuts
 - `assets/interactive/`: responsive handheld screen layout, inline demos, controller/terminal/toolkit interactions, and arcade
 - `assets/barnes-handheld.webp`: current homepage housing; generation provenance is in `assets/BARNES_HANDHELD.md`
-- `assets/barnes-controller.webp`: earlier compact controller retained for the social-card artwork
+- `assets/barnes-controller.webp`: archived compact controller artwork
 - `assets/prism/`: generated illustrative samples and provenance (only JPEG samples are published)
 - `build.mjs`: creates the public deployment artifact
 - `404.html`: custom not-found page
