@@ -91,7 +91,7 @@ function expectTheme(current, theme) {
   assert.equal(current.themeAttrs["aria-pressed"], String(dark));
   assert.equal(current.themeAttrs["aria-label"], "START: Dark mode");
   assert.equal(current.themeLabel.textContent, dark ? "Dark mode: on" : "Dark mode: off");
-  assert.equal(current.state.themeColor, dark ? "#17191f" : "#efede8");
+  assert.equal(current.state.themeColor, dark ? "#0d1b35" : "#fff3dc");
 }
 
 test("the pre-stylesheet bootstrap matches runtime theme resolution without storing a preference", () => {
