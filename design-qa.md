@@ -43,3 +43,14 @@ No actionable P0/P1/P2 findings remain.
 ## Accepted differences and limits
 
 The initial concept is a visual reference, not a literal screenshot clone: complete copy, accurate queue capacity, bounded project buttons and clear sample disclosures take priority. Long demos and small screens use a simpler frame. No live inference/backend is introduced. Physical phone hardware and assistive-technology speech output were not tested; browser accessibility semantics, keyboard behavior and responsive geometry were checked.
+
+## Texture and copy refinement
+
+**final result: passed**
+
+- Compared the same homepage with texture off and on at 1487 × 1058 CSS pixels. The stronger scanline/phosphor pattern, light text glow and illuminated preview accents are visibly distinct while the copy stays readable. The toggle is beside navigation and announces its pressed state.
+- Checked 320, 768, 1152 and 1487 CSS widths with no horizontal overflow or clipped screen content. The phone navigation and texture control fit on one row with 44px-high targets.
+- The activation sweep lasts one second and runs once. Manual reduced motion removes it while retaining the static texture; the system reduced-motion media rule does the same. Overlay layers have pointer-events disabled. Batchline Step once remained usable with texture on (2 waiting, 4 completed, 0 rejected). Texture persisted after reload.
+- Replaced slogan-like headings and asides with quieter copy throughout the homepage, demos, terminal, arcade and error page. The Steve Jobs quote and attribution are unchanged. Social-card artwork is unchanged.
+- Review caught and fixed a print cascade conflict: the texture-on screen still prints with a white background, and its toggle is hidden.
+- Validation: all 135 JavaScript tests passed; the exact 32-file production build and source verification passed. Browser console reported no warnings or errors during the checked flows.

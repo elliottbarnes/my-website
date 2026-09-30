@@ -123,9 +123,9 @@
       if (saveEnabled && !saveBest(storage, best)) {
         storageStatus.textContent = "Storage is unavailable. Your best stays here for this visit.";
       }
-      message = `All six signals matched in ${state.turns} turns!${record ? " A new personal best." : " Play again to beat your best."}`;
+      message = `All six pairs in ${state.turns} turns.${record ? " Your best so far." : " Another round?"}`;
     } else {
-      message = `Signal ${state.deck[index]} matched! Choose another pair.`;
+      message = `Signal ${state.deck[index]} matched. Choose another pair.`;
     }
     render(message);
   }
@@ -141,7 +141,7 @@
     dialog.setAttribute("aria-describedby", "arcade-instructions");
     dialog.innerHTML = `
       <div class="arcade-heading">
-        <div><p class="arcade-kicker">Secret cartridge unlocked</p><h2 id="arcade-title">Signal Match</h2></div>
+        <div><p class="arcade-kicker">A short detour</p><h2 id="arcade-title">Signal Match</h2></div>
         <button class="arcade-close" type="button" aria-label="Close Signal Match">×</button>
       </div>
       <p id="arcade-instructions" class="arcade-instructions">Find six matching pairs. Flip two cards per turn. Take your time: fewer turns wins.</p>

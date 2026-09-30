@@ -43,7 +43,7 @@
   syncMotion();
   const feature = document.querySelector('[data-feature-title]');
   const previews = {
-    'batchline': ['INFERENCE LAB', 'Explore how batching keeps a busy AI service moving without an endless queue.', `<div class="preview-top"><span>Request queue</span><span>2 / 18</span></div><div class="queue-preview" aria-label="Illustration: two of eighteen queue slots occupied">${Array.from({length:18}, (_, i) => `<span${i < 2 ? ' class="occupied"' : ''}></span>`).join('')}</div><p>Batch requests. Keep things moving.</p><small>Concept preview · sample data</small>`],
+    'batchline': ['INFERENCE LAB', 'Explore how batching keeps a busy AI service moving without an endless queue.', `<div class="preview-top"><span>Request queue</span><span>2 / 18</span></div><div class="queue-preview" aria-label="Illustration: two of eighteen queue slots occupied">${Array.from({length:18}, (_, i) => `<span${i < 2 ? ' class="occupied"' : ''}></span>`).join('')}</div><p>Try a busier queue.</p><small>Concept preview · sample data</small>`],
     'evaldeck': ['AI EVALUATION', 'Replay AI outputs, catch regressions, and see exactly what changed.', '<div class="preview-top"><span>Compare outputs</span><span>v1 → v2</span></div><div class="diff-preview"><p><span>Before</span>The result is <del>probably correct</del>.</p><p><span>After</span>The result is <ins>42</ins>.</p></div><small>Concept preview · sample outputs</small>'],
     'reconcile-kit': ['DATA TOOLING', 'Find missing records, duplicates, and exact-money mismatches in CSV exports.', '<div class="preview-top"><span>Reconcile records</span><span>CSV ↔ CSV</span></div><div class="ledger-preview"><p><span>INV-001</span><strong>Matched</strong></p><p><span>INV-002</span><strong class="preview-warning">Mismatch</strong></p><p><span>INV-003</span><strong>Matched</strong></p></div><small>Concept preview · synthetic records</small>'],
     'prism-studio': ['IMAGE GENERATION', 'A local image workbench with seeded runs and a record of each experiment.', '<div class="preview-top"><span>Seeded gallery</span><span>17 / 42 / 108</span></div><div class="prism-preview"><img src="/assets/prism/seed-17.jpg" alt="Illustration: an observatory above a lake"><img src="/assets/prism/seed-42.jpg" alt="Illustration: a ringed planet and moons"><img src="/assets/prism/seed-108.jpg" alt="Illustration: a crescent moon over a mountain lake"></div><small>Illustrative gallery · not model output</small>'],
@@ -115,7 +115,7 @@
     Python: ['Python powers the inference, evaluation, and image experiment projects.', ['batchline', 'evaldeck', 'prism-studio']],
     Gradle: ['Gradle builds and tests Reconcile Kit.', ['reconcile-kit']],
     awk: ['awk is useful for quick checks of delimited data alongside Reconcile Kit’s CSV workflow.', ['reconcile-kit']],
-    'C++': ['Part of my wider toolkit. No C++ project is featured in this four-cartridge collection yet.', []],
+    'C++': ['Part of my wider toolkit, though none of these four projects uses C++.', []],
     PyTorch: ['PyTorch provides the model runtime for Prism Studio’s image workbench.', ['prism-studio']],
     Streamlit: ['Streamlit provides the interface for Prism Studio’s local image workbench.', ['prism-studio']],
     Docker: ['Docker provides reproducible environments for running the Batchline service.', ['batchline']],
@@ -150,7 +150,7 @@
   terminal.className = 'terminal-dialog';
   terminal.setAttribute('aria-labelledby', 'terminal-title');
   terminal.innerHTML = `<div class="terminal-bar"><h2 id="terminal-title">elliott / terminal</h2><button type="button" class="text-button" data-terminal-close aria-label="Close terminal">Close · Esc</button></div>
-    <p class="terminal-intro">A shortcut to explore. Choose a command or type one below.</p>
+    <p class="terminal-intro">Prefer a command line? Choose a command or type one below.</p>
     <div class="terminal-commands" aria-label="Suggested commands"></div>
     <div class="terminal-output" role="status" aria-live="polite" aria-atomic="true">Ready. Try help to see the commands.</div>
     <form class="terminal-form"><label for="terminal-input">Command</label><div><input id="terminal-input" name="command" autocomplete="off" autocapitalize="none" spellcheck="false" placeholder="Try projects" maxlength="100"><button type="submit" class="text-button">Run</button></div></form>`;

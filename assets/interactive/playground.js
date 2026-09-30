@@ -130,7 +130,7 @@
   const escapeHTML = (value) => String(value).replace(/[&<>"']/g, (character) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[character]);
   const money = (cents) => `${cents < 0 ? "−" : ""}$${Math.floor(Math.abs(cents) / 100)}.${String(Math.abs(cents) % 100).padStart(2, "0")}`;
   const projects = {
-    batchline: { number: "01", name: "Batchline", category: "INFERENCE LAB", color: "amber", description: "A tiny model with a real serving problem: how to handle bursts of requests without an ever-growing queue.", detail: "Turn up the traffic and find the point where a bounded queue starts protecting the service.", render: renderBatchline },
+    batchline: { number: "01", name: "Batchline", category: "INFERENCE LAB", color: "amber", description: "A small model serving a busy queue: handling bursts of requests without letting the backlog grow indefinitely.", detail: "Turn up the traffic and find the point where a bounded queue starts protecting the service.", render: renderBatchline },
     evaldeck: { number: "02", name: "EvalDeck", category: "AI EVALUATION", color: "cyan", description: "A repeatable way to compare AI outputs, spot changes, and catch regressions before shipping a new version.", detail: "Inspect saved sample answers and see why a small wording change can matter.", render: renderEvalDeck },
     "reconcile-kit": { number: "03", name: "Reconcile Kit", category: "DATA TOOLING", color: "coral", description: "A reconciliation tool for finding missing records, duplicates, and exact-money mismatches in exported data.", detail: "Introduce a few problems into a synthetic export, then check it against the ledger.", render: renderReconcile },
     "prism-studio": { number: "04", name: "Prism Studio", category: "IMAGE WORKBENCH", color: "green", description: "A local image workbench that keeps the seed and settings alongside each experiment so good results can be revisited.", detail: "Explore a small illustrative seed gallery and see what a saved experiment looks like.", render: renderPrism },
@@ -244,12 +244,12 @@
 
   function renderBatchline(root) {
     root.innerHTML = `
-      <div class="demo-heading"><p class="playground-eyebrow">TRAFFIC CONTROL</p><h3>Make a little rush hour.</h3><p>Each step admits requests into an 18-slot queue, then processes up to your service rate. Extra arrivals are rejected.</p></div>
+      <div class="demo-heading"><p class="playground-eyebrow">TRAFFIC CONTROL</p><h3>See what happens under load.</h3><p>Each step admits requests into an 18-slot queue, then processes up to your service rate. Extra arrivals are rejected.</p></div>
       <div class="demo-sliders">
         <label class="demo-slider" for="batch-arrivals"><span>Incoming requests <output id="batch-arrivals-value" for="batch-arrivals">6 / step</output></span><input id="batch-arrivals" type="range" min="0" max="12" value="6" step="1"><span class="demo-range-ends"><span>Quiet · 0</span><span>Busy · 12</span></span></label>
         <label class="demo-slider" for="batch-workers"><span>Service rate <output id="batch-workers-value" for="batch-workers">4 / step</output></span><input id="batch-workers" type="range" min="1" max="8" value="4" step="1"><span class="demo-range-ends"><span>Slow · 1</span><span>Fast · 8</span></span></label>
       </div>
-      <div class="batch-queue-panel"><div class="batch-queue-label"><strong>Waiting room</strong><span data-batch-queue-label>0 / 18 slots</span></div><div class="batch-queue" aria-hidden="true">${Array.from({ length: 18 }, () => '<span class="batch-slot"></span>').join("")}</div><p class="demo-note" data-batch-insight>The queue is empty. Take a step to let requests in.</p></div>
+      <div class="batch-queue-panel"><div class="batch-queue-label"><strong>Request queue</strong><span data-batch-queue-label>0 / 18 slots</span></div><div class="batch-queue" aria-hidden="true">${Array.from({ length: 18 }, () => '<span class="batch-slot"></span>').join("")}</div><p class="demo-note" data-batch-insight>The queue is empty. Take a step to let requests in.</p></div>
       <dl class="demo-metrics"><div><dt>Steps</dt><dd data-batch-tick>0</dd></div><div><dt>Completed</dt><dd data-batch-completed>0</dd></div><div><dt>Rejected</dt><dd data-batch-rejected>0</dd></div></dl>
       <div class="demo-actions"><button class="demo-button demo-button-primary" type="button" data-batch-step>Step once</button><button class="demo-button" type="button" data-batch-run aria-pressed="false">Run simulation</button><button class="demo-button" type="button" data-batch-reset>Reset</button></div>
       <p class="demo-status" role="status" data-batch-status>Ready. Nothing runs until you start it.</p>`;
@@ -267,7 +267,7 @@
       root.querySelector("[data-batch-insight]").textContent = state.tick === 0
         ? "The queue is empty. Take a step to let requests in."
         : state.queued === 0 ? "All caught up. Try more traffic than your service rate."
-          : Number(arrivals.value) > Number(workers.value) ? "Traffic is arriving faster than it can be processed. The waiting room fills until extra requests are rejected."
+          : Number(arrivals.value) > Number(workers.value) ? "Traffic is arriving faster than it can be processed. The queue fills until extra requests are rejected."
             : "There is room to catch up. Lower incoming traffic to drain the queue.";
     };
     const tick = () => { state = stepQueue(state, arrivals.value, workers.value); paint(); };
@@ -348,11 +348,11 @@
   function renderReconcile(root) {
     const ledger = [{ id: "A-101", cents: 12450 }, { id: "A-102", cents: 3000 }, { id: "A-103", cents: 1899 }, { id: "A-104", cents: 7525 }];
     root.innerHTML = `
-      <div class="demo-heading"><p class="playground-eyebrow">FOLLOW THE CENTS</p><h3>Four records. Every cent counts.</h3><p>Toggle problems in a synthetic export and compare it with the original ledger. Amounts are checked in integer cents.</p></div>
+      <div class="demo-heading"><p class="playground-eyebrow">RECORD CHECK</p><h3>One cent out of place.</h3><p>Toggle problems in a synthetic export and compare it with the original ledger. Amounts are checked in integer cents.</p></div>
       <fieldset class="reconcile-options"><legend>Add an export problem</legend><label><input type="checkbox" value="amount" checked><span>Change A-103 by one cent</span></label><label><input type="checkbox" value="missing"><span>Remove A-102</span></label><label><input type="checkbox" value="duplicate"><span>Duplicate A-104</span></label></fieldset>
       <div class="reconcile-tables"><section><h4>Original ledger</h4><div data-reconcile-ledger></div></section><section><h4>Incoming export</h4><div data-reconcile-export></div></section></div>
       <div class="demo-actions"><button class="demo-button demo-button-primary" type="button" data-reconcile-check>Reconcile records</button><button class="demo-button" type="button" data-reconcile-reset>Clear problems</button></div>
-      <p class="demo-status" role="status" data-reconcile-status>One cent has changed. Can you spot it?</p><ul class="reconcile-results" data-reconcile-results hidden></ul>`;
+      <p class="demo-status" role="status" data-reconcile-status>One amount is off by a cent. Reconcile to find it.</p><ul class="reconcile-results" data-reconcile-results hidden></ul>`;
     const controls = [...root.querySelectorAll(".reconcile-options input")];
     const results = root.querySelector("[data-reconcile-results]");
     const status = root.querySelector("[data-reconcile-status]");
@@ -391,10 +391,10 @@
       108: "A crescent moon reflected in a mountain lake beside pine trees",
     };
     root.innerHTML = `
-      <div class="demo-heading"><p class="playground-eyebrow">THE SEED GALLERY</p><h3>Keep the experiment.</h3><p>Three pre-made illustrations stand in for saved runs. Choose a seed to explore the gallery.</p></div>
+      <div class="demo-heading"><p class="playground-eyebrow">THE SEED GALLERY</p><h3>Keep the interesting ones.</h3><p>Three pre-made illustrations stand in for saved runs. Choose a seed to explore the gallery.</p></div>
       <div class="prism-seeds" role="group" aria-label="Choose an illustrative seed">${seeds.map((seed, index) => `<button class="demo-button ${index === 0 ? "is-selected" : ""}" type="button" data-prism-seed="${seed}" aria-pressed="${index === 0}">Seed ${seed}</button>`).join("")}</div>
       <figure class="prism-art"><img src="/assets/prism/seed-17.jpg" alt="${captions[17]}" width="512" height="512" decoding="async" data-prism-image><div class="prism-image-error" hidden data-prism-error>Artwork could not load. Select another seed to keep exploring.</div><figcaption><span>ILLUSTRATIVE SAMPLE</span><span data-prism-caption>SEED 17</span></figcaption></figure>
-      <dl class="prism-settings"><div><dt>Seed label</dt><dd data-prism-current>17</dd></div><div><dt>Gallery</dt><dd>3 saved samples</dd></div><div><dt>Prompt concept</dt><dd>A tiny world, ready to explore</dd></div></dl>
+      <dl class="prism-settings"><div><dt>Seed label</dt><dd data-prism-current>17</dd></div><div><dt>Gallery</dt><dd>3 saved samples</dd></div><div><dt>Prompt concept</dt><dd>Quiet places, improbable skies</dd></div></dl>
       <p class="demo-note">Illustrative portfolio samples, not actual Prism Studio model outputs. Seed numbers are demo labels, not recorded generation seeds. Selecting one loads saved artwork; it does not generate an image.</p>
       <p class="demo-status" role="status" data-prism-status>Illustrative seed 17 selected.</p>`;
     const img = root.querySelector("[data-prism-image]");
