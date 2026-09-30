@@ -138,7 +138,7 @@ test("verification catches broken links, metadata, shortcuts, and initial contro
     ["index.html", (s) => s.replace('"@type": "Person"', '"@type":'), /invalid Person JSON-LD/],
     ["site.webmanifest", () => "{broken", /invalid JSON/],
     ["site.webmanifest", (s) => s.replace("/assets/dragon-ball.png", "/missing.png"), /not published/],
-    ["index.html", (s) => s.replace("https://elliottbarnes.ca/assets/social-card.svg", "https://elliottbarnes.ca/missing.svg"), /not published/],
+    ["index.html", (s) => s.replace("https://elliottbarnes.ca/assets/dragon-ball.png", "https://elliottbarnes.ca/missing.svg"), /not published/],
     ["styles.css", (s) => s + '\nbody{background:url("/missing.svg")}\n', /not published/],
   ];
   for (const [file, change, error] of cases) {
