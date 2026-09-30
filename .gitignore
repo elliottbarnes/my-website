@@ -8,3 +8,10 @@ dist/
 .deployments/
 .aws-live/
 __pycache__/
+
+# Local credentials and environment overrides
+.env
+.env.*
+!.env.example
+!.env.sample
+.aws/
