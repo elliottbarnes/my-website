@@ -2,7 +2,7 @@ import { createHash } from "node:crypto";
 import { readFile } from "node:fs/promises";
 import { join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
-import { PUBLIC_FILES, assertRegularPublicFile, inspectPublicTree } from "./public-files.mjs";
+import { PUBLIC_FILES, VERSIONED_FILES, assertRegularPublicFile, inspectPublicTree } from "./public-files.mjs";
 
 const origin = "https://elliottbarnes.ca";
 
@@ -129,25 +129,40 @@ export async function verifySite(directory, { sourceRoot } = {}) {
   if (themeToggle.length !== 1 || themeToggle[0].name !== "button" || themeToggle[0].attrs.get("type") !== "button" || themeToggle[0].attrs.get("aria-pressed") !== "false" || themeToggle[0].attrs.get("aria-label") !== "START: Dark mode" || themeLabel.length !== 1 || root?.attrs.get("data-theme") !== "light") {
     throw new Error("index.html: theme must start light with one labeled toggle and label");
   }
-  for (const match of content.get("styles.css").matchAll(/url\(\s*(?:"([^"]*)"|'([^']*)'|([^\s)]+))\s*\)/gi)) {
-    reference(match[1] ?? match[2] ?? match[3], "styles.css", { localOnly: true });
+  for (const file of VERSIONED_FILES.filter((file) => file.endsWith(".css"))) {
+    for (const match of content.get(file).matchAll(/url\(\s*(?:"([^"]*)"|'([^']*)'|([^\s)]+))\s*\)/gi)) {
+      reference(match[1] ?? match[2] ?? match[3], file, { localOnly: true });
+    }
   }
 
   // A new URL prevents cached CSS/JS from being paired with another release's HTML.
   // Check the bytes, not a manually maintained release label, so stale versions fail the build.
   const stylesheets = index.filter((tag) => tag.name === "link" && tag.attrs.get("rel")?.split(/\s+/).includes("stylesheet"));
   const scripts = index.filter((tag) => tag.name === "script" && tag.attrs.has("src"));
-  for (const [file, references, attribute] of [
-    ["styles.css", stylesheets, "href"],
-    ["script.js", scripts, "src"],
-  ]) {
+  const referencesByFile = new Map(VERSIONED_FILES.map((file) => [file, []]));
+  for (const [references, attribute, extension] of [[stylesheets, "href", ".css"], [scripts, "src", ".js"]]) {
+    for (const tag of references) {
+      const raw = tag.attrs.get(attribute);
+      const url = new URL(raw, origin);
+      const file = decodeURIComponent(url.pathname).replace(/^\//, "");
+      if (url.origin !== origin || !referencesByFile.has(file) || !file.endsWith(extension)) {
+        throw new Error(`index.html: unknown ${extension === ".css" ? "stylesheet" : "script"} reference: ${raw}`);
+      }
+      referencesByFile.get(file).push({ tag, raw });
+    }
+  }
+  for (const [file, references] of referencesByFile) {
     const expected = `/${file}?v=${sha256[file].slice(0, 12)}`;
-    if (references.length !== 1 || references[0].attrs.get(attribute) !== expected) {
+    if (references.length !== 1 || references[0].raw !== expected) {
       throw new Error(`index.html: ${file} must have exactly one reference with its content hash: ${expected}`);
     }
   }
-  if (!scripts[0].attrs.has("defer") || scripts[0].attrs.has("async")) {
-    throw new Error("index.html: the versioned script.js must use defer without async");
+  for (const [file, document] of documents) {
+    for (const script of document.parsed.filter((tag) => tag.name === "script" && tag.attrs.has("src"))) {
+      if (!script.attrs.has("defer") || script.attrs.has("async")) {
+        throw new Error(`${file}: ${script.attrs.get("src")} must use defer without async`);
+      }
+    }
   }
 
   let manifest;

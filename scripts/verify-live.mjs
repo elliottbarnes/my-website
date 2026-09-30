@@ -1,7 +1,7 @@
 import { createHash, randomUUID } from "node:crypto";
 import { resolve } from "node:path";
 import { fileURLToPath } from "node:url";
-import { PUBLIC_FILES, contentType } from "./public-files.mjs";
+import { PUBLIC_FILES, VERSIONED_FILES, contentType } from "./public-files.mjs";
 import { verifySite } from "./verify-site.mjs";
 
 const ORIGIN = "https://elliottbarnes.ca";
@@ -16,9 +16,6 @@ const delay = (milliseconds) => new Promise((done) => setTimeout(done, milliseco
 export async function verifyLive(directory, { fetchImpl = fetch, attempts = 3, delayMs = 1000 } = {}) {
   const root = resolve(directory);
   const artifact = await verifySite(root);
-  if (PUBLIC_FILES.length !== 21 || artifact.files !== 21) {
-    throw new Error("Live verification requires the fixed 21-file public allowlist.");
-  }
   if (!Number.isInteger(attempts) || attempts < 1 || attempts > 3) {
     throw new Error("Verification attempts must be between one and three.");
   }
@@ -70,7 +67,7 @@ export async function verifyLive(directory, { fetchImpl = fetch, attempts = 3, d
   // verifySite has already required these exact, content-versioned references in HTML.
   // Also check their actual public responses, not just the underlying S3 filenames.
   const versionedAssets = {};
-  for (const key of ["styles.css", "script.js"]) {
+  for (const key of VERSIONED_FILES) {
     const path = `/${key}?v=${artifact.sha256[key].slice(0, 12)}`;
     versionedAssets[path] = await retry(path, () => verifyBytes(
       `${ORIGIN}${path}`, 200, artifact.sha256[key], contentType(key),

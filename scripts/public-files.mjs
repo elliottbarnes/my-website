@@ -11,12 +11,19 @@ export const PUBLIC_FILES = Object.freeze([
   "assets/toolkit/awk.svg", "assets/toolkit/cplusplus.svg", "assets/toolkit/pytorch.svg",
   "assets/toolkit/streamlit.svg", "assets/toolkit/docker.svg", "assets/toolkit/aws.svg",
   "assets/toolkit/diffusers.svg", "assets/toolkit/LICENSE.txt",
+  "assets/interactive/playground.js", "assets/interactive/playground.css",
+  "assets/interactive/arcade.js", "assets/interactive/arcade.css",
+  "assets/interactive/interactions.js", "assets/interactive/interactions.css",
+  "assets/prism/seed-17.jpg", "assets/prism/seed-42.jpg", "assets/prism/seed-108.jpg",
 ]);
+
+export const VERSIONED_FILES = Object.freeze(PUBLIC_FILES.filter((file) => /\.(?:css|js)$/.test(file)));
 
 export const CONTENT_TYPES = Object.freeze({
   ".css": "text/css; charset=utf-8",
   ".html": "text/html; charset=utf-8",
   ".js": "text/javascript; charset=utf-8",
+  ".jpg": "image/jpeg",
   ".png": "image/png",
   ".svg": "image/svg+xml",
   ".txt": "text/plain; charset=utf-8",

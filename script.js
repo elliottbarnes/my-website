@@ -26,7 +26,7 @@ const setTheme = (theme) => {
   document.documentElement.dataset.theme = theme;
   themeToggle?.setAttribute("aria-pressed", String(dark));
   themeToggle?.setAttribute("aria-label", "START: Dark mode");
-  themeColor?.setAttribute("content", dark ? "#17191f" : "#efede8");
+  themeColor?.setAttribute("content", dark ? "#0d1b35" : "#fff3dc");
 
   if (themeLabel) {
     themeLabel.textContent = dark ? "Dark mode: on" : "Dark mode: off";
@@ -99,7 +99,7 @@ document.addEventListener("keydown", (event) => {
     target instanceof HTMLElement &&
     (target.isContentEditable || ["INPUT", "TEXTAREA", "SELECT"].includes(target.tagName));
 
-  if (isTyping || event.altKey || event.ctrlKey || event.metaKey) {
+  if (document.querySelector("dialog[open]") || isTyping || event.altKey || event.ctrlKey || event.metaKey) {
     return;
   }
 
@@ -108,7 +108,7 @@ document.addEventListener("keydown", (event) => {
   if (matchingLink) {
     event.preventDefault();
     document.querySelector(matchingLink.getAttribute("href"))?.scrollIntoView({
-      behavior: window.matchMedia("(prefers-reduced-motion: reduce)").matches ? "auto" : "smooth",
+      behavior: (window.matchMedia("(prefers-reduced-motion: reduce)").matches || document.documentElement.dataset.motion === "reduced") ? "auto" : "smooth",
     });
   }
 });

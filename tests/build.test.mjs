@@ -1,14 +1,20 @@
 import assert from "node:assert/strict";
+import { createHash } from "node:crypto";
 import { copyFile, mkdir, mkdtemp, readFile, rm, symlink, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import test from "node:test";
 import { buildSite } from "../build.mjs";
-import { PUBLIC_FILES, inspectPublicTree } from "../scripts/public-files.mjs";
+import { PUBLIC_FILES, VERSIONED_FILES, contentType, inspectPublicTree } from "../scripts/public-files.mjs";
 import { verifySite } from "../scripts/verify-site.mjs";
 
 const project = fileURLToPath(new URL("..", import.meta.url));
+
+function resourceTag(file) {
+  const css = file.endsWith(".css");
+  return new RegExp(`<${css ? "link" : "script"}\\b[^>]*${css ? "href" : "src"}="/${file.replaceAll(".", "\\.")}(?:\\?[^\"]*)?"[^>]*>${css ? "" : "</script>"}`);
+}
 
 async function fixture(t) {
   const root = await mkdtemp(join(tmpdir(), "portfolio-build-test-"));
@@ -20,15 +26,22 @@ async function fixture(t) {
   return root;
 }
 
-test("build publishes exactly 21 files and excludes unrelated source files", async (t) => {
+test("build publishes the complete allowlist and excludes notes and image masters", async (t) => {
   const root = await fixture(t);
-  await writeFile(join(root, "private-notes.txt"), "not for publication");
+  const unpublished = ["private-notes.txt", "assets/prism/SOURCES.md", "assets/prism/seed-17.png", "assets/interactive/notes.js"];
+  for (const file of unpublished) await writeFile(join(root, file), "not for publication");
   const destination = await buildSite({ root });
-  assert.equal(PUBLIC_FILES.length, 21);
+  for (const name of ["playground", "arcade", "interactions"]) {
+    for (const extension of ["js", "css"]) assert.ok(PUBLIC_FILES.includes(`assets/interactive/${name}.${extension}`));
+  }
+  for (const seed of [17, 42, 108]) assert.ok(PUBLIC_FILES.includes(`assets/prism/seed-${seed}.jpg`));
+  assert.equal(contentType("assets/prism/seed-17.jpg"), "image/jpeg");
+  assert.deepEqual(VERSIONED_FILES, PUBLIC_FILES.filter((file) => /\.(?:css|js)$/.test(file)));
   assert.deepEqual(await inspectPublicTree(destination), [...PUBLIC_FILES].sort());
+  for (const file of unpublished) await assert.rejects(readFile(join(destination, file)), { code: "ENOENT" });
   const result = await verifySite(destination, { sourceRoot: root });
-  assert.equal(result.files, 21);
-  assert.equal(Object.keys(result.sha256).length, 21);
+  assert.equal(result.files, PUBLIC_FILES.length);
+  assert.equal(Object.keys(result.sha256).length, PUBLIC_FILES.length);
   assert.match(result.sha256["index.html"], /^[a-f0-9]{64}$/);
 });
 
@@ -201,10 +214,10 @@ test("verification rejects malformed PNG headers and incorrect favicon dimension
 });
 
 test("verification requires exactly one correctly content-versioned CSS and JS reference", async (t) => {
-  for (const file of ["styles.css", "script.js"]) {
-    const tagPattern = file === "styles.css" ? /<link\b[^>]*rel="stylesheet"[^>]*>/ : /<script\b[^>]*src="[^\"]*"[^>]*><\/script>/;
-    const attributePattern = file === "styles.css" ? /href="[^"]*"/ : /src="[^"]*"/;
-    const attribute = file === "styles.css" ? "href" : "src";
+  for (const file of VERSIONED_FILES) {
+    const tagPattern = resourceTag(file);
+    const attributePattern = file.endsWith(".css") ? /href="[^"]*"/ : /src="[^"]*"/;
+    const attribute = file.endsWith(".css") ? "href" : "src";
     const changes = [
       (tag) => tag.replace(attributePattern, `${attribute}="/${file}"`),
       (tag) => tag.replace(attributePattern, `${attribute}="/${file}?v=000000000000"`),
@@ -221,13 +234,13 @@ test("verification requires exactly one correctly content-versioned CSS and JS r
       const modified = original.replace(tagPattern, change);
       assert.notEqual(modified, original, `Fixture must change the ${file} reference`);
       await writeFile(path, modified);
-      await assert.rejects(verifySite(root), new RegExp(`${file.replace(".", "\\.")} must have exactly one reference with its content hash`));
+      await assert.rejects(verifySite(root), new RegExp(`${file.replaceAll(".", "\\.")} must have exactly one reference with its content hash`));
     }
   }
 });
 
 test("verification rejects CSS or JS edits unless their HTML content version is updated", async (t) => {
-  for (const file of ["styles.css", "script.js"]) {
+  for (const file of VERSIONED_FILES) {
     const root = await fixture(t);
     const path = join(root, file);
     await writeFile(path, await readFile(path, "utf8") + "\n/* changed bytes */\n");
@@ -235,11 +248,49 @@ test("verification rejects CSS or JS edits unless their HTML content version is 
   }
 });
 
-test("verification requires the content-versioned script to remain deferred", async (t) => {
-  for (const change of [(tag) => tag.replace(" defer", ""), (tag) => tag.replace(" defer", " defer async")]) {
+test("verification requires every external script to remain deferred without async", async (t) => {
+  for (const file of VERSIONED_FILES.filter((file) => file.endsWith(".js"))) {
+    for (const change of [(tag) => tag.replace(" defer", ""), (tag) => tag.replace(" defer", " defer async")]) {
+      const root = await fixture(t);
+      const path = join(root, "index.html");
+      const original = await readFile(path, "utf8");
+      const modified = original.replace(resourceTag(file), change);
+      assert.notEqual(modified, original, `Fixture must change defer on ${file}`);
+      await writeFile(path, modified);
+      await assert.rejects(verifySite(root), /must use defer without async/);
+    }
+  }
+});
+
+test("verification rejects extra unknown stylesheet and script references", async (t) => {
+  const cases = [
+    ['<link rel="stylesheet" href="/assets/favicon.svg">', /unknown stylesheet reference/],
+    ['<link rel="stylesheet" href="https://example.com/site.css">', /unknown stylesheet reference/],
+    ['<script src="/styles.css" defer></script>', /unknown script reference/],
+    ['<script src="/assets/interactive/missing.js" defer></script>', /not published/],
+  ];
+  for (const [tag, error] of cases) {
     const root = await fixture(t);
     const path = join(root, "index.html");
-    await writeFile(path, (await readFile(path, "utf8")).replace(/<script\b[^>]*src="[^"]*"[^>]*>/, change));
-    await assert.rejects(verifySite(root), /script\.js must use defer without async/);
+    await writeFile(path, (await readFile(path, "utf8")).replace("</head>", `${tag}</head>`));
+    await assert.rejects(verifySite(root), error);
+  }
+});
+
+test("verification checks resource URLs in every stylesheet relative to that stylesheet", async (t) => {
+  for (const file of VERSIONED_FILES.filter((file) => file.endsWith(".css"))) {
+    const root = await fixture(t);
+    const path = join(root, file);
+    const original = await readFile(path, "utf8");
+    await writeFile(path, `${original}\nbody{background-image:url("/missing-image.jpg")}\n`);
+    await assert.rejects(verifySite(root), /not published/);
+
+    const relative = file.includes("/") ? "../prism/seed-17.jpg" : "assets/prism/seed-17.jpg";
+    const valid = `${original}\nbody{background-image:url("${relative}")}\n`;
+    await writeFile(path, valid);
+    const hash = createHash("sha256").update(valid).digest("hex").slice(0, 12);
+    const html = await readFile(join(root, "index.html"), "utf8");
+    await writeFile(join(root, "index.html"), html.replace(resourceTag(file), (tag) => tag.replace(/\?v=[a-f0-9]{12}/, `?v=${hash}`)));
+    await verifySite(root);
   }
 });

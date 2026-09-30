@@ -13,7 +13,7 @@ node scripts/verify-site.mjs dist --source .
 node server.mjs --dir dist
 ```
 
-The build and verifier share the exact 21-file allowlist in `scripts/public-files.mjs`. Extra files, missing files, symlinks, broken local references, invalid metadata, and source/build differences fail validation. The preview serves only public files, including a real custom 404 response.
+The build and verifier share the exact 30-file allowlist in `scripts/public-files.mjs`. Extra files, missing files, symlinks, broken local references, invalid metadata, and source/build differences fail validation. The preview serves only public files, including a real custom 404 response.
 
 ## GitHub Actions
 
@@ -28,7 +28,7 @@ The production job:
 5. Checks artifact hashes against the checked-out source and verifies bucket ownership/versioning.
 6. Records all existing object versions before uploading anything.
 7. Uploads non-HTML files first, then `404.html`, then `index.html`. It never deletes objects.
-8. Invalidates the website distribution and verifies all 21 HTTPS file hashes, the versioned CSS/JavaScript URLs, the apex homepage, HTTP/www redirects, and the custom 404.
+8. Invalidates the website distribution and verifies all 30 HTTPS file hashes, the versioned CSS/JavaScript URLs, the apex homepage, HTTP/www redirects, and the custom 404.
 
 All Actions are pinned to full commit SHAs. The check job has only `contents: read`; only the production job can request an OIDC token.
 
@@ -57,7 +57,7 @@ After editing `styles.css` or `script.js`, update its version in `index.html` be
 shasum -a 256 styles.css script.js
 ```
 
-This preserves the 21-object publication boundary. Query versions distinguish browser cache entries; they do not create immutable S3 objects or guarantee separate CloudFront cache entries. The CloudFront policy may impose its minimum TTL, so the workflow still invalidates the entire small site and waits for completion. HTTPS verification checks actual bytes, not only status codes. CloudFront invalidation alone does not clear copies already cached on visitors' devices. See [AWS's explanation of invalidation and browser caches](https://docs.aws.amazon.com/AmazonCloudFront/latest/DeveloperGuide/Invalidation.html).
+This preserves the 30-object publication boundary. Query versions distinguish browser cache entries; they do not create immutable S3 objects or guarantee separate CloudFront cache entries. The CloudFront policy may impose its minimum TTL, so the workflow still invalidates the entire small site and waits for completion. HTTPS verification checks actual bytes, not only status codes. CloudFront invalidation alone does not clear copies already cached on visitors' devices. See [AWS's explanation of invalidation and browser caches](https://docs.aws.amazon.com/AmazonCloudFront/latest/DeveloperGuide/Invalidation.html).
 
 This is not an atomic release: requests during an upload can briefly mix old HTML with new fixed-name assets. Keep file changes backward-compatible. Avoid manual uploads while an Actions deployment is running.
 
@@ -73,14 +73,16 @@ For an actual rollback, choose a verified earlier commit and its deployment reco
 
 For objects recorded with `prior.exists: false`, there is no prior version to restore. Rollback restores the old pages and references but leaves the newly added, unused public assets in S3. Removing those assets requires separately authorized cleanup; the deployment role has no delete permission. Post-deploy health checks remain automatic; rollback is deliberate, not an automatic destructive response to a transient failure.
 
-Example for one reviewed object (substitute a real recorded version; this is not a complete rollback):
+Example for one reviewed object. Every value below is a placeholder; replace it with the bucket, owner account, region, and recorded version for the deployment you are authorized to restore. This is not a complete rollback.
 
 ```bash
 aws s3api copy-object \
-  --bucket elliottbarnes.ca --key index.html \
-  --copy-source 'elliottbarnes.ca/index.html?versionId=RECORDED_VERSION_ID' \
-  --expected-bucket-owner 247222972014 \
-  --region ca-central-1
+  --bucket 'YOUR_WEBSITE_BUCKET' --key index.html \
+  --copy-source 'YOUR_WEBSITE_BUCKET/index.html?versionId=RECORDED_VERSION_ID' \
+  --expected-bucket-owner 'YOUR_AWS_ACCOUNT_ID' \
+  --region 'YOUR_AWS_REGION'
 ```
+
+Keep credentials and deployment records out of source control. AWS account IDs, bucket names, role ARNs, and distribution IDs identify resources; they do not grant access by themselves. The checked-in workflow, IAM policies, and deployment script intentionally bind deployment to this website. Their real identifiers must remain consistent with the configured AWS resources; illustrative commands and test fixtures should use placeholders.
 
 A failed deployment record indicates which objects were uploaded. Resolve the failure or restore the complete consistent prior set before treating the release as recovered. No automatic rollback or deletion is performed.

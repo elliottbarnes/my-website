@@ -1,0 +1,257 @@
+{
+  "AWSTemplateFormatVersion": "2010-09-09",
+  "Description": "Optional isolated live-demo lab. Local preparation only; generation defaults off.",
+  "Metadata": {
+    "DeploymentRegion": "us-west-2",
+    "Packaging": "scripts/package-live-demos.mjs embeds the reviewed backend source before any future deployment.",
+    "Retention": "Generated images are temporary, unversioned objects. DynamoDB uses default AWS-owned-key encryption. Stateful resources are retained on stack deletion."
+  },
+  "Parameters": {
+    "AllowedOrigin": {
+      "Type": "String",
+      "Default": "https://elliottbarnes.ca",
+      "AllowedPattern": "^https://[A-Za-z0-9.-]+(:[0-9]{1,5})?$",
+      "MaxLength": 253,
+      "Description": "One HTTPS browser origin without a trailing slash; not authentication."
+    },
+    "GenerationEnabled": {
+      "Type": "String",
+      "Default": "false",
+      "AllowedValues": ["false", "true"],
+      "Description": "Explicit opt-in required for billed model requests."
+    },
+    "PublicDemoAccess": {
+      "Type": "String",
+      "Default": "false",
+      "AllowedValues": ["false", "true"],
+      "Description": "False requires AWS IAM signed requests. Public browser access needs a separate explicit approval."
+    },
+    "IPHashSecret": {
+      "Type": "String",
+      "NoEcho": true,
+      "MinLength": 32,
+      "MaxLength": 128,
+      "AllowedPattern": "^[A-Za-z0-9_-]{32,128}$",
+      "Description": "Random secret for rotating daily IP hashes. Supply securely; never commit it."
+    }
+  },
+  "Mappings": {
+    "SupportedRegion": {
+      "us-west-2": { "ImageModel": "stability.stable-image-core-v1:1" }
+    }
+  },
+  "Conditions": {
+    "PublicRoutesEnabled": { "Fn::Equals": [{ "Ref": "PublicDemoAccess" }, "true"] }
+  },
+  "Resources": {
+    "Images": {
+      "Type": "AWS::S3::Bucket",
+      "DeletionPolicy": "Retain",
+      "UpdateReplacePolicy": "Retain",
+      "Properties": {
+        "PublicAccessBlockConfiguration": {
+          "BlockPublicAcls": true,
+          "IgnorePublicAcls": true,
+          "BlockPublicPolicy": true,
+          "RestrictPublicBuckets": true
+        },
+        "OwnershipControls": { "Rules": [{ "ObjectOwnership": "BucketOwnerEnforced" }] },
+        "BucketEncryption": {
+          "ServerSideEncryptionConfiguration": [{ "ServerSideEncryptionByDefault": { "SSEAlgorithm": "AES256" } }]
+        },
+        "LifecycleConfiguration": {
+          "Rules": [{ "Id": "ExpireGeneratedImages", "Status": "Enabled", "Prefix": "generated/", "ExpirationInDays": 1 }]
+        }
+      }
+    },
+    "ImagesPolicy": {
+      "Type": "AWS::S3::BucketPolicy",
+      "Properties": {
+        "Bucket": { "Ref": "Images" },
+        "PolicyDocument": {
+          "Version": "2012-10-17",
+          "Statement": [{
+            "Sid": "RequireTLS",
+            "Effect": "Deny",
+            "Principal": "*",
+            "Action": "s3:*",
+            "Resource": [{ "Fn::GetAtt": ["Images", "Arn"] }, { "Fn::Sub": "${Images.Arn}/*" }],
+            "Condition": { "Bool": { "aws:SecureTransport": "false" } }
+          }]
+        }
+      }
+    },
+    "Jobs": {
+      "Type": "AWS::DynamoDB::Table",
+      "DeletionPolicy": "Retain",
+      "UpdateReplacePolicy": "Retain",
+      "Properties": {
+        "BillingMode": "PAY_PER_REQUEST",
+        "AttributeDefinitions": [{ "AttributeName": "pk", "AttributeType": "S" }],
+        "KeySchema": [{ "AttributeName": "pk", "KeyType": "HASH" }],
+        "TimeToLiveSpecification": { "AttributeName": "expiresAt", "Enabled": true },
+        "OnDemandThroughput": { "MaxReadRequestUnits": 20, "MaxWriteRequestUnits": 20 }
+      }
+    },
+    "ApiLogs": {
+      "Type": "AWS::Logs::LogGroup",
+      "Properties": { "LogGroupName": { "Fn::Sub": "/aws/lambda/${AWS::StackName}-api" }, "RetentionInDays": 3 }
+    },
+    "WorkerLogs": {
+      "Type": "AWS::Logs::LogGroup",
+      "Properties": { "LogGroupName": { "Fn::Sub": "/aws/lambda/${AWS::StackName}-worker" }, "RetentionInDays": 3 }
+    },
+    "WorkerRole": {
+      "Type": "AWS::IAM::Role",
+      "Properties": {
+        "AssumeRolePolicyDocument": {
+          "Version": "2012-10-17",
+          "Statement": [{ "Effect": "Allow", "Principal": { "Service": "lambda.amazonaws.com" }, "Action": "sts:AssumeRole" }]
+        },
+        "Policies": [{
+          "PolicyName": "ImageWorker",
+          "PolicyDocument": {
+            "Version": "2012-10-17",
+            "Statement": [
+              { "Sid": "ClaimAndCompleteJobs", "Effect": "Allow", "Action": ["dynamodb:UpdateItem"], "Resource": { "Fn::GetAtt": ["Jobs", "Arn"] } },
+              { "Sid": "WriteGeneratedImages", "Effect": "Allow", "Action": ["s3:PutObject"], "Resource": { "Fn::Sub": "${Images.Arn}/generated/*" } },
+              { "Sid": "GenerateWithCoreOnly", "Effect": "Allow", "Action": ["bedrock:InvokeModel"], "Resource": { "Fn::Sub": "arn:${AWS::Partition}:bedrock:us-west-2::foundation-model/stability.stable-image-core-v1:1" } },
+              { "Sid": "WriteOwnLogs", "Effect": "Allow", "Action": ["logs:CreateLogStream", "logs:PutLogEvents"], "Resource": { "Fn::Sub": "arn:${AWS::Partition}:logs:${AWS::Region}:${AWS::AccountId}:log-group:${WorkerLogs}:log-stream:*" } }
+            ]
+          }
+        }]
+      }
+    },
+    "WorkerFunction": {
+      "Type": "AWS::Lambda::Function",
+      "Properties": {
+        "Runtime": "python3.13",
+        "Architectures": ["arm64"],
+        "Handler": "index.worker_handler",
+        "MemorySize": 512,
+        "Timeout": 120,
+        "ReservedConcurrentExecutions": 2,
+        "Role": { "Fn::GetAtt": ["WorkerRole", "Arn"] },
+        "Code": { "ZipFile": "raise RuntimeError('Package the live-demo backend before deployment')\n" },
+        "LoggingConfig": { "LogGroup": { "Ref": "WorkerLogs" }, "LogFormat": "JSON", "ApplicationLogLevel": "WARN", "SystemLogLevel": "WARN" },
+        "Environment": { "Variables": {
+          "GENERATION_ENABLED": { "Ref": "GenerationEnabled" },
+          "ALLOWED_ORIGIN": { "Ref": "AllowedOrigin" },
+          "IP_HASH_SECRET": { "Ref": "IPHashSecret" },
+          "MONTHLY_IMAGES": "75",
+          "DAILY_IMAGES": "5",
+          "IP_DAILY_IMAGES": "3",
+          "MODEL_ID": { "Fn::FindInMap": ["SupportedRegion", { "Ref": "AWS::Region" }, "ImageModel"] },
+          "TABLE_NAME": { "Ref": "Jobs" },
+          "IMAGE_BUCKET": { "Ref": "Images" }
+        } }
+      }
+    },
+    "WorkerInvocation": {
+      "Type": "AWS::Lambda::EventInvokeConfig",
+      "Properties": { "FunctionName": { "Ref": "WorkerFunction" }, "Qualifier": "$LATEST", "MaximumEventAgeInSeconds": 300, "MaximumRetryAttempts": 0 }
+    },
+    "ApiRole": {
+      "Type": "AWS::IAM::Role",
+      "Properties": {
+        "AssumeRolePolicyDocument": {
+          "Version": "2012-10-17",
+          "Statement": [{ "Effect": "Allow", "Principal": { "Service": "lambda.amazonaws.com" }, "Action": "sts:AssumeRole" }]
+        },
+        "Policies": [{
+          "PolicyName": "DemoApi",
+          "PolicyDocument": {
+            "Version": "2012-10-17",
+            "Statement": [
+              { "Sid": "ReadJobStatus", "Effect": "Allow", "Action": ["dynamodb:GetItem"], "Resource": { "Fn::GetAtt": ["Jobs", "Arn"] } },
+              { "Sid": "ReserveAttemptsAtomically", "Effect": "Allow", "Action": ["dynamodb:PutItem", "dynamodb:UpdateItem"], "Resource": { "Fn::GetAtt": ["Jobs", "Arn"] }, "Condition": { "ForAnyValue:StringEquals": { "dynamodb:EnclosingOperation": ["TransactWriteItems"] } } },
+              { "Sid": "SignGeneratedImageReads", "Effect": "Allow", "Action": ["s3:GetObject"], "Resource": { "Fn::Sub": "${Images.Arn}/generated/*" } },
+              { "Sid": "DispatchOneWorker", "Effect": "Allow", "Action": ["lambda:InvokeFunction"], "Resource": { "Fn::GetAtt": ["WorkerFunction", "Arn"] } },
+              { "Sid": "WriteOwnLogs", "Effect": "Allow", "Action": ["logs:CreateLogStream", "logs:PutLogEvents"], "Resource": { "Fn::Sub": "arn:${AWS::Partition}:logs:${AWS::Region}:${AWS::AccountId}:log-group:${ApiLogs}:log-stream:*" } }
+            ]
+          }
+        }]
+      }
+    },
+    "ApiFunction": {
+      "Type": "AWS::Lambda::Function",
+      "DependsOn": ["WorkerInvocation"],
+      "Properties": {
+        "Runtime": "python3.13",
+        "Architectures": ["arm64"],
+        "Handler": "index.api_handler",
+        "MemorySize": 256,
+        "Timeout": 15,
+        "ReservedConcurrentExecutions": 2,
+        "Role": { "Fn::GetAtt": ["ApiRole", "Arn"] },
+        "Code": { "ZipFile": "raise RuntimeError('Package the live-demo backend before deployment')\n" },
+        "LoggingConfig": { "LogGroup": { "Ref": "ApiLogs" }, "LogFormat": "JSON", "ApplicationLogLevel": "WARN", "SystemLogLevel": "WARN" },
+        "Environment": { "Variables": {
+          "GENERATION_ENABLED": { "Ref": "GenerationEnabled" },
+          "ALLOWED_ORIGIN": { "Ref": "AllowedOrigin" },
+          "IP_HASH_SECRET": { "Ref": "IPHashSecret" },
+          "MONTHLY_IMAGES": "75",
+          "DAILY_IMAGES": "5",
+          "IP_DAILY_IMAGES": "3",
+          "MODEL_ID": { "Fn::FindInMap": ["SupportedRegion", { "Ref": "AWS::Region" }, "ImageModel"] },
+          "TABLE_NAME": { "Ref": "Jobs" },
+          "IMAGE_BUCKET": { "Ref": "Images" },
+          "WORKER_FUNCTION_NAME": { "Ref": "WorkerFunction" }
+        } }
+      }
+    },
+    "HttpApi": {
+      "Type": "AWS::ApiGatewayV2::Api",
+      "Properties": {
+        "Name": { "Fn::Sub": "${AWS::StackName}-api" },
+        "ProtocolType": "HTTP",
+        "CorsConfiguration": { "AllowOrigins": [{ "Ref": "AllowedOrigin" }], "AllowMethods": ["GET", "POST", "OPTIONS"], "AllowHeaders": ["content-type"], "AllowCredentials": false, "MaxAge": 300 }
+      }
+    },
+    "ApiIntegration": {
+      "Type": "AWS::ApiGatewayV2::Integration",
+      "Properties": { "ApiId": { "Ref": "HttpApi" }, "IntegrationType": "AWS_PROXY", "IntegrationUri": { "Fn::GetAtt": ["ApiFunction", "Arn"] }, "PayloadFormatVersion": "2.0", "TimeoutInMillis": 16000 }
+    },
+    "HealthRoute": {
+      "Type": "AWS::ApiGatewayV2::Route",
+      "Properties": { "ApiId": { "Ref": "HttpApi" }, "RouteKey": "GET /health", "AuthorizationType": { "Fn::If": ["PublicRoutesEnabled", "NONE", "AWS_IAM"] }, "Target": { "Fn::Sub": "integrations/${ApiIntegration}" } }
+    },
+    "GenerateRoute": {
+      "Type": "AWS::ApiGatewayV2::Route",
+      "Properties": { "ApiId": { "Ref": "HttpApi" }, "RouteKey": "POST /generations", "AuthorizationType": { "Fn::If": ["PublicRoutesEnabled", "NONE", "AWS_IAM"] }, "Target": { "Fn::Sub": "integrations/${ApiIntegration}" } }
+    },
+    "StatusRoute": {
+      "Type": "AWS::ApiGatewayV2::Route",
+      "Properties": { "ApiId": { "Ref": "HttpApi" }, "RouteKey": "GET /generations/{jobId}", "AuthorizationType": { "Fn::If": ["PublicRoutesEnabled", "NONE", "AWS_IAM"] }, "Target": { "Fn::Sub": "integrations/${ApiIntegration}" } }
+    },
+    "HealthPermission": {
+      "Type": "AWS::Lambda::Permission",
+      "Properties": { "FunctionName": { "Ref": "ApiFunction" }, "Action": "lambda:InvokeFunction", "Principal": "apigateway.amazonaws.com", "SourceAccount": { "Ref": "AWS::AccountId" }, "SourceArn": { "Fn::Sub": "arn:${AWS::Partition}:execute-api:${AWS::Region}:${AWS::AccountId}:${HttpApi}/$default/GET/health" } }
+    },
+    "GeneratePermission": {
+      "Type": "AWS::Lambda::Permission",
+      "Properties": { "FunctionName": { "Ref": "ApiFunction" }, "Action": "lambda:InvokeFunction", "Principal": "apigateway.amazonaws.com", "SourceAccount": { "Ref": "AWS::AccountId" }, "SourceArn": { "Fn::Sub": "arn:${AWS::Partition}:execute-api:${AWS::Region}:${AWS::AccountId}:${HttpApi}/$default/POST/generations" } }
+    },
+    "StatusPermission": {
+      "Type": "AWS::Lambda::Permission",
+      "Properties": { "FunctionName": { "Ref": "ApiFunction" }, "Action": "lambda:InvokeFunction", "Principal": "apigateway.amazonaws.com", "SourceAccount": { "Ref": "AWS::AccountId" }, "SourceArn": { "Fn::Sub": "arn:${AWS::Partition}:execute-api:${AWS::Region}:${AWS::AccountId}:${HttpApi}/$default/GET/generations/*" } }
+    },
+    "ApiStage": {
+      "Type": "AWS::ApiGatewayV2::Stage",
+      "DependsOn": ["HealthRoute", "GenerateRoute", "StatusRoute", "HealthPermission", "GeneratePermission", "StatusPermission"],
+      "Properties": {
+        "ApiId": { "Ref": "HttpApi" },
+        "StageName": "$default",
+        "AutoDeploy": true,
+        "DefaultRouteSettings": { "ThrottlingRateLimit": 1, "ThrottlingBurstLimit": 3, "DetailedMetricsEnabled": false },
+        "RouteSettings": { "POST /generations": { "ThrottlingRateLimit": 0.1, "ThrottlingBurstLimit": 1, "DetailedMetricsEnabled": false } }
+      }
+    }
+  },
+  "Outputs": {
+    "ApiUrl": { "Description": "Optional demo API base URL; keep out of production until separately approved.", "Value": { "Fn::GetAtt": ["HttpApi", "ApiEndpoint"] } },
+    "WorkerFunctionName": { "Description": "Worker name for a separately approved emergency concurrency stop.", "Value": { "Ref": "WorkerFunction" } },
+    "JobsTableName": { "Description": "Retained ephemeral jobs and attempt counters table.", "Value": { "Ref": "Jobs" } },
+    "ImageBucketName": { "Description": "Retained private bucket; generated objects expire by lifecycle.", "Value": { "Ref": "Images" } }
+  }
+}

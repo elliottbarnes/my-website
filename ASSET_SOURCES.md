@@ -55,3 +55,7 @@ COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER
 IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
 CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 ```
+
+## Prism illustrative gallery
+
+Three original illustrations were generated for the browser demo using OpenAI image generation, then exported as 512×512 JPEGs. See `assets/prism/SOURCES.md` for prompts and descriptions. They are illustrative samples, not recorded outputs of Prism Studio; their numeric IDs are not reproducible generation seeds. PNG masters and provenance are excluded from the publication allowlist.

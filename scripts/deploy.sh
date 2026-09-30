@@ -31,12 +31,13 @@ git diff --quiet "$commit_sha" -- || {
 
 # The verifier checks exact membership, regular files, links and source-byte equality.
 verified="$(node scripts/verify-site.mjs "$artifact_dir" --source "$repo_root" --json)"
-jq -e '.files == 21 and (.sha256 | length == 21)' <<<"$verified" >/dev/null
+file_count="$(node --input-type=module -e 'import { PUBLIC_FILES } from "./scripts/public-files.mjs"; console.log(PUBLIC_FILES.length)')"
+jq -e --argjson count "$file_count" '.files == $count and (.sha256 | length == $count)' <<<"$verified" >/dev/null
 public_files="$(node --input-type=module -e '
   import { PUBLIC_FILES, contentType } from "./scripts/public-files.mjs";
   console.log(JSON.stringify(PUBLIC_FILES.map(path => ({path, content_type: contentType(path)}))));
 ')"
-jq -e 'length == 21 and ([.[].path] | unique | length == 21)
+jq -e --argjson count "$file_count" 'length == $count and ([.[].path] | unique | length == $count)
   and all(.[]; (.path | test("^[a-zA-Z0-9_./-]+$"))
     and (.path | startswith("/") | not)
     and (.path | split("/") | all(. != ".." and . != "." and . != ""))
@@ -117,7 +118,7 @@ while IFS= read -r key; do
   sha256="$(jq -r --arg key "$key" '.objects[] | select(.key==$key) | .sha256' "$record")"
   checksum="$(node -e 'process.stdout.write(Buffer.from(process.argv[1],"hex").toString("base64"))' "$sha256")"
   cache_control="public,max-age=300,must-revalidate"
-  if [[ "$key" == "index.html" || "$key" == "404.html" || "$key" == "styles.css" || "$key" == "script.js" ]]; then
+  if [[ "$key" == "index.html" || "$key" == "404.html" || "$key" == *.css || "$key" == *.js ]]; then
     cache_control="no-cache,max-age=0,must-revalidate"
   fi
   echo "Uploading $key"
@@ -158,10 +159,10 @@ mv "$record.tmp" "$record"
 stage="verifying"
 node scripts/verify-live.mjs "$artifact_dir" --json > "$record_dir/live.json"
 jq -e --slurpfile original "$record" \
-  '.files == 21 and .sha256 == $original[0].artifact.sha256' "$record_dir/live.json" >/dev/null
+  '.files == $original[0].artifact.files and .sha256 == $original[0].artifact.sha256' "$record_dir/live.json" >/dev/null
 jq --slurpfile live "$record_dir/live.json" \
   '.status="verified" | .live_verification=$live[0] | .finished_at=(now|todateiso8601)' \
   "$record" > "$record.tmp"
 mv "$record.tmp" "$record"
-echo "Verified https://elliottbarnes.ca/ against all 21 deployed files."
+echo "Verified https://elliottbarnes.ca/ against all $file_count deployed files."
 echo "Retain this nonpublic deployment record for rollback: $record"

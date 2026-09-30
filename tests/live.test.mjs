@@ -6,7 +6,7 @@ import { join } from "node:path";
 import { fileURLToPath } from "node:url";
 import test from "node:test";
 import { buildSite } from "../build.mjs";
-import { PUBLIC_FILES, contentType } from "../scripts/public-files.mjs";
+import { PUBLIC_FILES, VERSIONED_FILES, contentType } from "../scripts/public-files.mjs";
 import { verifyLive } from "../scripts/verify-live.mjs";
 
 const source = fileURLToPath(new URL("..", import.meta.url));
@@ -44,7 +44,7 @@ async function fixture(t) {
       const key = missing ? "404.html" : parsed.pathname === "/" ? "index.html" : parsed.pathname.slice(1);
       assert.ok(files.has(key), `Unexpected public file: ${url}`);
       if (parsed.search) {
-        assert.ok(["styles.css", "script.js"].includes(key), `Unexpected versioned asset: ${url}`);
+        assert.ok(VERSIONED_FILES.includes(key), `Unexpected versioned asset: ${url}`);
         assert.equal(parsed.search, `?v=${digest(files.get(key)).slice(0, 12)}`);
       }
       return new Response(files.get(key), {
@@ -56,18 +56,18 @@ async function fixture(t) {
   return { directory, files, requests, mockFetch };
 }
 
-test("live verification checks all 21 hashes, versioned assets, the apex, canonical redirect chains, and custom 404", async (t) => {
+test("live verification checks every published hash and versioned asset, the apex, canonical redirects, and custom 404", async (t) => {
   const { directory, files, requests, mockFetch } = await fixture(t);
   const result = await verifyLive(directory, { fetchImpl: mockFetch(), delayMs: 0 });
   assert.equal(result.origin, origin);
-  assert.equal(result.files, 21);
+  assert.equal(result.files, PUBLIC_FILES.length);
   assert.deepEqual(Object.keys(result.sha256).sort(), [...PUBLIC_FILES].sort());
   for (const [key, bytes] of files) {
     assert.equal(result.sha256[key], digest(bytes));
     assert.equal(requests.filter((url) => url === `${origin}/${key}`).length, 1);
   }
-  assert.equal(Object.keys(result.versioned_assets).length, 2);
-  for (const key of ["styles.css", "script.js"]) {
+  assert.equal(Object.keys(result.versioned_assets).length, VERSIONED_FILES.length);
+  for (const key of VERSIONED_FILES) {
     const path = `/${key}?v=${digest(files.get(key)).slice(0, 12)}`;
     assert.equal(result.versioned_assets[path], digest(files.get(key)));
     assert.equal(requests.filter((url) => url === origin + path).length, 1);
@@ -84,12 +84,12 @@ test("live verification checks all 21 hashes, versioned assets, the apex, canoni
   assert.equal(result.not_found.status, 404);
   assert.equal(result.not_found.sha256, digest(files.get("404.html")));
   assert.equal(requests.at(-1), origin + result.not_found.path);
-  assert.equal(requests.length, 32);
+  assert.equal(requests.length, PUBLIC_FILES.length + VERSIONED_FILES.length + 9);
   assert.ok(Number.isFinite(Date.parse(result.checked_at)));
 });
 
 test("live verification rejects stale bytes and wrong content types at the exact versioned asset URLs", async (t) => {
-  for (const key of ["styles.css", "script.js"]) {
+  for (const key of VERSIONED_FILES) {
     for (const failure of ["stale", "wrong-type", "missing-type"]) {
       const { directory, files, requests, mockFetch } = await fixture(t);
       const path = `/${key}?v=${digest(files.get(key)).slice(0, 12)}`;
@@ -148,7 +148,7 @@ test("live verification recovers from transient failures within three attempts",
     if (url === `${origin}/styles.css` && count < 3) throw new Error("temporary outage");
   });
   const result = await verifyLive(directory, { fetchImpl, delayMs: 0 });
-  assert.equal(result.files, 21);
+  assert.equal(result.files, PUBLIC_FILES.length);
   assert.equal(requests.filter((url) => url === `${origin}/styles.css`).length, 3);
 });
 
