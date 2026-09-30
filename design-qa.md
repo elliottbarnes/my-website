@@ -1,53 +1,42 @@
-# Playable portfolio review
+# Barnes controller refinement review
 
 final result: passed
 
-Scope: mobile-first interactive additions to the existing portfolio. This is a scoped design and functional review, not a full accessibility certification or a physical-phone certification. The production site has not been deployed.
+Scope: replace the portfolio controller with a reference-based three-grip render, retain the existing Dragon Ball palette, add an embossed Barnes badge, and preserve all controller actions. This is a scoped visual and interaction review, not physical-device or accessibility certification.
 
-## Design evidence
+## Evidence and normalization
 
-Source visual truth: current production homepage and project collection, captured before the changes. Local captures are in `.design/playable-review/` (ignored by Git and excluded from the public artifact).
+Source visual truth: `.design/barnes-controller/reference.jpg`, the user-supplied front-view controller photograph (1206×1272). Implementation: the local portfolio at `http://127.0.0.1:4187/`, captured in the Codex in-app browser.
 
-- `reference-desktop.jpg` and `implementation-desktop.jpg`: matching 1265×712 content captures from the 1280×720 browser viewport at default density; dark theme, textured controller, home at scroll position zero. Both were opened and inspected. The final implementation retains a visible focus ring from keyboard testing.
-- `mobile-batchline.jpg`, `mobile-prism.jpg`: 390×844 captures of functional project panels.
-- `320-terminal.jpg`, `320-reconcile.jpg`: 320×740 captures. All four project panels measured 287px client width with equal scroll width: no horizontal panel overflow.
-- `safari-desktop.jpg`: native macOS Safari, 1324×1320 window capture including browser chrome; compatibility evidence, not used for pixel comparison.
-- `tablet-light.jpg`: light-theme and reduced-motion review at a 768px CSS viewport. The browser panel scaled the capture to 725px; this capture was not used for pixel comparison.
+- `desktop-dark.png` and `desktop-light.png`: 1280×1000 CSS viewport and pixel captures, density 1.
+- `tablet-light.png`: 768×1000 viewport and pixel capture.
+- `mobile-light.png` and `mobile-focus.png`: 320×840 viewport and pixel captures; the hero is scrolled into view.
+- `mobile-dark.png`: 390×950 viewport and pixel capture, page at top.
+- `reference-comparison.png`: 980×540 comparison board, source left and browser-rendered controller right. Source and the 462×462 controller crop were independently scaled to fit 480×520 cells with aspect ratios preserved. Background and shell colors intentionally differ from the photograph.
+- `social.png`: self-contained sharing SVG inspected in the same browser. Embedded artwork renders without external dependencies.
 
-A few captures during viewport/zoom changes had mismatched states or scaling and were discarded as comparison evidence. The final desktop pair was recaptured at equal dimensions. No density normalization was applied to that pair.
+Full page composition and a focused controller comparison were both inspected. A provider screenshot-clip attempt returned the wrong region and was discarded; the final focused crop came from the saved full desktop screenshot using its measured controller bounds. An initial preview image 404 was resolved by restarting the server to reload its publication allowlist before visual comparison.
 
-### Fidelity surfaces
+## Findings
 
-- **Typography:** existing system sans and monospace retained. Professional role now appears above the main action. Controller instructions, cartridge action labels, and technology labels are larger. Dialog body text and 16px terminal input remain legible at phone widths.
-- **Spacing/layout:** console artwork and two-column desktop composition retained. Phone pages stack vertically; new dialogs use bounded viewport height, internal scrolling, and accessible close controls. Additional optional controls extend the hero intentionally. At 320px terminal suggestions wrap and the input retains its Run button.
-- **Colors/tokens:** additions inherit the original light/dark palette and focus colors. Project accents match their cartridge. Checks and game outcomes use text as well as color.
-- **Images:** existing controller/cartridge art retained. Three original 512×512 JPEG illustrations total about 232KB, load on demand with the Prism dialog, and include descriptive alternatives. Provenance is in `assets/prism/SOURCES.md`; samples and numeric labels are explicitly illustrative.
-- **Content:** four browser-only demos explain project ideas; none claims to run the actual model or production backend. Toolkit mappings were checked against the local project READMEs. Contact now explicitly says Message on LinkedIn.
+No remaining actionable P0/P1/P2 findings in this scope. The first valid source/implementation comparison passed without requiring a visual correction.
 
-Focused inspection used the 320px terminal, project close bar/sliders, gallery, game grid, and keyboard focus states; no unreadable full-page thumbnail was used to assess those details.
+- Typography: existing site text is unchanged. The oval badge reads Barnes with a capital B, molded into the shell where the reference has its manufacturer badge. A, B, START and C remain in the artwork; the controls retain accessible names.
+- Spacing/layout: raised upper center, broad shoulders, side grips, longer tapered center grip, diagonal A/B, recessed D-pad and circular stick well follow the reference. Square artwork scales without stretching. The accurate silhouette intentionally makes the desktop controller taller than the old simplified drawing.
+- Colors/tokens: orange/gold shell, navy details, ivory stick, red B/START, blue A, yellow C, and existing page colors are retained. The reference's gray shell and green B are intentionally not adopted.
+- Image fidelity: true transparency with no checkerboard; no visible background rectangle or distracting halo in either theme. The 1254×1254 source is encoded as a 217,842-byte WebP. The controller is raster artwork, not a code approximation. The short cable meets the upper edge, as in the reference.
+- Copy/content: only the requested Barnes badge and descriptive image alternative are new. Professional details, project content, navigation, and favicon remain intact.
 
-## Findings and fixes
+## Verification
 
-1. **P2, terminal focus:** asynchronous dialog close could steal focus from the destination heading. Fixed with intentional focus restoration; browser confirmed Projects heading focus after a terminal command. Regression test added.
-2. **P2, toolkit focus:** Clear selection hid the focused control. Fixed by returning focus to the previously selected tool; verified in the browser and tests.
-3. **P2, reduced motion:** Try it scrolling originally honored only system settings. It now honors manual reduced motion too. Manual control verified to set CSS scroll behavior to auto; system preference changes covered by tests.
-4. **P2, modal coordination:** closing one panel could focus behind another. Close handlers now preserve the active dialog; covered by regression tests.
-5. **P2, content accuracy:** removed an unsupported Batchline/PyTorch association after checking the project README.
-6. **P2, touch and exit controls:** expanded navigation/attribution targets and made the arcade header sticky so Close remains reachable during panel scrolling.
-7. **P2, no-JavaScript fallback:** toolkit buttons now start disabled and enhanced instructions stay hidden until initialization; project cards retain ordinary GitHub links.
+- All 126 existing JavaScript tests and 43 offline backend tests passed.
+- Build and source-byte verification passed for 31 public files; the image is the only new public asset. Live Demo Lab remains outside production.
+- At 320px, no horizontal overflow; all seven controller hit areas have at least 44px bounding dimensions and their center points hit the intended control. Circular hit shapes follow tightly spaced hardware controls; the separate Load/Back/Toolkit legend remains available.
+- Browser clicks verified previous/next selection, A opening the selected demo, B returning to the hero, C navigating to Toolkit, START switching themes, and the stick toggling its texture state.
+- Keyboard focus ring inspected at 320px; existing keyboard behavior and semantic hooks remain intact.
+- 390px, 768px and 1280px layouts inspected; both themes checked.
+- Final browser console inspection returned no warnings or errors.
 
-No remaining actionable P0/P1/P2 findings in the reviewed scope. Existing keyboard-first focus visuals and larger hero are intentional refinements, not drift.
+## Limits
 
-## Functional checks
-
-- Automated: 78 tests passed, covering queue conservation/overload, exact integer-cent reconciliation, sample evaluations, diff reconstruction, game turns/reset/score persistence, storage failures, terminal commands and focus, keyboard isolation, reduced motion, publication boundaries, cache versions, and HTTP preview behavior.
-- Build: 30 exact public files verified against source bytes; all 8 JS/CSS files require their content hash and scripts require defer. Source notes and PNG masters are excluded. New public files stay under the already-permitted assets prefix; no IAM changes.
-- In-app browser on macOS: all four project previews, queue step/run/pause/reset, failing/passing evaluation examples, cent mismatch/clean reconciliation, three gallery samples, game flip/mismatch/next-pair and B return, terminal unknown command and navigation, toolkit filtering/reset, native dialog focus containment, and controller keyboard opening.
-- Responsive checks: phone 390×844, narrow phone 320×740, tablet 768px, and desktop 1280px. No measured horizontal page or project-panel overflow at tested widths.
-- Themes/motion: dark and light inspected, manual reduced motion confirmed in browser; system preference and blocked storage paths tested with DOM/unit fixtures.
-- Native Safari smoke check: homepage and controller render; project modal opens; `/` opens terminal and a typed project command opens its demo. Safari mouse/keyboard coverage is narrower than the in-app browser suite.
-- Browser console: no warnings or errors in the final QA tab at inspection.
-
-## Limits and remaining device check
-
-Mobile checks used browser viewport sizes on the Mac, not a physical iPhone or Android device. Mobile Safari virtual-keyboard behavior, real touch gestures, VoiceOver/TalkBack, and an exhaustive contrast audit were not verified. Native Safari smoke checks do not represent a complete cross-browser test matrix. Live AWS publication and post-deployment checks remain separate from this local review.
+Physical iPhone/Android touch input and assistive technologies were not tested. Preview screenshots and the reference are local review evidence and excluded from the public artifact. Deployment and live byte verification are performed separately after this local gate.
