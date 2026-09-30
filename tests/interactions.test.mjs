@@ -4,11 +4,12 @@ import test from "node:test";
 import vm from "node:vm";
 
 const source = await readFile(new URL("../assets/interactive/interactions.js", import.meta.url), "utf8");
+const scriptSource = await readFile(new URL("../script.js", import.meta.url), "utf8");
 const markup = await readFile(new URL("../index.html", import.meta.url), "utf8");
 
 // A small DOM test double exercises event/focus behavior against the actual page markup.
 // It does not emulate layout, native Tab traversal, or screen readers; those require browser QA.
-function browser({ systemReduced = false } = {}) {
+function browser({ systemReduced = false, inlineDemos = false, loadScript = false } = {}) {
   let document;
   const pendingCloseEvents = [], scrolls = [], openedProjects = [];
   class Element {
@@ -122,9 +123,31 @@ function browser({ systemReduced = false } = {}) {
     .replace(/<!--[\s\S]*?-->|<script\b[\s\S]*?<\/script>|<svg\b[\s\S]*?<\/svg>/g, "");
   const mediaListeners = [];
   const media = { matches: systemReduced, addEventListener: (_, listener) => mediaListeners.push(listener) };
+  let inlineOpen = false, inlineOpener;
   const window = {
+    addEventListener() {},
     matchMedia: () => media,
-    portfolioPlayground: { open(id) { openedProjects.push(id); openMockDialog("project"); } },
+    portfolioPlayground: {
+      open(id) {
+        openedProjects.push(id);
+        if (!inlineDemos) { openMockDialog("project"); return; }
+        if (!inlineOpen) inlineOpener = document.activeElement;
+        inlineOpen = true;
+        document.querySelector('[data-console-home]').hidden = true;
+        const host = document.querySelector('[data-console-demo]'); host.hidden = false;
+        host.innerHTML = `<h2 id="mock-demo-title" tabindex="-1">${id}</h2>`;
+        host.querySelector('h2').focus();
+      },
+      close() {
+        if (!inlineOpen) return false;
+        inlineOpen = false;
+        document.querySelector('[data-console-home]').hidden = false;
+        document.querySelector('[data-console-demo]').hidden = true;
+        inlineOpener?.focus();
+        return true;
+      },
+      isOpen: () => inlineOpen,
+    },
     portfolioArcade: { open() { openMockDialog("arcade"); } },
   };
   function openMockDialog(name) {
@@ -133,10 +156,11 @@ function browser({ systemReduced = false } = {}) {
     dialog.append(button); document.body.append(dialog); dialog.showModal(); button.focus();
   }
   vm.runInNewContext(source, { document, window, HTMLElement: Element, Element });
+  if (loadScript) vm.runInNewContext(scriptSource, { document, window, HTMLElement: Element, Date, localStorage: { getItem: () => null, setItem() {} } });
   const query = selector => document.querySelector(selector);
   const terminal = query(".terminal-dialog"), input = terminal.querySelector("input");
   return {
-    document, query, terminal, input, scrolls, openedProjects,
+    document, query, terminal, input, scrolls, openedProjects, playground: window.portfolioPlayground,
     flush: () => { while (pendingCloseEvents.length) pendingCloseEvents.shift()(); },
     openTerminal: () => { const launcher = query("[data-terminal-open]"); launcher.focus(); launcher.click(); return launcher; },
     command: value => { input.value = value; terminal.querySelector("form").emit("submit"); },
@@ -254,4 +278,50 @@ test("system reduced motion is respected live and cannot be overridden by the to
   assert.equal(page.document.documentElement.dataset.motion, "full");
   toggle.click(); page.systemMotion(true); page.systemMotion(false);
   assert.equal(page.document.documentElement.dataset.motion, "reduced");
+});
+
+
+test("terminal project commands retain inline demo focus after the terminal close event", () => {
+  const page = browser({ inlineDemos: true });
+  page.openTerminal(); page.command("evaldeck"); page.flush();
+  assert.equal(page.terminal.open, false);
+  assert.equal(page.document.querySelectorAll('dialog[open]').length, 0);
+  assert.equal(page.document.activeElement, page.query('#mock-demo-title'));
+  assert.equal(page.query('[data-console-home]').hidden, true);
+  assert.equal(page.query('[data-feature-source]').getAttribute('href'), 'https://github.com/elliottbarnes/evaldeck');
+});
+
+test("numeric navigation closes inline demos and focuses the visible destination", () => {
+  for (const [key, selector] of [['1', '#work-title'], ['2', '#about'], ['3', '#contact-title']]) {
+    const page = browser({ inlineDemos: true, loadScript: true });
+    page.query('.demo-launch').click();
+    assert.equal(page.playground.isOpen(), true);
+    assert.equal(page.key(key).defaultPrevented, true);
+    assert.equal(page.playground.isOpen(), false);
+    assert.equal(page.query('[data-console-home]').hidden, false);
+    assert.equal(page.document.activeElement, page.query(selector));
+    assert.equal(page.scrolls.at(-1).behavior, 'smooth');
+  }
+  const reduced = browser({ inlineDemos: true, loadScript: true, systemReduced: true });
+  reduced.query('.demo-launch').click(); reduced.key('1');
+  assert.equal(reduced.scrolls.at(-1).behavior, 'auto');
+});
+
+test("every selected project keeps its source link aligned with the demo", () => {
+  const page = browser({ inlineDemos: true });
+  for (const card of page.document.querySelectorAll('[data-project]')) {
+    card.click();
+    assert.equal(page.playground.isOpen(), false);
+    assert.equal(page.query('[data-feature-source]').getAttribute('href'), `https://github.com/elliottbarnes/${card.dataset.project}`);
+    page.query('.demo-launch').click();
+    assert.equal(page.openedProjects.at(-1), card.dataset.project);
+    page.playground.close();
+  }
+});
+
+test("all four project sources remain reachable without JavaScript", () => {
+  const fallback = markup.match(/<noscript>([\s\S]*?)<\/noscript>/)?.[1];
+  assert.ok(fallback, 'A source-link fallback must be present');
+  const links = [...fallback.matchAll(/href="([^"]+)"/g)].map(match => match[1]);
+  assert.deepEqual(links, ['batchline', 'evaldeck', 'reconcile-kit', 'prism-studio'].map(id => `https://github.com/elliottbarnes/${id}`));
 });

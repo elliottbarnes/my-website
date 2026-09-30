@@ -2,9 +2,11 @@
 
 ## Portfolio artwork
 
-The current controller is `assets/barnes-controller.webp`, generated with the built-in Image Gen tool as a compact SNES-style gamepad. The earlier Barnes controller supplied the material and palette reference; the compact version retains the orange/navy palette and embossed “Barnes” badge. WebP encoding preserves transparency; the same image is embedded in `assets/social-card.svg` so sharing artwork is self-contained. The prior vector controller is retained in Git history. Cartridge styling and `assets/favicon.svg` remain original portfolio artwork.
+The current homepage housing is `assets/barnes-handheld.webp`, generated with the built-in Image Gen tool from the user-selected **Option 1: Barnes handheld console** concept. It preserves the orange molded shell, navy D-pad and screen bezel, blue A button, red B button, and embossed “Barnes” badge. The dark screen is blank in the artwork: its text, project choices, demos, and navigation are semantic HTML. WebP encoding preserves the generated transparency. [Handheld provenance](assets/BARNES_HANDHELD.md) records the exact prompts, encoding, and screen/control bounds.
 
-These illustrations take inspiration from classic Nintendo-era hardware; they do not use official Nintendo logos, game artwork, or product photography. The playful `ellitendo` and `ellitendo 64` markings identify this personal portfolio using original typography, not an official product or Nintendo wordmark. Nintendo names remain the property of their respective owners; no affiliation or endorsement is implied. The social card is self-contained SVG artwork and requires no external fonts or image assets.
+The earlier compact SNES-style gamepad remains at `assets/barnes-controller.webp` for the social-card artwork. The same WebP bytes are embedded in `assets/social-card.svg`, making the sharing image self-contained. It is no longer the homepage navigation device. [Compact-controller provenance](assets/BARNES_CONTROLLER.md) describes that earlier design. Earlier controller versions remain in Git history; `assets/favicon.svg` remains original portfolio artwork.
+
+These illustrations take inspiration from classic game hardware and use original Barnes branding. They do not include official Nintendo logos, game artwork, or product photography. No affiliation or endorsement is implied. The social card requires no external fonts or image assets.
 
 ## Dragon Ball favicon
 

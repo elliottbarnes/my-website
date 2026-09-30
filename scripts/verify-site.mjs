@@ -126,7 +126,7 @@ export async function verifySite(directory, { sourceRoot } = {}) {
   const themeToggle = index.filter((tag) => tag.attrs.has("data-theme-toggle"));
   const themeLabel = index.filter((tag) => tag.attrs.has("data-theme-label"));
   const root = index.find((tag) => tag.name === "html");
-  if (themeToggle.length !== 1 || themeToggle[0].name !== "button" || themeToggle[0].attrs.get("type") !== "button" || themeToggle[0].attrs.get("aria-pressed") !== "false" || themeToggle[0].attrs.get("aria-label") !== "SELECT: Dark mode" || themeLabel.length !== 1 || root?.attrs.get("data-theme") !== "light") {
+  if (themeToggle.length !== 1 || themeToggle[0].name !== "button" || themeToggle[0].attrs.get("type") !== "button" || themeToggle[0].attrs.get("aria-pressed") !== "false" || themeToggle[0].attrs.get("aria-label") !== "Dark mode" || themeLabel.length !== 1 || root?.attrs.get("data-theme") !== "light") {
     throw new Error("index.html: theme must start light with one labeled toggle and label");
   }
   for (const file of VERSIONED_FILES.filter((file) => file.endsWith(".css"))) {

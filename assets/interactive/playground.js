@@ -135,6 +135,9 @@
     "reconcile-kit": { number: "03", name: "Reconcile Kit", category: "DATA TOOLING", color: "coral", description: "A reconciliation tool for finding missing records, duplicates, and exact-money mismatches in exported data.", detail: "Introduce a few problems into a synthetic export, then check it against the ledger.", render: renderReconcile },
     "prism-studio": { number: "04", name: "Prism Studio", category: "IMAGE WORKBENCH", color: "green", description: "A local image workbench that keeps the seed and settings alongside each experiment so good results can be revisited.", detail: "Explore a small illustrative seed gallery and see what a saved experiment looks like.", render: renderPrism },
   };
+  const inlineHost = doc.querySelector("[data-console-demo]");
+  const consoleHome = doc.querySelector("[data-console-home]");
+  const inline = Boolean(inlineHost && consoleHome);
   let dialog;
   let cleanupDemo = () => {};
   let lastTrigger;
@@ -162,56 +165,82 @@
     cleanupDemo = () => {};
     activeProject = null;
     doc.body.classList.remove("playground-open");
-    if (lastTrigger?.isConnected && !doc.querySelector("dialog[open]")) lastTrigger.focus({ preventScroll: true });
     global.dispatchEvent(new CustomEvent("portfolio:playground-close"));
+    if (lastTrigger?.isConnected && !doc.querySelector("dialog[open]")) lastTrigger.focus({ preventScroll: !inline });
   }
 
   function close() {
-    if (!dialog?.open) return false;
-    dialog.close();
-    finishClose();
+    if (!activeProject) return false;
+    if (inline) {
+      inlineHost.hidden = true;
+      consoleHome.hidden = false;
+      finishClose();
+      inlineHost.replaceChildren();
+    } else {
+      if (!dialog?.open) return false;
+      dialog.close();
+      finishClose();
+    }
     return true;
   }
 
   function open(id, trigger = doc.activeElement) {
+    if (!Object.hasOwn(projects, id)) return false;
     const project = projects[id];
-    if (!project) return false;
-    ensureDialog();
-    if (!dialog.open) lastTrigger = trigger;
+    if (!inline) ensureDialog();
+    if (!activeProject) lastTrigger = trigger;
     cleanupDemo();
     activeProject = id;
-    dialog.dataset.color = project.color;
-    dialog.innerHTML = `
-      <div class="playground-topbar"><span><span class="playground-power" aria-hidden="true"></span> CARTRIDGE ${project.number}</span><button class="playground-close" type="button" aria-label="Close ${project.name} preview" autofocus>Close <span aria-hidden="true">×</span></button></div>
+    const host = inline ? inlineHost : dialog;
+    if (inline) {
+      host.classList.add("playground-inline");
+      host.hidden = false;
+      consoleHome.hidden = true;
+    }
+    host.dataset.color = project.color;
+    host.innerHTML = `
+      <div class="playground-topbar"><span><span class="playground-power" aria-hidden="true"></span> ${inline ? "DEMO" : "CARTRIDGE"} ${project.number}</span><button class="playground-close" type="button" aria-label="${inline ? "Back to projects" : `Close ${project.name} preview`}"${inline ? "" : " autofocus"}>${inline ? '<span aria-hidden="true">←</span> Back to projects' : 'Close <span aria-hidden="true">×</span>'}</button></div>
       <div class="playground-content">
-        <header class="playground-intro"><p class="playground-eyebrow">${project.category}</p><h2 id="playground-title">${project.name}</h2><p id="playground-description">${project.description}</p><p class="playground-detail">${project.detail}</p>
+        <header class="playground-intro"><p class="playground-eyebrow">${project.category}</p><h2 id="playground-title" tabindex="-1">${project.name}</h2><p id="playground-description">${project.description}</p><p class="playground-detail">${project.detail}</p>
           <div class="playground-links"><a class="demo-button demo-button-primary" href="#playground-demo" data-try-demo>Try it <span aria-hidden="true">↓</span></a><a class="demo-button" href="https://github.com/elliottbarnes/${id}" target="_blank" rel="noopener">View source <span aria-hidden="true">↗</span><span class="visually-hidden"> (opens in a new tab)</span></a></div>
         </header>
         <section class="playground-screen" id="playground-demo" aria-label="${project.name} interactive demo" tabindex="-1"></section>
         <p class="playground-footnote">A small browser demo of the idea. Runs on your device with sample data.</p>
       </div>`;
-    dialog.querySelector(".playground-close").addEventListener("click", close);
-    dialog.querySelector("[data-try-demo]").addEventListener("click", (event) => {
+    host.querySelector(".playground-close").addEventListener("click", close);
+    host.querySelector("[data-try-demo]").addEventListener("click", (event) => {
       event.preventDefault();
-      const screen = dialog.querySelector(".playground-screen");
+      const screen = host.querySelector(".playground-screen");
       const reduceMotion = doc.documentElement.dataset.motion === "reduced" || global.matchMedia("(prefers-reduced-motion: reduce)").matches;
       screen.scrollIntoView({ behavior: reduceMotion ? "auto" : "smooth", block: "start" });
       screen.querySelector("input, select, button")?.focus({ preventScroll: true });
     });
-    cleanupDemo = project.render(dialog.querySelector(".playground-screen")) || (() => {});
-    doc.body.classList.add("playground-open");
-    if (!dialog.open) dialog.showModal();
-    dialog.scrollTop = 0;
-    global.dispatchEvent(new CustomEvent("portfolio:playground-open", { detail: { id } }));
+    cleanupDemo = project.render(host.querySelector(".playground-screen")) || (() => {});
+    if (inline) {
+      global.dispatchEvent(new CustomEvent("portfolio:playground-open", { detail: { id } }));
+      host.scrollIntoView({ behavior: "auto", block: "start" });
+      host.querySelector("#playground-title").focus({ preventScroll: true });
+    } else {
+      doc.body.classList.add("playground-open");
+      if (!dialog.open) dialog.showModal();
+      dialog.scrollTop = 0;
+      global.dispatchEvent(new CustomEvent("portfolio:playground-open", { detail: { id } }));
+    }
     return true;
   }
 
   doc.addEventListener("click", (event) => {
     const card = event.target.closest?.(".project-card[data-project]");
-    if (!card || event.button !== 0 || event.metaKey || event.ctrlKey || event.shiftKey || event.altKey) return;
+    if (!card || card.classList.contains("project-choice") || event.button !== 0 || event.metaKey || event.ctrlKey || event.shiftKey || event.altKey) return;
     if (open(card.dataset.project, card)) event.preventDefault();
   });
-  global.portfolioPlayground = Object.freeze({ open, close, isOpen: () => Boolean(dialog?.open) });
+  doc.addEventListener("keydown", (event) => {
+    if (inline && activeProject && event.key === "Escape" && !event.defaultPrevented && !doc.querySelector("dialog[open]")) {
+      event.preventDefault();
+      close();
+    }
+  });
+  global.portfolioPlayground = Object.freeze({ open, close, isOpen: () => inline ? activeProject !== null : Boolean(dialog?.open) });
 
   function renderBatchline(root) {
     root.innerHTML = `

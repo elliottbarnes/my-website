@@ -25,7 +25,7 @@ const setTheme = (theme) => {
   const dark = theme === "dark";
   document.documentElement.dataset.theme = theme;
   themeToggle?.setAttribute("aria-pressed", String(dark));
-  themeToggle?.setAttribute("aria-label", "SELECT: Dark mode");
+  themeToggle?.setAttribute("aria-label", "Dark mode");
   themeColor?.setAttribute("content", dark ? "#0d1b35" : "#fff3dc");
 
   if (themeLabel) {
@@ -99,7 +99,7 @@ document.addEventListener("keydown", (event) => {
     target instanceof HTMLElement &&
     (target.isContentEditable || ["INPUT", "TEXTAREA", "SELECT"].includes(target.tagName));
 
-  if (document.querySelector("dialog[open]") || isTyping || event.altKey || event.ctrlKey || event.metaKey) {
+  if (event.defaultPrevented || event.repeat || document.querySelector("dialog[open]") || isTyping || event.altKey || event.ctrlKey || event.metaKey) {
     return;
   }
 
@@ -107,8 +107,6 @@ document.addEventListener("keydown", (event) => {
 
   if (matchingLink) {
     event.preventDefault();
-    document.querySelector(matchingLink.getAttribute("href"))?.scrollIntoView({
-      behavior: (window.matchMedia("(prefers-reduced-motion: reduce)").matches || document.documentElement.dataset.motion === "reduced") ? "auto" : "smooth",
-    });
+    matchingLink.click();
   }
 });
