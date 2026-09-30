@@ -173,19 +173,19 @@
   function command(raw) {
     const command = raw.trim().toLowerCase();
     if (!command) { output.textContent = 'Enter a command, or choose one above.'; return; }
-    const destinations = {projects:'work', about:'about', contact:'contact', toolkit:'toolkit'};
+    const destinations = {projects:'work', toolkit:'toolkit', contact:'contact'};
     if (Object.hasOwn(destinations, command)) { restoreTerminalFocus = false; terminal.close(); go(destinations[command]); return; }
     if (command === 'theme') {
       document.querySelector('[data-theme-toggle]').click();
       output.textContent = `Theme switched to ${document.documentElement.dataset.theme}.`; return;
     }
     if (command === 'arcade') { terminal.close(); window.portfolioArcade?.open(); return; }
-    if (command === 'help') { output.textContent = 'projects · about · contact · toolkit · theme · arcade · clear. You can also type a project name: batchline, evaldeck, reconcile-kit, prism-studio.'; return; }
+    if (command === 'help') { output.textContent = 'projects · toolkit · contact · theme · arcade · clear. You can also type a project name: batchline, evaldeck, reconcile-kit, prism-studio.'; return; }
     if (command === 'clear') { output.textContent = 'Terminal cleared. Ready for a command.'; return; }
     if (cards.some(card => card.dataset.project === command)) { restoreTerminalFocus = false; terminal.close(); openProject(command); return; }
     output.textContent = `Unknown command: “${raw.trim()}”. Try help or choose a suggestion.`;
   }
-  ['projects','about','contact','toolkit','theme','help'].forEach(name => {
+  ['projects','toolkit','contact','theme','help'].forEach(name => {
     const button = document.createElement('button'); button.type = 'button'; button.className = 'text-button'; button.textContent = name;
     button.addEventListener('click', () => command(name)); terminal.querySelector('.terminal-commands').append(button);
   });

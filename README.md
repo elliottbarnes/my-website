@@ -13,9 +13,9 @@ On smaller screens the housing becomes a compact orange frame around ordinary pa
 - **Reconcile Kit:** inspect synthetic records and find reconciliation mismatches using integer cents.
 - **Prism Studio:** explore three illustrative images. The sample IDs are navigation labels, not recorded generation seeds, and these are not outputs from the Prism app.
 
-The optional D-pad controls select a project; **A** opens its demo and **B** returns to projects. With focus in the console or project choices, arrow keys select a project and the A key opens it. B or Escape closes an inline demo. Number keys **1**, **2**, and **3** activate **Projects**, **About**, and **Contact**, respectively. Normal links, project buttons, and touch controls provide the same navigation.
+The optional D-pad controls select a project; **A** opens its demo and **B** returns to projects. With focus in the console or project choices, arrow keys select a project and the A key opens it. B or Escape closes an inline demo. Number keys **1**, **2**, and **3** activate **Projects**, **Toolkit**, and **Contact**, respectively. Normal links, project buttons, and touch controls provide the same navigation.
 
-The terminal opens with `/` or its visible button. Commands: `projects`, `about`, `contact`, `toolkit`, `theme`, `help`, `clear`, `arcade`, and each project slug. Escape closes a panel. The footer’s fifth cartridge opens Signal Match, a turn-based memory game with an optional device-local best score.
+The terminal opens with `/` or the button below the controller. Commands: `projects`, `toolkit`, `contact`, `theme`, `help`, `clear`, `arcade`, and each project slug. Escape closes a panel. The footer’s fifth cartridge opens Signal Match, a turn-based memory game with an optional device-local best score.
 
 The screen’s texture toggle adds scanlines, a phosphor glow, and a single gentle sweep when enabled. It sits beside the screen navigation and works inside project demos. The sweep is disabled with reduced motion. Labelled preferences below the main content control dark mode, sound, and motion. Sound starts off on every visit. Motion follows reduced-motion system settings and can be reduced manually. Theme and texture preferences are stored locally when available; blocked storage does not prevent use. There are no analytics, remote model calls, or new server dependencies.
 

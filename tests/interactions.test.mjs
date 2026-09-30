@@ -170,7 +170,7 @@ function browser({ systemReduced = false, inlineDemos = false, loadScript = fals
 }
 
 test("terminal destination commands keep destination focus after queued close events", () => {
-  for (const [command, target] of [["projects", "#work-title"], ["about", "#about"], ["contact", "#contact-title"], ["toolkit", "#toolkit-title"]]) {
+  for (const [command, target] of [["projects", "#work-title"], ["contact", "#contact-title"], ["toolkit", "#toolkit-title"]]) {
     const page = browser(); page.openTerminal(); page.command(command); page.flush();
     assert.equal(page.terminal.open, false);
     assert.equal(page.document.activeElement, page.query(target));
@@ -292,7 +292,7 @@ test("terminal project commands retain inline demo focus after the terminal clos
 });
 
 test("numeric navigation closes inline demos and focuses the visible destination", () => {
-  for (const [key, selector] of [['1', '#work-title'], ['2', '#about'], ['3', '#contact-title']]) {
+  for (const [key, selector] of [['1', '#work-title'], ['2', '#toolkit-title'], ['3', '#contact-title']]) {
     const page = browser({ inlineDemos: true, loadScript: true });
     page.query('.demo-launch').click();
     assert.equal(page.playground.isOpen(), true);
