@@ -15,7 +15,7 @@ On smaller screens the housing becomes a compact orange frame around ordinary pa
 
 The optional D-pad controls select a project; **A** opens its demo and **B** returns to projects. With focus in the console or project choices, arrow keys select a project and the A key opens it. B or Escape closes an inline demo. Number keys **1**, **2**, and **3** activate **Projects**, **Toolkit**, and **Contact**, respectively. Normal links, project buttons, and touch controls provide the same navigation.
 
-The terminal opens with `/` or the button below the controller. Commands: `projects`, `toolkit`, `contact`, `theme`, `help`, `clear`, `arcade`, and each project slug. Escape closes a panel. The footer’s fifth cartridge opens Signal Match, a turn-based memory game with an optional device-local best score.
+The terminal opens with `/` or the button below the controller. Commands: `projects`, `toolkit`, `contact`, `theme`, `help`, `clear`, `arcade`, and each project slug. Escape closes a panel. The footer’s fifth cartridge opens Dragon Ball trivia: five questions chosen from ten, shuffled answers, instant feedback, and a final score. Rounds have no timer. Play again starts a fresh shuffle; an optional device-local best score is kept separately from the retired matching game.
 
 The screen’s texture toggle adds scanlines, a phosphor glow, and a single gentle sweep when enabled. It sits beside the screen navigation and works inside project demos. The sweep is disabled with reduced motion. Labelled preferences below the main content control dark mode, sound, and motion. Sound starts off on every visit. Motion follows reduced-motion system settings and can be reduced manually. Theme and texture preferences are stored locally when available; blocked storage does not prevent use. There are no analytics, remote model calls, or new server dependencies.
 
@@ -80,3 +80,12 @@ Artwork by Musett.com, provided under CC BY-NC-ND 4.0 (non-commercial, attributi
 - `DEPLOYMENT.md`: hosting, deployment, and version-based recovery
 
 The deployable artifact is generated in `dist/`; project notes and infrastructure snapshots are intentionally excluded.
+
+## Trivia sources
+
+The original question wording uses facts checked against these official sources:
+
+- [Dragon Ball Official Site: Shenron](https://en.dragon-ball-official.com/news/01_626.html): the seven Dragon Balls.
+- [Toei Animation character summaries](https://www.toei-animation-usa.com/press-releases/pressrelease-08-31-22.pdf): Master Roshi’s Kamehameha, Vegeta, Gohan, Frieza, and Majin Buu.
+- [Dragon Ball Official Site: young Goku’s adventures](https://en.dragon-ball-official.com/news/01_2264.html): the four-star keepsake, Great Ape transformation, and Akira Toriyama.
+- [Dragon Ball Official Site: Porunga](https://en.dragon-ball-official.com/news/01_2809.html): the dragon summoned by the Namekian Dragon Balls.
