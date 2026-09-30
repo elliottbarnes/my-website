@@ -130,7 +130,7 @@ test("verification catches broken links, metadata, shortcuts, and initial contro
     ["index.html", (s) => s.replace('data-shortcut="2"', 'data-shortcut="1"'), /unique shortcuts/],
     ["index.html", (s) => s.replace(/<button\b[^>]*\bdata-fx-toggle\b[^>]*>/, (tag) => tag.replace('aria-pressed="false"', 'aria-pressed="true"')), /texture must start off/],
     ["index.html", (s) => s.replace(/<button\b[^>]*\bdata-theme-toggle\b[^>]*>/, (tag) => tag.replace('aria-pressed="false"', 'aria-pressed="true"')), /theme must start light/],
-    ["index.html", (s) => s.replace(/<button\b[^>]*\bdata-theme-toggle\b[^>]*>/, (tag) => tag.replace('aria-label="START: Dark mode"', 'aria-label=""')), /theme must start light/],
+    ["index.html", (s) => s.replace(/<button\b[^>]*\bdata-theme-toggle\b[^>]*>/, (tag) => tag.replace('aria-label="SELECT: Dark mode"', 'aria-label=""')), /theme must start light/],
     ["index.html", (s) => s.replace(/<button\b[^>]*\bdata-theme-toggle\b[^>]*>/, (tag) => tag.replace('type="button"', 'type="submit"')), /theme must start light/],
     ["index.html", (s) => s.replace('data-theme-label', 'data-missing-theme-label'), /theme must start light/],
     ["index.html", (s) => s.replace('data-theme="light"', 'data-theme="dark"'), /theme must start light/],

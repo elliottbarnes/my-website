@@ -89,7 +89,7 @@ function expectTheme(current, theme) {
   const dark = theme === "dark";
   assert.equal(current.root.dataset.theme, theme);
   assert.equal(current.themeAttrs["aria-pressed"], String(dark));
-  assert.equal(current.themeAttrs["aria-label"], "START: Dark mode");
+  assert.equal(current.themeAttrs["aria-label"], "SELECT: Dark mode");
   assert.equal(current.themeLabel.textContent, dark ? "Dark mode: on" : "Dark mode: off");
   assert.equal(current.state.themeColor, dark ? "#0d1b35" : "#fff3dc");
 }

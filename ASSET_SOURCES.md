@@ -2,9 +2,9 @@
 
 ## Portfolio artwork
 
-The current controller is `assets/barnes-controller.webp`, generated with the built-in Image Gen tool from the user-supplied controller reference. It preserves the reference proportions with the portfolio’s orange/navy palette and an embossed “Barnes” badge. WebP encoding preserves transparency; the same image is embedded in `assets/social-card.svg` so sharing artwork is self-contained. The prior vector controller is retained in Git history. Cartridge styling and `assets/favicon.svg` remain original portfolio artwork.
+The current controller is `assets/barnes-controller.webp`, generated with the built-in Image Gen tool as a compact SNES-style gamepad. The earlier Barnes controller supplied the material and palette reference; the compact version retains the orange/navy palette and embossed “Barnes” badge. WebP encoding preserves transparency; the same image is embedded in `assets/social-card.svg` so sharing artwork is self-contained. The prior vector controller is retained in Git history. Cartridge styling and `assets/favicon.svg` remain original portfolio artwork.
 
-These illustrations take inspiration from Nintendo 64-era hardware; they do not use official Nintendo logos, game artwork, or product photography. The playful `ellitendo` and `ellitendo 64` markings identify this personal portfolio using original typography, not an official product or Nintendo wordmark. Nintendo names remain the property of their respective owners; no affiliation or endorsement is implied. The social card is self-contained SVG artwork and requires no external fonts or image assets.
+These illustrations take inspiration from classic Nintendo-era hardware; they do not use official Nintendo logos, game artwork, or product photography. The playful `ellitendo` and `ellitendo 64` markings identify this personal portfolio using original typography, not an official product or Nintendo wordmark. Nintendo names remain the property of their respective owners; no affiliation or endorsement is implied. The social card is self-contained SVG artwork and requires no external fonts or image assets.
 
 ## Dragon Ball favicon
 
