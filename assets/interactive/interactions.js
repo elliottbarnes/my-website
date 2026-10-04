@@ -60,6 +60,7 @@
     document.querySelector('[data-feature-preview]').innerHTML = preview;
   }
   function select(index, {scroll = false, focus = false} = {}) {
+    const previous = selected;
     selected = (index + cards.length) % cards.length;
     cards.forEach((card, i) => {
       card.classList.toggle('is-selected', i === selected);
@@ -67,6 +68,12 @@
       if (card.classList.contains('project-choice')) card.setAttribute('aria-pressed', String(i === selected));
     });
     updateFeature();
+    if (previous !== selected && !reduced()) {
+      document.querySelector('.featured-project')?.animate?.([
+        { opacity: .75, transform: 'translateY(4px)' },
+        { opacity: 1, transform: 'translateY(0)' },
+      ], { duration: 160, easing: 'ease-out' });
+    }
     document.querySelector('[data-selection-status]').textContent = `0${selected + 1} / ${names[selected]} selected`;
     if (scroll) cards[selected].scrollIntoView({behavior: reduced() ? 'auto' : 'smooth', block: 'center'});
     if (focus) cards[selected].focus({preventScroll: true});
@@ -89,6 +96,7 @@
   }
   function openProject(id = cards[selected].dataset.project) {
     closeOthers();
+    window.portfolioArcade?.close?.();
     const index = cards.findIndex(card => card.dataset.project === id);
     if (index >= 0) select(index);
     window.portfolioPlayground?.open(id);
@@ -97,13 +105,17 @@
   document.querySelectorAll('[data-controller-open]').forEach(button => button.addEventListener('click', event => { event.preventDefault(); openProject(); }));
   const go = id => {
     closeOthers();
+    window.portfolioArcade?.close?.();
     window.portfolioPlayground?.close?.();
     const destination = document.getElementById(id);
     destination?.scrollIntoView({behavior: reduced() ? 'auto' : 'smooth', block: 'start'});
     const focusTarget = destination?.querySelector('h1, h2') ?? destination;
     if (focusTarget) { focusTarget.setAttribute('tabindex', '-1'); focusTarget.focus({preventScroll: true}); }
   };
-  const back = () => { if (!window.portfolioPlayground?.close?.()) go('work'); };
+  const back = () => {
+    if (window.portfolioArcade?.close?.()) return;
+    if (!window.portfolioPlayground?.close?.()) go('work');
+  };
   document.querySelectorAll('[data-controller-back]').forEach(button => button.addEventListener('click', event => { event.preventDefault(); back(); cue(); }));
   document.querySelectorAll('[data-shortcut]').forEach(link => link.addEventListener('click', event => {
     if (event.button !== 0 || event.metaKey || event.ctrlKey || event.shiftKey || event.altKey) return;
@@ -123,12 +135,21 @@
     Diffusers: ['Diffusers powers the image-generation pipelines in Prism Studio.', ['prism-studio']],
   };
   const toolButtons = [...document.querySelectorAll('[data-tool]')];
-  toolButtons.forEach(button => { button.disabled = false; });
+  toolButtons.forEach(button => {
+    button.disabled = false;
+    button.setAttribute('aria-controls', 'tool-detail');
+    button.setAttribute('aria-expanded', 'false');
+  });
   const toolHint = document.querySelector('[data-tool-hint]');
   if (toolHint) toolHint.textContent = 'Tap a tool to see where it fits.';
   function filterTool(tool) {
-    const [description, ids] = tools[tool] ?? ['Choose a tool to explore its role in these projects.', []];
-    toolButtons.forEach(button => button.setAttribute('aria-pressed', String(button.dataset.tool === tool)));
+    const [description, ids] = tools[tool] ?? ['', []];
+    document.querySelector('#tool-detail').hidden = !tool;
+    toolButtons.forEach(button => {
+      button.setAttribute('aria-pressed', String(button.dataset.tool === tool));
+      button.setAttribute('aria-expanded', String(button.dataset.tool === tool));
+    });
+    document.querySelector('[data-tool-status]').textContent = description;
     document.querySelector('[data-tool-description]').textContent = description;
     cards.forEach(card => card.classList.toggle('tool-match', ids.includes(card.dataset.project)));
     const targets = document.querySelector('[data-tool-projects]');
@@ -179,7 +200,7 @@
       document.querySelector('[data-theme-toggle]').click();
       output.textContent = `Theme switched to ${document.documentElement.dataset.theme}.`; return;
     }
-    if (command === 'arcade') { terminal.close(); window.portfolioArcade?.open(); return; }
+    if (command === 'arcade') { restoreTerminalFocus = false; terminal.close(); window.portfolioArcade?.open(terminalOpener); return; }
     if (command === 'help') { output.textContent = 'projects · toolkit · contact · theme · arcade · clear. You can also type a project name: batchline, evaldeck, reconcile-kit, prism-studio.'; return; }
     if (command === 'clear') { output.textContent = 'Terminal cleared. Ready for a command.'; return; }
     if (cards.some(card => card.dataset.project === command)) { restoreTerminalFocus = false; terminal.close(); openProject(command); return; }
@@ -197,9 +218,13 @@
     if (event.target.closest('[data-project]')) closeOthers();
   }, true);
   document.addEventListener('keydown', event => {
-    if (typing(event.target) || event.altKey || event.ctrlKey || event.metaKey || event.repeat) return;
+    if (event.defaultPrevented || typing(event.target) || event.altKey || event.ctrlKey || event.metaKey || event.repeat) return;
     if (document.querySelector('dialog[open]')) {
       if (event.key.toLowerCase() === 'b' && !terminal.open) { event.preventDefault(); closeOthers(); }
+      return;
+    }
+    if (window.portfolioArcade?.isOpen?.()) {
+      if (event.key.toLowerCase() === 'b' || event.key === 'Escape') { event.preventDefault(); back(); }
       return;
     }
     if (window.portfolioPlayground?.isOpen?.()) {
@@ -214,5 +239,5 @@
     } else if (inCollection && event.key.toLowerCase() === 'a') { event.preventDefault(); openProject(); }
     else if (inCollection && event.key.toLowerCase() === 'b') { event.preventDefault(); back(); }
   });
-  document.querySelectorAll('[data-terminal-open], .dpad-controls, .hardware-controls, .comfort-controls, [data-arcade-open], [data-selection-status], .keyboard-hint, #tool-detail').forEach(el => { el.hidden = false; });
+  document.querySelectorAll('[data-terminal-open], .dpad-controls, .hardware-controls, .comfort-controls, [data-arcade-open], [data-selection-status], .keyboard-hint').forEach(el => { el.hidden = false; });
 })();

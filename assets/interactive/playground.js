@@ -130,10 +130,10 @@
   const escapeHTML = (value) => String(value).replace(/[&<>"']/g, (character) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[character]);
   const money = (cents) => `${cents < 0 ? "−" : ""}$${Math.floor(Math.abs(cents) / 100)}.${String(Math.abs(cents) % 100).padStart(2, "0")}`;
   const projects = {
-    batchline: { number: "01", name: "Batchline", category: "INFERENCE LAB", color: "amber", description: "A small model serving a busy queue: handling bursts of requests without letting the backlog grow indefinitely.", detail: "Turn up the traffic and find the point where a bounded queue starts protecting the service.", render: renderBatchline },
-    evaldeck: { number: "02", name: "EvalDeck", category: "AI EVALUATION", color: "cyan", description: "A repeatable way to compare AI outputs, spot changes, and catch regressions before shipping a new version.", detail: "Inspect saved sample answers and see why a small wording change can matter.", render: renderEvalDeck },
-    "reconcile-kit": { number: "03", name: "Reconcile Kit", category: "DATA TOOLING", color: "coral", description: "A reconciliation tool for finding missing records, duplicates, and exact-money mismatches in exported data.", detail: "Introduce a few problems into a synthetic export, then check it against the ledger.", render: renderReconcile },
-    "prism-studio": { number: "04", name: "Prism Studio", category: "IMAGE WORKBENCH", color: "green", description: "A local image workbench that keeps the seed and settings alongside each experiment so good results can be revisited.", detail: "Explore a small illustrative seed gallery and see what a saved experiment looks like.", render: renderPrism },
+    batchline: { name: "Batchline", color: "amber", render: renderBatchline },
+    evaldeck: { name: "EvalDeck", color: "cyan", render: renderEvalDeck },
+    "reconcile-kit": { name: "Reconcile Kit", color: "coral", render: renderReconcile },
+    "prism-studio": { name: "Prism Studio", color: "green", render: renderPrism },
   };
   const inlineHost = doc.querySelector("[data-console-demo]");
   const consoleHome = doc.querySelector("[data-console-home]");
@@ -199,22 +199,18 @@
     }
     host.dataset.color = project.color;
     host.innerHTML = `
-      <div class="playground-topbar"><span><span class="playground-power" aria-hidden="true"></span> ${inline ? "DEMO" : "CARTRIDGE"} ${project.number}</span><button class="playground-close" type="button" aria-label="${inline ? "Back to projects" : `Close ${project.name} preview`}"${inline ? "" : " autofocus"}>${inline ? '<span aria-hidden="true">←</span> Back to projects' : 'Close <span aria-hidden="true">×</span>'}</button></div>
+      <header class="playground-topbar">
+        <h2 id="playground-title" tabindex="-1">${project.name}</h2>
+        <div class="playground-links">
+          <a class="demo-button" href="https://github.com/elliottbarnes/${id}" target="_blank" rel="noopener">View source <span aria-hidden="true">↗</span><span class="visually-hidden"> (opens in a new tab)</span></a>
+          <button class="playground-close" type="button" aria-label="${inline ? "Back to projects" : `Close ${project.name} preview`}"${inline ? "" : " autofocus"}>${inline ? '<span aria-hidden="true">←</span> Back' : 'Close <span aria-hidden="true">×</span>'}</button>
+        </div>
+      </header>
       <div class="playground-content">
-        <header class="playground-intro"><p class="playground-eyebrow">${project.category}</p><h2 id="playground-title" tabindex="-1">${project.name}</h2><p id="playground-description">${project.description}</p><p class="playground-detail">${project.detail}</p>
-          <div class="playground-links"><a class="demo-button demo-button-primary" href="#playground-demo" data-try-demo>Try it <span aria-hidden="true">↓</span></a><a class="demo-button" href="https://github.com/elliottbarnes/${id}" target="_blank" rel="noopener">View source <span aria-hidden="true">↗</span><span class="visually-hidden"> (opens in a new tab)</span></a></div>
-        </header>
-        <section class="playground-screen" id="playground-demo" aria-label="${project.name} interactive demo" tabindex="-1"></section>
-        <p class="playground-footnote">A small browser demo of the idea. Runs on your device with sample data.</p>
+        <section class="playground-screen" id="playground-demo" aria-label="${project.name} interactive demo"></section>
+        <p class="playground-footnote">Sample data · Runs on your device</p>
       </div>`;
     host.querySelector(".playground-close").addEventListener("click", close);
-    host.querySelector("[data-try-demo]").addEventListener("click", (event) => {
-      event.preventDefault();
-      const screen = host.querySelector(".playground-screen");
-      const reduceMotion = doc.documentElement.dataset.motion === "reduced" || global.matchMedia("(prefers-reduced-motion: reduce)").matches;
-      screen.scrollIntoView({ behavior: reduceMotion ? "auto" : "smooth", block: "start" });
-      screen.querySelector("input, select, button")?.focus({ preventScroll: true });
-    });
     cleanupDemo = project.render(host.querySelector(".playground-screen")) || (() => {});
     if (inline) {
       global.dispatchEvent(new CustomEvent("portfolio:playground-open", { detail: { id } }));
@@ -244,7 +240,7 @@
 
   function renderBatchline(root) {
     root.innerHTML = `
-      <div class="demo-heading"><p class="playground-eyebrow">TRAFFIC CONTROL</p><h3>See what happens under load.</h3><p>Each step admits requests into an 18-slot queue, then processes up to your service rate. Extra arrivals are rejected.</p></div>
+      <p class="demo-instruction" id="playground-description">Adjust the traffic, then step through an 18-slot queue. Extra arrivals are rejected.</p>
       <div class="demo-sliders">
         <label class="demo-slider" for="batch-arrivals"><span>Incoming requests <output id="batch-arrivals-value" for="batch-arrivals">6 / step</output></span><input id="batch-arrivals" type="range" min="0" max="12" value="6" step="1"><span class="demo-range-ends"><span>Quiet · 0</span><span>Busy · 12</span></span></label>
         <label class="demo-slider" for="batch-workers"><span>Service rate <output id="batch-workers-value" for="batch-workers">4 / step</output></span><input id="batch-workers" type="range" min="1" max="8" value="4" step="1"><span class="demo-range-ends"><span>Slow · 1</span><span>Fast · 8</span></span></label>
@@ -311,13 +307,13 @@
 
   function renderEvalDeck(root) {
     root.innerHTML = `
-      <div class="demo-heading"><p class="playground-eyebrow">SPOT THE REGRESSION</p><h3>Same prompt. New answer.</h3><p>These are fixed sample outputs with simple, explicit checks. No model is running.</p></div>
+      <p class="demo-instruction" id="playground-description">Choose a saved answer pair, then reveal the changes. No model is running.</p>
       <label class="demo-select-label" for="eval-fixture">Choose a sample<select id="eval-fixture">${evalFixtures.map((fixture) => `<option value="${fixture.id}">${fixture.label}</option>`).join("")}</select></label>
       <p class="eval-prompt"><strong>Prompt</strong><span data-eval-prompt></span></p>
-      <div class="eval-outputs"><section><h4>Baseline</h4><p class="eval-output" data-eval-baseline></p></section><section><h4>Candidate</h4><p class="eval-output" data-eval-candidate></p></section></div>
+      <div class="eval-outputs"><section><h3>Baseline</h3><p class="eval-output" data-eval-baseline></p></section><section><h3>Candidate</h3><p class="eval-output" data-eval-candidate></p></section></div>
       <div class="demo-actions"><button class="demo-button demo-button-primary" type="button" data-eval-reveal aria-pressed="false">Reveal changes &amp; checks</button></div>
       <div data-eval-results hidden><p class="eval-legend"><span><del>Removed</del> from baseline</span><span><ins>Added</ins> in candidate</span></p><ul class="eval-checks" data-eval-checks></ul></div>
-      <p class="demo-status" role="status" data-eval-status>Choose a sample, then reveal what changed.</p>`;
+      <p class="demo-status" role="status" data-eval-status></p>`;
     const selector = root.querySelector("#eval-fixture");
     const reveal = root.querySelector("[data-eval-reveal]");
     const results = root.querySelector("[data-eval-results]");
@@ -338,7 +334,7 @@
       reveal.textContent = revealed ? "Hide changes & checks" : "Reveal changes & checks";
       reveal.setAttribute("aria-pressed", String(revealed));
       results.hidden = !revealed;
-      status.textContent = revealed ? failed ? `${failed} of ${checks.length} candidate checks failed. This sample has a regression.` : `All ${checks.length} candidate checks passed. A changed output is not always a regression.` : "Choose a sample, then reveal what changed.";
+      status.textContent = revealed ? failed ? `${failed} of ${checks.length} candidate checks failed. This sample has a regression.` : `All ${checks.length} candidate checks passed. A changed output is not always a regression.` : "";
     };
     selector.addEventListener("change", () => { revealed = false; paint(); });
     reveal.addEventListener("click", () => { revealed = !revealed; paint(); });
@@ -348,11 +344,11 @@
   function renderReconcile(root) {
     const ledger = [{ id: "A-101", cents: 12450 }, { id: "A-102", cents: 3000 }, { id: "A-103", cents: 1899 }, { id: "A-104", cents: 7525 }];
     root.innerHTML = `
-      <div class="demo-heading"><p class="playground-eyebrow">RECORD CHECK</p><h3>One cent out of place.</h3><p>Toggle problems in a synthetic export and compare it with the original ledger. Amounts are checked in integer cents.</p></div>
+      <p class="demo-instruction" id="playground-description">Add a problem to the sample export, then reconcile it against the ledger.</p>
       <fieldset class="reconcile-options"><legend>Add an export problem</legend><label><input type="checkbox" value="amount" checked><span>Change A-103 by one cent</span></label><label><input type="checkbox" value="missing"><span>Remove A-102</span></label><label><input type="checkbox" value="duplicate"><span>Duplicate A-104</span></label></fieldset>
-      <div class="reconcile-tables"><section><h4>Original ledger</h4><div data-reconcile-ledger></div></section><section><h4>Incoming export</h4><div data-reconcile-export></div></section></div>
       <div class="demo-actions"><button class="demo-button demo-button-primary" type="button" data-reconcile-check>Reconcile records</button><button class="demo-button" type="button" data-reconcile-reset>Clear problems</button></div>
-      <p class="demo-status" role="status" data-reconcile-status>One amount is off by a cent. Reconcile to find it.</p><ul class="reconcile-results" data-reconcile-results hidden></ul>`;
+      <p class="demo-status" role="status" data-reconcile-status>One amount is off by a cent. Reconcile to find it.</p><ul class="reconcile-results" data-reconcile-results hidden></ul>
+      <div class="reconcile-tables"><section><h3>Original ledger</h3><div data-reconcile-ledger></div></section><section><h3>Incoming export</h3><div data-reconcile-export></div></section></div>`;
     const controls = [...root.querySelectorAll(".reconcile-options input")];
     const results = root.querySelector("[data-reconcile-results]");
     const status = root.querySelector("[data-reconcile-status]");
@@ -391,7 +387,7 @@
       108: "A crescent moon reflected in a mountain lake beside pine trees",
     };
     root.innerHTML = `
-      <div class="demo-heading"><p class="playground-eyebrow">THE SEED GALLERY</p><h3>Keep the interesting ones.</h3><p>Three pre-made illustrations stand in for saved runs. Choose a seed to explore the gallery.</p></div>
+      <p class="demo-instruction" id="playground-description">Pick a seed to explore three saved illustrations.</p>
       <div class="prism-seeds" role="group" aria-label="Choose an illustrative seed">${seeds.map((seed, index) => `<button class="demo-button ${index === 0 ? "is-selected" : ""}" type="button" data-prism-seed="${seed}" aria-pressed="${index === 0}">Seed ${seed}</button>`).join("")}</div>
       <figure class="prism-art"><img src="/assets/prism/seed-17.jpg" alt="${captions[17]}" width="512" height="512" decoding="async" data-prism-image><div class="prism-image-error" hidden data-prism-error>Artwork could not load. Select another seed to keep exploring.</div><figcaption><span>ILLUSTRATIVE SAMPLE</span><span data-prism-caption>SEED 17</span></figcaption></figure>
       <dl class="prism-settings"><div><dt>Seed label</dt><dd data-prism-current>17</dd></div><div><dt>Gallery</dt><dd>3 saved samples</dd></div><div><dt>Prompt concept</dt><dd>Quiet places, improbable skies</dd></div></dl>
