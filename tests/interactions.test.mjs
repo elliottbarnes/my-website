@@ -9,7 +9,7 @@ const markup = await readFile(new URL("../index.html", import.meta.url), "utf8")
 
 // A small DOM test double exercises event/focus behavior against the actual page markup.
 // It does not emulate layout, native Tab traversal, or screen readers; those require browser QA.
-function browser({ systemReduced = false, inlineDemos = false, loadScript = false } = {}) {
+function browser({ systemReduced = false, inlineDemos = false, inlineArcade = false, loadScript = false } = {}) {
   let document;
   const pendingCloseEvents = [], scrolls = [], openedProjects = [];
   class Element {
@@ -123,7 +123,7 @@ function browser({ systemReduced = false, inlineDemos = false, loadScript = fals
     .replace(/<!--[\s\S]*?-->|<script\b[\s\S]*?<\/script>|<svg\b[\s\S]*?<\/svg>/g, "");
   const mediaListeners = [];
   const media = { matches: systemReduced, addEventListener: (_, listener) => mediaListeners.push(listener) };
-  let inlineOpen = false, inlineOpener;
+  let inlineOpen = false, inlineOpener, arcadeOpen = false;
   const window = {
     addEventListener() {},
     matchMedia: () => media,
@@ -148,7 +148,26 @@ function browser({ systemReduced = false, inlineDemos = false, loadScript = fals
       },
       isOpen: () => inlineOpen,
     },
-    portfolioArcade: { open() { openMockDialog("arcade"); } },
+    portfolioArcade: {
+      open() {
+        if (!inlineArcade) { openMockDialog("arcade"); return; }
+        window.portfolioPlayground.close();
+        arcadeOpen = true;
+        document.querySelector('[data-console-home]').hidden = true;
+        const host = document.querySelector('[data-console-arcade]'); host.hidden = false;
+        host.innerHTML = '<h2 id="mock-arcade-title" tabindex="-1">Dragon Ball trivia</h2>';
+        host.querySelector('h2').focus();
+      },
+      close() {
+        if (!arcadeOpen) return false;
+        arcadeOpen = false;
+        document.querySelector('[data-console-home]').hidden = false;
+        document.querySelector('[data-console-arcade]').hidden = true;
+        document.querySelector('.demo-launch').focus();
+        return true;
+      },
+      isOpen: () => arcadeOpen,
+    },
   };
   function openMockDialog(name) {
     const dialog = document.createElement("dialog"); dialog.className = `${name}-test-dialog`;
@@ -160,7 +179,7 @@ function browser({ systemReduced = false, inlineDemos = false, loadScript = fals
   const query = selector => document.querySelector(selector);
   const terminal = query(".terminal-dialog"), input = terminal.querySelector("input");
   return {
-    document, query, terminal, input, scrolls, openedProjects, playground: window.portfolioPlayground,
+    document, query, terminal, input, scrolls, openedProjects, playground: window.portfolioPlayground, arcade: window.portfolioArcade,
     flush: () => { while (pendingCloseEvents.length) pendingCloseEvents.shift()(); },
     openTerminal: () => { const launcher = query("[data-terminal-open]"); launcher.focus(); launcher.click(); return launcher; },
     command: value => { input.value = value; terminal.querySelector("form").emit("submit"); },
@@ -232,12 +251,19 @@ test("terminal input keeps controller letters and arrow keys while a dialog is o
 
 test("toolkit reset clears highlights and restores focus to the selected tool", () => {
   const page = browser(), python = page.query('[data-tool="Python"]');
+  assert.equal(page.query("#tool-detail").hidden, true);
   python.focus(); python.click();
+  assert.equal(page.query("#tool-detail").hidden, false);
+  assert.equal(python.getAttribute("aria-expanded"), "true");
+  assert.match(page.query("[data-tool-status]").textContent, /Python powers/);
   assert.equal(python.getAttribute("aria-pressed"), "true");
   assert.equal(page.document.querySelectorAll(".tool-match").length, 3);
   assert.equal(page.query("[data-tool-projects]").querySelectorAll("button").length, 3);
   const reset = page.query("[data-tool-reset]"); reset.focus(); reset.click();
   assert.equal(reset.hidden, true);
+  assert.equal(python.getAttribute("aria-expanded"), "false");
+  assert.equal(page.query("[data-tool-status]").textContent, "");
+  assert.equal(page.query("#tool-detail").hidden, true);
   assert.equal(page.document.activeElement, python);
   assert.equal(python.getAttribute("aria-pressed"), "false");
   assert.equal(page.document.querySelectorAll(".tool-match").length, 0);
@@ -324,4 +350,48 @@ test("all four project sources remain reachable without JavaScript", () => {
   assert.ok(fallback, 'A source-link fallback must be present');
   const links = [...fallback.matchAll(/href="([^"]+)"/g)].map(match => match[1]);
   assert.deepEqual(links, ['batchline', 'evaldeck', 'reconcile-kit', 'prism-studio'].map(id => `https://github.com/elliottbarnes/${id}`));
+});
+
+
+test("terminal arcade command keeps focus in the handheld after its queued close event", () => {
+  const page = browser({ inlineArcade: true });
+  page.openTerminal(); page.command('arcade'); page.flush();
+  assert.equal(page.terminal.open, false);
+  assert.equal(page.arcade.isOpen(), true);
+  assert.equal(page.document.querySelectorAll('dialog[open]').length, 0);
+  assert.equal(page.document.activeElement, page.query('#mock-arcade-title'));
+});
+
+test("section navigation and project launch leave only one handheld screen visible", () => {
+  for (const [key, selector] of [['1', '#work-title'], ['2', '#toolkit-title'], ['3', '#contact-title']]) {
+    const page = browser({ inlineDemos: true, inlineArcade: true, loadScript: true });
+    page.arcade.open();
+    page.key(key);
+    assert.equal(page.arcade.isOpen(), false);
+    assert.equal(page.query('[data-console-home]').hidden, false);
+    assert.equal(page.document.activeElement, page.query(selector));
+  }
+  const page = browser({ inlineDemos: true, inlineArcade: true });
+  page.arcade.open();
+  page.query('[data-tool="Python"]').click();
+  page.query('[data-tool-projects]').querySelector('button').click();
+  assert.equal(page.arcade.isOpen(), false);
+  assert.equal(page.playground.isOpen(), true);
+  assert.equal(page.query('[data-console-home]').hidden, true);
+  assert.equal(page.query('[data-console-arcade]').hidden, true);
+});
+
+test("controller shortcuts preserve trivia until Back or Escape is chosen", () => {
+  const page = browser({ inlineArcade: true });
+  page.arcade.open();
+  for (const key of ['a', 'ArrowDown', 'ArrowRight']) page.key(key);
+  assert.equal(page.arcade.isOpen(), true);
+  assert.equal(page.openedProjects.length, 0);
+  page.key('b');
+  assert.equal(page.arcade.isOpen(), false);
+  assert.equal(page.document.activeElement, page.query('.demo-launch'));
+  page.arcade.open(); page.key('Escape');
+  assert.equal(page.arcade.isOpen(), false);
+  page.arcade.open(); page.query('[data-controller-back]').click();
+  assert.equal(page.arcade.isOpen(), false);
 });

@@ -20,7 +20,7 @@
 .arcade-identity img { flex-shrink: 0; object-fit: contain; }
 .arcade-kicker { margin-bottom: 4px; color: #ffb668; font: 600 11px/1.5 var(--mono); }
 .arcade-heading h2 { color: #fff2d9; font-size: 24px; line-height: 1.15; letter-spacing: -.035em; }
-.arcade-dialog button { cursor: pointer; touch-action: manipulation; }
+:is(.arcade-dialog, .arcade-inline) button { cursor: pointer; touch-action: manipulation; }
 .arcade-close {
   flex-shrink: 0;
   display: grid;
@@ -68,7 +68,7 @@
 .arcade-answer[data-state="correct"] .arcade-answer-letter { color: #13243b; background: #13243b12; }
 .arcade-answer[data-state="incorrect"] { border-color: #d89789; background: #4c303a; }
 .arcade-answer[aria-disabled="true"] { cursor: default; }
-.arcade-dialog :is(button, input, [tabindex="-1"]):focus-visible { outline: 3px solid #87cfff; outline-offset: 3px; }
+:is(.arcade-dialog, .arcade-inline) :is(button, input, [tabindex="-1"]):focus-visible { outline: 3px solid #87cfff; outline-offset: 3px; }
 .arcade-status { min-height: 0; margin-top: 16px; color: #e4eaf2; font-size: 14px; line-height: 1.55; }
 .arcade-status:empty { margin-top: 0; }
 .arcade-actions { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 16px; }
@@ -86,7 +86,7 @@
 .arcade-result-kicker { color: #bdccdf; font: 500 12px/1.5 var(--mono); }
 .arcade-result-title { margin-top: 10px; color: #ffbf67; font-size: 52px; line-height: 1.15; letter-spacing: -.055em; }
 .arcade-result-copy { margin-top: 12px; color: #e4eaf2; font-size: 15px; line-height: 1.5; }
-.arcade-dialog [hidden] { display: none; }
+:is(.arcade-dialog, .arcade-inline) [hidden] { display: none; }
 .arcade-save { display: flex; align-items: center; gap: 9px; min-height: 44px; margin-top: 12px; color: #bdccdf; font-size: 12px; cursor: pointer; }
 .arcade-save input { flex-shrink: 0; width: 20px; height: 20px; margin: 0; accent-color: #ffb668; }
 .arcade-storage { color: #bdccdf; font-size: 12px; line-height: 1.5; }
@@ -112,11 +112,44 @@
   .arcade-actions button:hover { background: #ffd08e; }
 }
 @media (prefers-reduced-motion: reduce) {
-  .arcade-dialog *, .arcade-dialog *::before, .arcade-dialog *::after { transition: none; animation: none; }
+  :is(.arcade-dialog, .arcade-inline) *, :is(.arcade-dialog, .arcade-inline) *::before, :is(.arcade-dialog, .arcade-inline) *::after { transition: none; animation: none; }
 }
 @media (forced-colors: active) {
   .arcade-dialog { border-color: CanvasText; }
   .arcade-answer[data-state="correct"] { border: 3px solid Highlight; }
   .arcade-answer[data-state="incorrect"] { border-style: dashed; }
 }
-@media print { .arcade-dialog { display: none; } }
+@media print { .arcade-dialog, .arcade-inline { display: none; } }
+
+/* The fifth cartridge shares the handheld screen and its ordinary page flow. */
+.arcade-inline { color: #fff2d9; padding-block: 2px 8px; }
+.arcade-topbar { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 8px; margin-bottom: 16px; }
+.arcade-topbar .arcade-kicker { margin: 0; }
+.arcade-back { display: inline-flex; align-items: center; justify-content: center; gap: 8px; min-height: 44px; padding: 8px 12px; border: 1px solid #526982; border-radius: 7px; background: #192f4a; color: #fff2d9; font: 500 12px/1.5 var(--mono); }
+.arcade-inline .arcade-heading { position: static; padding: 0; background: transparent; }
+.arcade-inline .arcade-heading h2 { font-size: 27px; }
+.arcade-inline .arcade-instructions { margin-top: 8px; }
+.arcade-inline .arcade-score { margin-block: 18px 8px; }
+.arcade-inline .arcade-markers { margin-bottom: 18px; }
+.arcade-inline .arcade-question { max-width: 40ch; font-size: 23px; }
+.arcade-inline .arcade-board { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+.arcade-inline .arcade-answer { display: grid; grid-template-columns: 24px minmax(0, 1fr); column-gap: 10px; row-gap: 3px; min-height: 58px; }
+.arcade-inline .arcade-answer-letter { grid-row: 1 / span 2; }
+.arcade-inline .arcade-answer-mark { grid-column: 2; max-width: none; }
+.arcade-inline .arcade-keyboard { margin-top: 6px; }
+.arcade-inline .arcade-actions:has(> [hidden]:first-child):has(> [hidden]:last-child) { margin-top: 0; }
+.arcade-markers .just-earned { animation: arcade-star 440ms cubic-bezier(.2,.8,.3,1); }
+@keyframes arcade-star {
+  0% { transform: scale(.7) rotate(-20deg); box-shadow: 0 0 0 0 #ffbd5655; }
+  55% { transform: scale(1.2) rotate(8deg); box-shadow: 0 0 0 7px #ffbd5625; }
+  100% { transform: scale(1); box-shadow: 0 0 0 10px #ffbd5600; }
+}
+@media (max-width: 639px) {
+  .arcade-inline .arcade-board { grid-template-columns: minmax(0, 1fr); }
+  .arcade-inline .arcade-heading h2 { font-size: 24px; }
+  .arcade-inline .arcade-question { font-size: 21px; }
+  .arcade-inline .arcade-keyboard { display: none; }
+}
+@media (hover: hover) { .arcade-back:hover { border-color: #ffbf67; background: #243e5e; } }
+[data-motion="reduced"] .arcade-markers .just-earned { animation: none; }
+@media (prefers-reduced-motion: reduce) { .arcade-markers .just-earned { animation: none; } }

@@ -163,7 +163,11 @@
     return;
   }
 
-  let dialog, game, opener, storage, best, saveEnabled;
+  const inlineHost = document.querySelector("[data-console-arcade]");
+  const consoleHome = document.querySelector("[data-console-home]");
+  const inline = Boolean(inlineHost && consoleHome);
+  let host, dialog, game, opener, storage, best, saveEnabled;
+  let active = false;
   let board, choices, questionTitle, questionView, resultView, resultTitle, resultCopy;
   let status, progress, bestLabel, markers, nextButton, restartButton, saveToggle, storageStatus;
 
@@ -177,6 +181,7 @@
     progress.textContent = complete ? "Round complete" : `Question ${state.index + 1} of ${ROUND_LENGTH}`;
     bestLabel.textContent = best === null ? "Best: —" : `Best: ${best}/${ROUND_LENGTH}`;
     markers.forEach((marker, index) => {
+      marker.classList.remove("just-earned");
       marker.dataset.state = state.answers[index] === true ? "correct" :
         state.answers[index] === false ? "missed" : !complete && state.index === index ? "current" : "waiting";
       marker.textContent = state.answers[index] === true ? "★" : state.answers[index] === false ? "·" : "";
@@ -206,6 +211,9 @@
   function answer(index) {
     if (!game.select(index)) return;
     render();
+    if (game.state.answers[game.state.index]) {
+      markers[game.state.index].classList.add("just-earned");
+    }
   }
 
   function finishRound() {
@@ -221,14 +229,16 @@
     try { storage = window.localStorage; } catch { storage = null; }
     best = readBest(storage);
     saveEnabled = best !== null;
-    dialog = document.createElement("dialog");
-    dialog.className = "arcade-dialog";
-    dialog.setAttribute("aria-labelledby", "arcade-title");
-    dialog.setAttribute("aria-describedby", "arcade-instructions");
-    dialog.innerHTML = `
+    host = inline ? inlineHost : document.createElement("dialog");
+    host.classList.add(inline ? "arcade-inline" : "arcade-dialog");
+    host.setAttribute("aria-labelledby", "arcade-title");
+    host.setAttribute("aria-describedby", "arcade-instructions");
+    if (!inline) dialog = host;
+    host.innerHTML = `
+      ${inline ? '<div class="arcade-topbar"><p class="arcade-kicker">Cartridge 05</p><button class="arcade-back" type="button"><span aria-hidden="true">←</span> Back to projects</button></div>' : ""}
       <div class="arcade-heading">
-        <div class="arcade-identity"><img src="/assets/dragon-ball.png" alt="" width="44" height="44"><div><p class="arcade-kicker">Cartridge 05</p><h2 id="arcade-title">Dragon Ball trivia</h2></div></div>
-        <button class="arcade-close" type="button" aria-label="Close Dragon Ball trivia">×</button>
+        <div class="arcade-identity"><img src="/assets/dragon-ball.png" alt="" width="44" height="44"><div>${inline ? "" : '<p class="arcade-kicker">Cartridge 05</p>'}<h2 id="arcade-title" tabindex="-1">Dragon Ball trivia</h2></div></div>
+        ${inline ? "" : '<button class="arcade-close" type="button" aria-label="Close Dragon Ball trivia">×</button>'}
       </div>
       <p id="arcade-instructions" class="arcade-instructions">Five questions. A quick detour.</p>
       <div class="arcade-score"><span id="arcade-progress" data-arcade-progress></span><span data-arcade-best></span></div>
@@ -248,24 +258,24 @@
       <label class="arcade-save"><input type="checkbox"> Save best on this device</label>
       <p class="arcade-storage" role="status"></p>
       <p class="arcade-keyboard">Tab or arrow keys to choose · Enter to answer · Esc or B to close</p>`;
-    document.body.append(dialog);
-    board = dialog.querySelector(".arcade-board");
-    questionTitle = dialog.querySelector(".arcade-question");
-    questionView = dialog.querySelector(".arcade-question-view");
-    resultView = dialog.querySelector(".arcade-result");
-    resultTitle = dialog.querySelector(".arcade-result-title");
-    resultCopy = dialog.querySelector(".arcade-result-copy");
-    status = dialog.querySelector(".arcade-status");
-    progress = dialog.querySelector("[data-arcade-progress]");
-    bestLabel = dialog.querySelector("[data-arcade-best]");
-    nextButton = dialog.querySelector(".arcade-next");
-    restartButton = dialog.querySelector(".arcade-restart");
-    saveToggle = dialog.querySelector(".arcade-save input");
-    storageStatus = dialog.querySelector(".arcade-storage");
+    if (!inline) document.body.append(host);
+    board = host.querySelector(".arcade-board");
+    questionTitle = host.querySelector(".arcade-question");
+    questionView = host.querySelector(".arcade-question-view");
+    resultView = host.querySelector(".arcade-result");
+    resultTitle = host.querySelector(".arcade-result-title");
+    resultCopy = host.querySelector(".arcade-result-copy");
+    status = host.querySelector(".arcade-status");
+    progress = host.querySelector("[data-arcade-progress]");
+    bestLabel = host.querySelector("[data-arcade-best]");
+    nextButton = host.querySelector(".arcade-next");
+    restartButton = host.querySelector(".arcade-restart");
+    saveToggle = host.querySelector(".arcade-save input");
+    storageStatus = host.querySelector(".arcade-storage");
     saveToggle.checked = saveEnabled;
     markers = Array.from({ length: ROUND_LENGTH }, () => {
       const marker = document.createElement("span");
-      dialog.querySelector(".arcade-markers").append(marker);
+      host.querySelector(".arcade-markers").append(marker);
       return marker;
     });
     choices = Array.from({ length: 4 }, (_, index) => {
@@ -280,21 +290,26 @@
     board.addEventListener("keydown", (event) => {
       if (event.altKey || event.ctrlKey || event.metaKey) return;
       const index = choices.indexOf(document.activeElement);
-      const directions = { ArrowRight: 1, ArrowLeft: -1, ArrowDown: 1, ArrowUp: -1 };
+      const columns = window.getComputedStyle(board).gridTemplateColumns.trim().split(/\s+/).length;
+      const directions = { ArrowRight: 1, ArrowLeft: -1, ArrowDown: columns, ArrowUp: -columns };
       if (index < 0 || !(event.key in directions)) return;
       event.preventDefault();
+      event.stopPropagation();
       choices[(index + directions[event.key] + choices.length) % choices.length].focus();
     });
-    // Keep page-level shortcuts isolated, while preserving the controller's back key.
-    dialog.addEventListener("keydown", (event) => {
-      event.stopPropagation();
+    host.addEventListener("keydown", (event) => {
+      // Inline navigation shortcuts may bubble; a modal owns all of its keys.
+      if (!inline) event.stopPropagation();
       const target = event.target;
       const isTyping = target instanceof HTMLElement &&
-        (target.isContentEditable || /^(INPUT|TEXTAREA|SELECT)$/.test(target.tagName));
-      if (!isTyping && !event.altKey && !event.ctrlKey && !event.metaKey && event.key.toLowerCase() === "b") {
-        event.preventDefault();
-        close();
-      }
+        (target.isContentEditable || /^(TEXTAREA|SELECT)$/.test(target.tagName) ||
+          (target.tagName === "INPUT" && target.getAttribute("type") !== "checkbox"));
+      const backKey = event.key === "Escape" || event.key.toLowerCase() === "b";
+      if (event.defaultPrevented || isTyping || event.altKey || event.ctrlKey || event.metaKey || !backKey) return;
+      if (inline && document.querySelector("dialog[open]")) return;
+      event.preventDefault();
+      event.stopPropagation();
+      close();
     });
     nextButton.addEventListener("click", () => {
       if (!game.next()) return;
@@ -320,30 +335,78 @@
           : "Your score will not be saved. Device storage is unavailable.";
       }
     });
-    dialog.querySelector(".arcade-close").addEventListener("click", close);
-    dialog.addEventListener("close", () => {
-      // Close events are queued: another modal may already own focus by this point.
-      if (!document.querySelector("dialog[open]") && opener?.isConnected && typeof opener.focus === "function") {
-        opener.focus({ preventScroll: true });
-      }
-    });
+    host.querySelector(inline ? ".arcade-back" : ".arcade-close").addEventListener("click", close);
+    if (dialog) {
+      dialog.addEventListener("cancel", event => { event.preventDefault(); close(); });
+      dialog.addEventListener("close", () => {
+        // Native close events are queued: a reopened game already owns focus.
+        if (!dialog.open && active) finishClose();
+      });
+    }
     render();
   }
 
-  function open() {
-    if (!dialog) initialize();
-    if (dialog.open) return;
-    opener = document.activeElement;
-    dialog.showModal();
-    dialog.querySelector(".arcade-close").focus();
+  function canFocus(element) {
+    return element?.isConnected && !element.disabled && typeof element.focus === "function" &&
+      !element.closest("[hidden], [inert]") && element.getClientRects().length > 0;
+  }
+
+  function finishClose() {
+    active = false;
+    window.dispatchEvent(new CustomEvent("portfolio:arcade-close"));
+    if (document.querySelector("dialog[open]")) return;
+    const homeTrigger = inline && consoleHome.contains(opener) && canFocus(opener) ? opener :
+      consoleHome?.querySelector(".demo-launch, [data-controller-open]");
+    const target = inline ? (canFocus(homeTrigger) ? homeTrigger :
+      [...consoleHome.querySelectorAll("button, a[href]")].find(canFocus)) : opener;
+    if (canFocus(target)) target.focus({ preventScroll: !inline });
+  }
+
+  function open(trigger = document.activeElement) {
+    if (!host) initialize();
+    if (active) {
+      // A launch from the footer or terminal should bring the existing game back into view.
+      if (inline) focusInlineGame();
+      return false;
+    }
+    opener = trigger;
+    window.portfolioPlayground?.close?.();
+    active = true;
+    if (inline) {
+      consoleHome.hidden = true;
+      host.hidden = false;
+    } else {
+      dialog.showModal();
+    }
+    window.dispatchEvent(new CustomEvent("portfolio:arcade-open"));
+    if (inline) {
+      focusInlineGame();
+    } else {
+      host.querySelector(".arcade-close").focus();
+    }
+    return true;
+  }
+
+  function focusInlineGame() {
+    host.scrollIntoView({ behavior: "auto", block: "start" });
+    host.querySelector("#arcade-title").focus({ preventScroll: true });
   }
 
   function close() {
-    if (dialog?.open) dialog.close();
+    if (!active) return false;
+    if (inline) {
+      host.hidden = true;
+      consoleHome.hidden = false;
+    } else {
+      dialog.close();
+    }
+    finishClose();
+    return true;
   }
 
-  window.portfolioArcade = { open, close, isOpen: () => Boolean(dialog?.open) };
+  window.portfolioArcade = { open, close, isOpen: () => active };
   document.addEventListener("click", (event) => {
-    if (event.target instanceof Element && event.target.closest("[data-arcade-open]")) open();
+    const trigger = event.target instanceof Element && event.target.closest("[data-arcade-open]");
+    if (trigger) open(trigger);
   });
 })();

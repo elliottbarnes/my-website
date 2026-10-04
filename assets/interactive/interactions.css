@@ -145,9 +145,9 @@ body { border-top: 0; }
 .preferences { display: flex; flex-wrap: wrap; gap: 8px; padding-top: 24px; }
 .preferences .comfort-controls { display: contents; }
 .preferences .text-button { font-size: 11px; }
-.device-frame:has([data-console-demo]:not([hidden])) { aspect-ratio: auto; padding: 14px; border-radius: 30px; background: #e97620; box-shadow: 0 14px 30px #522a101c; max-width: 1100px; }
-.device-frame:has([data-console-demo]:not([hidden])) .device-art, .device-frame:has([data-console-demo]:not([hidden])) .hardware-controls { display: none; }
-.device-frame:has([data-console-demo]:not([hidden])) .console-screen { position: relative; inset: auto; width: 100%; height: auto; padding: 28px; }
+.device-frame:has(:is([data-console-demo], [data-console-arcade]):not([hidden])) { aspect-ratio: auto; padding: 14px; border-radius: 30px; background: #e97620; box-shadow: 0 14px 30px #522a101c; max-width: 1100px; }
+.device-frame:has(:is([data-console-demo], [data-console-arcade]):not([hidden])) .device-art, .device-frame:has(:is([data-console-demo], [data-console-arcade]):not([hidden])) .hardware-controls { display: none; }
+.device-frame:has(:is([data-console-demo], [data-console-arcade]):not([hidden])) .console-screen { position: relative; inset: auto; width: 100%; height: auto; padding: 28px; }
 @media (min-width: 1151px) and (max-width: 1340px) {
   .console-header { padding-bottom: 12px; }
   .featured-project { gap: 22px; padding-block: 18px; }
@@ -173,8 +173,8 @@ body { border-top: 0; }
 @media (max-width: 700px) {
   .page { width: calc(100% - 28px); }
   .console-stage { padding: 22px 0 30px; }
-  .device-frame, .device-frame:has([data-console-demo]:not([hidden])) { padding: 8px; border-radius: 22px; }
-  .console-screen, .device-frame:has([data-console-demo]:not([hidden])) .console-screen { padding: 22px 18px; border-radius: 15px; }
+  .device-frame, .device-frame:has(:is([data-console-demo], [data-console-arcade]):not([hidden])) { padding: 8px; border-radius: 22px; }
+  .console-screen, .device-frame:has(:is([data-console-demo], [data-console-arcade]):not([hidden])) .console-screen { padding: 22px 18px; border-radius: 15px; }
   .console-header { grid-template-columns: 1fr; padding-bottom: 18px; gap: 0; }
   .console-identity h1 { font-size: 30px; }
   .console-intro { grid-row: 2; font-size: 12px; margin-top: 10px; }
@@ -198,7 +198,7 @@ body { border-top: 0; }
   .contact-links small { font-size: 11px; }
 }
 @media (max-width: 360px) {
-  .console-screen, .device-frame:has([data-console-demo]:not([hidden])) .console-screen { padding-inline: 13px; }
+  .console-screen, .device-frame:has(:is([data-console-demo], [data-console-arcade]):not([hidden])) .console-screen { padding-inline: 13px; }
   .console-identity h1 { font-size: 27px; }
   .console-screen .command-nav { gap: 19px; }
   .console-screen .project-choice { font-size: 11px; gap: 3px 5px; }
@@ -259,7 +259,7 @@ body { border-top: 0; }
   .preview-top { font-size: 14px; }
   .project-preview > p { font-size: 13px; }
   .project-preview small { font-size: 12px; }
-  .device-frame:has([data-console-demo]:not([hidden])) { aspect-ratio: auto; }
+  .device-frame:has(:is([data-console-demo], [data-console-arcade]):not([hidden])) { aspect-ratio: auto; }
 }
 
 .device-left { left: 4.68%; top: 47.35%; width: 4.2%; border-radius: 5px; }
@@ -292,6 +292,7 @@ body { border-top: 0; }
 .console-texture-button:hover { border-color: #91b6d5; color: #fff3dc; }
 .console-texture-button[aria-pressed="true"] { background: #193644; border-color: #78d8e5; color: #c2f5ec; box-shadow: inset 0 0 12px #79e6df14; }
 .texture-swatch { display: block; width: 13px; height: 15px; border: 1px solid currentColor; border-radius: 2px; background: repeating-linear-gradient(0deg, transparent 0 2px, currentColor 2px 3px); opacity: .7; }
+/* Negative layers sit above the isolated screen background and below its content. */
 .console-screen { isolation: isolate; }
 body:not(.fx-off) .console-screen {
   background-color: #0a2031;
@@ -299,17 +300,17 @@ body:not(.fx-off) .console-screen {
   box-shadow: inset 0 0 0 1px #8bddde6b, inset 0 0 35px #42b8d51f, 0 0 16px #48cbd72e;
 }
 body:not(.fx-off) .console-screen::after {
-  content: ""; position: absolute; inset: 0; z-index: 3; border-radius: inherit; pointer-events: none;
+  content: ""; position: absolute; inset: 0; z-index: -2; border-radius: inherit; pointer-events: none;
   background-image: repeating-linear-gradient(0deg, #010b1866 0 1px, transparent 1px 4px), repeating-linear-gradient(90deg, #7de3ff0c 0 1px, #ffbc6b09 1px 2px, transparent 2px 4px);
   box-shadow: inset 0 0 36px #000b1c60;
 }
 body:not(.fx-off) .console-screen::before {
-  content: ""; position: absolute; inset: 0; z-index: 4; border-radius: inherit; pointer-events: none;
+  content: ""; position: absolute; inset: 0; z-index: -1; border-radius: inherit; pointer-events: none;
   background: linear-gradient(180deg, transparent 43%, #b3ffec00 46%, #b3ffec30 50%, #b3ffec00 54%, transparent 57%) 0 -100% / 100% 300% no-repeat;
   animation: screen-warmup 1s ease-out both;
 }
 body:not(.fx-off) .console-screen h1,
-body:not(.fx-off) .console-screen h2 { text-shadow: -.65px 0 #69cbff70, .65px 0 #ff956350, 0 0 18px #b0e8f63d; }
+body:not(.fx-off) .console-screen h2 { text-shadow: 0 0 18px #b0e8f624; }
 body:not(.fx-off) .queue-preview .occupied,
 body:not(.fx-off) .demo-launch { box-shadow: 0 0 12px #ffd16a30; }
 @keyframes screen-warmup {
@@ -362,3 +363,6 @@ body:not(.fx-off) .demo-launch { box-shadow: 0 0 12px #ffd16a30; }
 .icon-credits summary:focus-visible { outline: 3px solid var(--focus); outline-offset: 3px; border-radius: 3px; }
 .icon-credits p { color: var(--muted); line-height: 1.7; }
 .icon-credits p a { display: inline; text-decoration: underline; text-underline-offset: 3px; }
+
+/* Small responses make the controls feel tactile without delaying navigation. */
+.demo-launch:active, .console-screen .project-choice:active { transform: translateY(1px); }

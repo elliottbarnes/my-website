@@ -124,6 +124,7 @@ test('inline demos replace the home screen, preserve normal page flow, and resto
   assert.equal(page.query('dialog'), null);
   assert.equal(page.document.body.classList.contains('playground-open'), false);
   assert.equal(page.api.isOpen(), true);
+  assert.equal(page.timers.size, 0, 'opening the controls does not run the simulation');
   page.query('[data-batch-step]').click();
   assert.equal(page.query('[data-batch-queue-label]').textContent, '2 / 18 slots');
   page.query('.playground-close').click();
@@ -180,6 +181,8 @@ test('pages without a console host retain the native dialog lifecycle', () => {
   trigger.focus(); trigger.click();
   const dialog = page.query('dialog');
   assert.equal(dialog.open, true);
+  assert.equal(page.query('#' + dialog.getAttribute('aria-labelledby')).textContent, 'Batchline');
+  assert.match(page.query('#' + dialog.getAttribute('aria-describedby')).textContent, /Adjust the traffic/);
   assert.equal(page.document.body.classList.contains('playground-open'), true);
   page.query('[data-batch-run]').click();
   assert.equal(page.timers.size, 1);

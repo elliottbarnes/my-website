@@ -4,7 +4,7 @@ A dependency-free, retro-console portfolio for [elliottbarnes.ca](https://elliot
 
 ## Playable portfolio
 
-The homepage is an elliott handheld console. Select one of four projects on its screen, then choose **Try demo** to open a browser-only demonstration inside the screen. **Back to projects** returns to the selected project and restores focus. Each project has a separate GitHub source link; with JavaScript disabled, links below the device keep all four sources available.
+The homepage is an elliott handheld console. Select one of four projects on its screen, then choose **Try demo** to open a browser-only demonstration inside the screen. **Back to projects** returns to the selected project and restores focus. Demos open directly to their working controls, with a compact title and a persistent Back control. Each project has a separate GitHub source link; with JavaScript disabled, links below the device keep all four sources available.
 
 On smaller screens the housing becomes a compact orange frame around ordinary page content. Demos grow with their content and use normal page scrolling.
 
@@ -15,9 +15,9 @@ On smaller screens the housing becomes a compact orange frame around ordinary pa
 
 The optional D-pad controls select a project; **A** opens its demo and **B** returns to projects. With focus in the console or project choices, arrow keys select a project and the A key opens it. B or Escape closes an inline demo. Number keys **1**, **2**, and **3** activate **Projects**, **Toolkit**, and **Contact**, respectively. Normal links, project buttons, and touch controls provide the same navigation.
 
-The terminal opens with `/` or the button below the controller. Commands: `projects`, `toolkit`, `contact`, `theme`, `help`, `clear`, `arcade`, and each project slug. Escape closes a panel. The footer’s fifth cartridge opens Dragon Ball trivia: five questions chosen from ten, shuffled answers, instant feedback, and a final score. Rounds have no timer. Play again starts a fresh shuffle; an optional device-local best score is kept separately from the retired matching game.
+The terminal opens with `/` or the button below the controller. Commands: `projects`, `toolkit`, `contact`, `theme`, `help`, `clear`, `arcade`, and each project slug. Escape closes a panel. The footer’s fifth cartridge opens Dragon Ball trivia inside the handheld screen: five questions chosen from ten, shuffled answers, instant feedback, and a final score. Back to projects, B, or Escape returns to the project screen; the round is preserved when reopened. Rounds have no timer. Play again starts a fresh shuffle; an optional device-local best score is kept separately from the retired matching game.
 
-The screen’s texture toggle adds scanlines, a phosphor glow, and a single gentle sweep when enabled. It sits beside the screen navigation and works inside project demos. The sweep is disabled with reduced motion. Labelled preferences below the main content control dark mode, sound, and motion. Sound starts off on every visit. Motion follows reduced-motion system settings and can be reduced manually. Theme and texture preferences are stored locally when available; blocked storage does not prevent use. There are no analytics, remote model calls, or new server dependencies.
+The screen’s texture toggle adds background scanlines, a phosphor glow, and a single gentle sweep when enabled. These effects stay behind the lettering and controls. It sits beside the screen navigation and works inside project demos and trivia. Toolkit details appear only after a tool is selected. The sweep is disabled with reduced motion. Labelled preferences below the main content control dark mode, sound, and motion. Sound starts off on every visit. Motion follows reduced-motion system settings and can be reduced manually. Theme and texture preferences are stored locally when available; blocked storage does not prevent use. There are no analytics, remote model calls, or new server dependencies.
 
 ## Local preview
 

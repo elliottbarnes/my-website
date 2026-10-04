@@ -37,9 +37,9 @@
     <link rel="manifest" href="/site.webmanifest">
     <link rel="stylesheet" href="/styles.css?v=6e1bf2df68a2">
 
-    <link rel="stylesheet" href="/assets/interactive/playground.css?v=bd390cb97f2a">
-    <link rel="stylesheet" href="/assets/interactive/arcade.css?v=a52e4ea427a2">
-    <link rel="stylesheet" href="/assets/interactive/interactions.css?v=c5e7914130e8">
+    <link rel="stylesheet" href="/assets/interactive/playground.css?v=521fd8f9c1a9">
+    <link rel="stylesheet" href="/assets/interactive/arcade.css?v=d787af64edcb">
+    <link rel="stylesheet" href="/assets/interactive/interactions.css?v=907c770e7f62">
 
     <script type="application/ld+json">
       {
@@ -121,6 +121,7 @@
                   <p class="keyboard-hint" hidden>Arrow keys: choose <span>·</span> A: open <span>·</span> B: back <span class="hint-optional">· Or just click.</span></p>
                 </div>
                 <section data-console-demo hidden aria-label="Project demo"></section>
+                <section data-console-arcade hidden aria-label="Dragon Ball trivia"></section>
               </div>
             </div>
             <noscript>
@@ -153,8 +154,9 @@
               <li><button type="button" class="tool-button" disabled data-tool="AWS" aria-pressed="false"><span class="tool-icon" aria-hidden="true"><img class="tool-logo tool-logo--wide" src="assets/toolkit/aws.svg" alt="" width="36" height="36" loading="lazy" decoding="async"></span>AWS</button></li>
               <li><button type="button" class="tool-button" disabled data-tool="Diffusers" aria-pressed="false"><span class="tool-icon" aria-hidden="true"><img class="tool-logo" src="assets/toolkit/diffusers.svg" alt="" width="36" height="36" loading="lazy" decoding="async"></span>Diffusers</button></li>
             </ul>
-            <div class="tool-detail" id="tool-detail" hidden aria-live="polite">
-              <p data-tool-description>Choose a tool to explore its role in these projects.</p>
+            <p class="visually-hidden" role="status" data-tool-status></p>
+            <div class="tool-detail" id="tool-detail" hidden>
+              <p data-tool-description></p>
               <div data-tool-projects></div>
               <button type="button" class="text-button" data-tool-reset hidden>Clear selection</button>
             </div>
@@ -209,9 +211,9 @@
       </div>
     </div>
 
-    <script src="/assets/interactive/playground.js?v=524de22f42de" defer></script>
-    <script src="/assets/interactive/arcade.js?v=2c04ef8bd3d1" defer></script>
-    <script src="/assets/interactive/interactions.js?v=d133b1b26a3d" defer></script>
+    <script src="/assets/interactive/playground.js?v=dfb895b35e76" defer></script>
+    <script src="/assets/interactive/arcade.js?v=7a7812340fc2" defer></script>
+    <script src="/assets/interactive/interactions.js?v=ae08fd7cf437" defer></script>
     <script src="/script.js?v=40217ba812f8" defer></script>
   </body>
 </html>
