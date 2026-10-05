@@ -1,91 +1,39 @@
-# elliott / Handheld Portfolio
+# elliott / Software, opened up
 
-A dependency-free, retro-console portfolio for [elliottbarnes.ca](https://elliottbarnes.ca).
+A compact, dependency-free portfolio at [elliottbarnes.ca](https://elliottbarnes.ca).
 
-## Playable portfolio
+The homepage introduces Elliott and links to three independent systems projects. Each project has a public repository and a full interactive playground hosted on GitHub Pages:
 
-The homepage is an elliott handheld console. Select one of four projects on its screen, then choose **Try demo** to open a browser-only demonstration inside the screen. **Back to projects** returns to the selected project and restores focus. Demos open directly to their working controls, with a compact title and a persistent Back control. Each project has a separate GitHub source link; with JavaScript disabled, links below the device keep all four sources available.
+| Project | Playground | Source |
+| --- | --- | --- |
+| Glassbox — inspectable WebAssembly compiler | [Run the compiler](https://elliottbarnes.github.io/glassbox/) | [Repository](https://github.com/elliottbarnes/glassbox) |
+| Pixel Language — typed graphics language | [Write a shader](https://elliottbarnes.github.io/pixel-language/) | [Repository](https://github.com/elliottbarnes/pixel-language) |
+| Automata Lab — regex compiler and state machines | [Explore the machines](https://elliottbarnes.github.io/automata-lab/) | [Repository](https://github.com/elliottbarnes/automata-lab) |
 
-On smaller screens the housing becomes a compact orange frame around ordinary page content. Demos grow with their content and use normal page scrolling.
+## Layout and accessibility
 
-- **Batchline:** step through or run a bounded queue simulation and change incoming traffic and the service rate in an 18-slot queue.
-- **EvalDeck:** compare hand-authored sample outputs and reveal regression checks.
-- **Reconcile Kit:** inspect synthetic records and find reconciliation mismatches using integer cents.
-- **Prism Studio:** explore three illustrative images. The sample IDs are navigation labels, not recorded generation seeds, and these are not outputs from the Prism app.
+The landing page is designed to fit common portrait phone viewports without scrolling at default text settings. It uses the small viewport height (`svh`) so expanded mobile browser controls do not cover the footer. There is no fixed-height clipping or scroll lock: enlarged text and unusually short windows can flow naturally. All project and contact navigation uses ordinary links and works without JavaScript. The only script updates the copyright year.
 
-The optional D-pad controls select a project; **A** opens its demo and **B** returns to projects. With focus in the console or project choices, arrow keys select a project and the A key opens it. B or Escape closes an inline demo. Number keys **1**, **2**, and **3** activate **Projects**, **Toolkit**, and **Contact**, respectively. Normal links, project buttons, and touch controls provide the same navigation.
+The palette follows the system light/dark preference. Keyboard focus remains visible, a skip link leads to the projects, and hover transitions respect reduced-motion settings. Demos open as separate pages in the same tab and have their own layouts; the homepage does not embed them.
 
-The terminal opens with `/` or the button below the controller. Commands: `projects`, `toolkit`, `contact`, `theme`, `help`, `clear`, `arcade`, and each project slug. Escape closes a panel. The footer’s fifth cartridge opens Dragon Ball trivia inside the handheld screen: five questions chosen from ten, shuffled answers, instant feedback, and a final score. Back to projects, B, or Escape returns to the project screen; the round is preserved when reopened. Rounds have no timer. Play again starts a fresh shuffle; an optional device-local best score is kept separately from the retired matching game.
+## Preview and verification
 
-The screen’s texture toggle adds background scanlines, a phosphor glow, and a single gentle sweep when enabled. These effects stay behind the lettering and controls. It sits beside the screen navigation and works inside project demos and trivia. Toolkit details appear only after a tool is selected. The sweep is disabled with reduced motion. Labelled preferences below the main content control dark mode, sound, and motion. Sound starts off on every visit. Motion follows reduced-motion system settings and can be reduced manually. Theme and texture preferences are stored locally when available; blocked storage does not prevent use. There are no analytics, remote model calls, or new server dependencies.
+Use Node.js 24 or newer; no package installation is needed.
 
-## Local preview
-
-### Side project: Live Demo Lab
-
-An isolated prototype lives in [side-projects/live-demo-lab](side-projects/live-demo-lab/README.md). It explores custom text/CSV inputs and a future prompt-and-seed image workflow. It is excluded from the public website build; its local preview blocks outbound API calls, and no AWS resources have been deployed for it.
-
-```bash
-node side-projects/live-demo-lab/server.mjs
-```
-
-Open `http://127.0.0.1:4190` for the lab. Use the command below for the portfolio itself.
-
-```bash
-node server.mjs
-```
-
-Open `http://localhost:4173`.
-
-## Featured projects
-
-- [Batchline](https://github.com/elliottbarnes/batchline): inference-serving lab
-- [EvalDeck](https://github.com/elliottbarnes/evaldeck): repeatable AI response evaluations
-- [Reconcile Kit](https://github.com/elliottbarnes/reconcile-kit): Java/Gradle transaction reconciliation
-- [Prism Studio](https://github.com/elliottbarnes/prism-studio): local image-generation workbench
-
-## Build
-
-```bash
+```sh
 node scripts/version-assets.mjs
-node build.mjs
 node --test
+node build.mjs
 node scripts/verify-site.mjs dist --source .
+node server.mjs --dir dist
 ```
 
-The build copies an explicit list of public files into `dist/` and refuses unexpected artifacts. Hosting uses HTTPS through CloudFront and a private S3 origin. [Deployment and recovery](DEPLOYMENT.md) explains the verified GitHub Actions workflow and temporary AWS access.
+Open `http://localhost:4173`. The explicit ten-file publication list is in `scripts/public-files.mjs`. Build checks reject extra artifacts, symlinks, broken local links, stale asset hashes, and incorrect project destinations.
 
-## Favicon
+Production still uses the existing GitHub Actions deployment to a private S3 origin and CloudFront, with version-based recovery. See [DEPLOYMENT.md](DEPLOYMENT.md).
 
-The transparent one-star Dragon Ball PNG is used for browser tabs, Apple touch icons, and the web manifest. It is served locally as `image/png`; no checkerboard is baked into the asset. Link previews also request the Dragon Ball icon. The legacy SVG icon and sharing-image paths embed the same original PNG for older references. Sharing apps choose their own preview layout and may cache older previews.
+The former handheld design is recoverable in Git history. Existing experimental work under `side-projects/live-demo-lab` is preserved and excluded from publication. The old project repositories remain independent and unchanged.
 
-Artwork by Musett.com, provided under CC BY-NC-ND 4.0 (non-commercial, attribution required, no derivatives). Source and license links appear inside the site footer’s Icon credits disclosure; see [asset sources](ASSET_SOURCES.md).
+## Icon credit
 
-## Structure
-
-- `index.html`: page content, metadata, and structured data
-- `styles.css`: base layout, typography, and color themes
-- `script.js`: current year, color/texture preferences, and section shortcuts
-- `assets/interactive/`: responsive handheld screen layout, inline demos, controller/terminal/toolkit interactions, and arcade
-- `assets/barnes-handheld.webp`: current homepage housing; generation provenance is in `assets/BARNES_HANDHELD.md`
-- `assets/barnes-controller.webp`: archived compact controller artwork
-- `assets/prism/`: generated illustrative samples and provenance (only JPEG samples are published)
-- `build.mjs`: creates the public deployment artifact
-- `404.html`: custom not-found page
-- `assets/`: favicon and social sharing artwork
-- `assets/toolkit/`: local, consistently styled technology icons
-- `ASSET_SOURCES.md`: artwork and icon provenance and licensing
-- `scripts/` and `tests/`: artifact verification, deployment, and behavior checks
-- `.github/`: read-only PR checks and main-only production deployment
-- `DEPLOYMENT.md`: hosting, deployment, and version-based recovery
-
-The deployable artifact is generated in `dist/`; project notes and infrastructure snapshots are intentionally excluded.
-
-## Trivia sources
-
-The original question wording uses facts checked against these official sources:
-
-- [Dragon Ball Official Site: Shenron](https://en.dragon-ball-official.com/news/01_626.html): the seven Dragon Balls.
-- [Toei Animation character summaries](https://www.toei-animation-usa.com/press-releases/pressrelease-08-31-22.pdf): Master Roshi’s Kamehameha, Vegeta, Gohan, Frieza, and Majin Buu.
-- [Dragon Ball Official Site: young Goku’s adventures](https://en.dragon-ball-official.com/news/01_2264.html): the four-star keepsake, Great Ape transformation, and Akira Toriyama.
-- [Dragon Ball Official Site: Porunga](https://en.dragon-ball-official.com/news/01_2809.html): the dragon summoned by the Namekian Dragon Balls.
+The unmodified Dragon Ball favicon is by [Musett.com](https://www.iconarchive.com/show/dragon-ballz-icons-by-musett/Dragon-Ball-icon.html), under [CC BY-NC-ND 4.0](https://creativecommons.org/licenses/by-nc-nd/4.0/). Attribution appears in the footer. See [ASSET_SOURCES.md](ASSET_SOURCES.md) for retained artwork provenance.

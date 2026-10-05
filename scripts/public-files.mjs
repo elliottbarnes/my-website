@@ -6,15 +6,7 @@ import { extname, join } from "node:path";
 export const PUBLIC_FILES = Object.freeze([
   "index.html", "404.html", "styles.css", "script.js", "robots.txt",
   "sitemap.xml", "site.webmanifest", "assets/favicon.svg", "assets/social-card.svg",
-  "assets/dragon-ball.png", "assets/barnes-controller.webp", "assets/barnes-handheld.webp",
-  "assets/toolkit/java.svg", "assets/toolkit/python.svg", "assets/toolkit/gradle.svg",
-  "assets/toolkit/awk.svg", "assets/toolkit/cplusplus.svg", "assets/toolkit/pytorch.svg",
-  "assets/toolkit/streamlit.svg", "assets/toolkit/docker.svg", "assets/toolkit/aws.svg",
-  "assets/toolkit/diffusers.svg", "assets/toolkit/LICENSE.txt",
-  "assets/interactive/playground.js", "assets/interactive/playground.css",
-  "assets/interactive/arcade.js", "assets/interactive/arcade.css",
-  "assets/interactive/interactions.js", "assets/interactive/interactions.css",
-  "assets/prism/seed-17.jpg", "assets/prism/seed-42.jpg", "assets/prism/seed-108.jpg",
+  "assets/dragon-ball.png",
 ]);
 
 export const VERSIONED_FILES = Object.freeze(PUBLIC_FILES.filter((file) => /\.(?:css|js)$/.test(file)));

@@ -29,13 +29,13 @@ async function fixture(t) {
 test("build publishes the complete allowlist and excludes notes and image masters", async (t) => {
   const root = await fixture(t);
   const unpublished = ["private-notes.txt", "assets/prism/SOURCES.md", "assets/prism/seed-17.png", "assets/interactive/notes.js"];
-  for (const file of unpublished) await writeFile(join(root, file), "not for publication");
-  const destination = await buildSite({ root });
-  for (const name of ["playground", "arcade", "interactions"]) {
-    for (const extension of ["js", "css"]) assert.ok(PUBLIC_FILES.includes(`assets/interactive/${name}.${extension}`));
+  for (const file of unpublished) {
+    await mkdir(dirname(join(root, file)), { recursive: true });
+    await writeFile(join(root, file), "not for publication");
   }
-  for (const seed of [17, 42, 108]) assert.ok(PUBLIC_FILES.includes(`assets/prism/seed-${seed}.jpg`));
-  assert.equal(contentType("assets/prism/seed-17.jpg"), "image/jpeg");
+  const destination = await buildSite({ root });
+  assert.equal(PUBLIC_FILES.length, 10);
+  assert.ok(!PUBLIC_FILES.some((file) => /interactive|prism|toolkit|handheld|controller/.test(file)));
   assert.deepEqual(VERSIONED_FILES, PUBLIC_FILES.filter((file) => /\.(?:css|js)$/.test(file)));
   assert.deepEqual(await inspectPublicTree(destination), [...PUBLIC_FILES].sort());
   for (const file of unpublished) await assert.rejects(readFile(join(destination, file)), { code: "ENOENT" });
@@ -98,7 +98,7 @@ test("build rejects a missing source before modifying existing output", async (t
   const destination = await buildSite({ root });
   const original = await readFile(join(destination, "index.html"));
   await writeFile(join(root, "index.html"), "replacement");
-  await rm(join(root, "assets/toolkit/LICENSE.txt"));
+  await rm(join(root, "assets/dragon-ball.png"));
   await assert.rejects(buildSite({ root }), { code: "ENOENT" });
   assert.deepEqual(await readFile(join(destination, "index.html")), original);
 });
@@ -123,18 +123,13 @@ test("verification rejects source/build drift", async (t) => {
   await assert.rejects(verifySite(destination, { sourceRoot: root }), /differs from source: styles.css/);
 });
 
-test("verification catches broken links, metadata, shortcuts, and initial controller states", async (t) => {
+test("verification catches broken links, metadata, and project destinations", async (t) => {
   const cases = [
-    ["index.html", (s) => s.replace('href="#work"', 'href="#missing"'), /missing fragment/],
+    ["index.html", (s) => s.replace('href="#projects"', 'href="#missing"'), /missing fragment/],
     ["index.html", (s) => s.replace(/src="\/script\.js(?:\?[^"]*)?"/, 'src="/unpublished.js"'), /not published/],
-    ["index.html", (s) => s.replace('data-shortcut="2"', 'data-shortcut="1"'), /unique shortcuts/],
-    ["index.html", (s) => s.replace(/<button\b[^>]*\bdata-fx-toggle\b[^>]*>/, (tag) => tag.replace('aria-pressed="false"', 'aria-pressed="true"')), /texture must start off/],
-    ["index.html", (s) => s.replace(/<button\b[^>]*\bdata-theme-toggle\b[^>]*>/, (tag) => tag.replace('aria-pressed="false"', 'aria-pressed="true"')), /theme must start light/],
-    ["index.html", (s) => s.replace(/<button\b[^>]*\bdata-theme-toggle\b[^>]*>/, (tag) => tag.replace('aria-label="Dark mode"', 'aria-label=""')), /theme must start light/],
-    ["index.html", (s) => s.replace(/<button\b[^>]*\bdata-theme-toggle\b[^>]*>/, (tag) => tag.replace('type="button"', 'type="submit"')), /theme must start light/],
-    ["index.html", (s) => s.replace('data-theme-label', 'data-missing-theme-label'), /theme must start light/],
-    ["index.html", (s) => s.replace('data-theme="light"', 'data-theme="dark"'), /theme must start light/],
-    ["index.html", (s) => s.replace('data-theme-label', 'data-theme-toggle data-theme-label'), /theme must start light/],
+    ["index.html", (s) => s.replace('data-demo="pixel-language"', 'data-demo="glassbox"'), /three unique data-demo/],
+    ["index.html", (s) => s.replace('https://elliottbarnes.github.io/glassbox/', 'https://example.com/'), /invalid data-demo/],
+    ["index.html", (s) => s.replace('aria-label="Glassbox source on GitHub"', ''), /invalid data-source/],
     ["index.html", (s) => s.replace('"@type": "Person"', '"@type":'), /invalid Person JSON-LD/],
     ["site.webmanifest", () => "{broken", /invalid JSON/],
     ["site.webmanifest", (s) => s.replace("/assets/dragon-ball.png", "/missing.png"), /not published/],
@@ -285,7 +280,7 @@ test("verification checks resource URLs in every stylesheet relative to that sty
     await writeFile(path, `${original}\nbody{background-image:url("/missing-image.jpg")}\n`);
     await assert.rejects(verifySite(root), /not published/);
 
-    const relative = file.includes("/") ? "../prism/seed-17.jpg" : "assets/prism/seed-17.jpg";
+    const relative = file.includes("/") ? "../dragon-ball.png" : "assets/dragon-ball.png";
     const valid = `${original}\nbody{background-image:url("${relative}")}\n`;
     await writeFile(path, valid);
     const hash = createHash("sha256").update(valid).digest("hex").slice(0, 12);

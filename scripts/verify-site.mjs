@@ -109,25 +109,20 @@ export async function verifySite(directory, { sourceRoot } = {}) {
     }
   }
   const index = documents.get("index.html").parsed;
-  const shortcuts = index.filter((tag) => tag.attrs.has("data-shortcut"));
-  const keys = shortcuts.map((tag) => tag.attrs.get("data-shortcut"));
-  if (JSON.stringify([...keys].sort()) !== JSON.stringify(["1", "2", "3"])) {
-    throw new Error("index.html: expected unique shortcuts 1, 2, and 3");
-  }
-  for (const tag of shortcuts) {
-    if (tag.name !== "a" || !tag.attrs.get("href")?.startsWith("#")) throw new Error("Shortcut must be an in-page link");
-  }
-  const toggle = index.filter((tag) => tag.attrs.has("data-fx-toggle"));
-  const label = index.filter((tag) => tag.attrs.has("data-fx-label"));
-  const body = index.find((tag) => tag.name === "body");
-  if (toggle.length !== 1 || toggle[0].name !== "button" || toggle[0].attrs.get("aria-pressed") !== "false" || !toggle[0].attrs.get("aria-label") || label.length !== 1 || !body?.attrs.get("class")?.split(/\s+/).includes("fx-off")) {
-    throw new Error("index.html: screen texture must start off with one labeled toggle and label");
-  }
-  const themeToggle = index.filter((tag) => tag.attrs.has("data-theme-toggle"));
-  const themeLabel = index.filter((tag) => tag.attrs.has("data-theme-label"));
-  const root = index.find((tag) => tag.name === "html");
-  if (themeToggle.length !== 1 || themeToggle[0].name !== "button" || themeToggle[0].attrs.get("type") !== "button" || themeToggle[0].attrs.get("aria-pressed") !== "false" || themeToggle[0].attrs.get("aria-label") !== "Dark mode" || themeLabel.length !== 1 || root?.attrs.get("data-theme") !== "light") {
-    throw new Error("index.html: theme must start light with one labeled toggle and label");
+  // The homepage remains useful without JavaScript: every project has ordinary
+  // demo and source links, each with an accessible name.
+  for (const [attribute, base] of [["data-demo", "https://elliottbarnes.github.io/"], ["data-source", "https://github.com/elliottbarnes/"]]) {
+    const links = index.filter((tag) => tag.attrs.has(attribute));
+    const expected = ["automata-lab", "glassbox", "pixel-language"];
+    if (JSON.stringify(links.map((tag) => tag.attrs.get(attribute)).sort()) !== JSON.stringify(expected)) {
+      throw new Error(`index.html: expected three unique ${attribute} links`);
+    }
+    for (const tag of links) {
+      const slug = tag.attrs.get(attribute);
+      if (tag.name !== "a" || tag.attrs.get("href") !== `${base}${slug}${attribute === "data-demo" ? "/" : ""}` || !tag.attrs.get("aria-label")) {
+        throw new Error(`index.html: invalid ${attribute} destination or accessible name`);
+      }
+    }
   }
   for (const file of VERSIONED_FILES.filter((file) => file.endsWith(".css"))) {
     for (const match of content.get(file).matchAll(/url\(\s*(?:"([^"]*)"|'([^']*)'|([^\s)]+))\s*\)/gi)) {
@@ -209,7 +204,7 @@ if (process.argv[1] && resolve(process.argv[1]) === fileURLToPath(import.meta.ur
       else throw new Error("Usage: node scripts/verify-site.mjs [dist] [--source directory] [--json]");
     }
     const result = await verifySite(resolve(directory), { sourceRoot: sourceRoot && resolve(sourceRoot) });
-    console.log(json ? JSON.stringify(result, null, 2) : `Verified ${result.files} public files, metadata, local links, and interaction hooks.`);
+    console.log(json ? JSON.stringify(result, null, 2) : `Verified ${result.files} public files, metadata, local links, and project destinations.`);
   } catch (error) {
     console.error(`Verification failed: ${error.message}`);
     process.exitCode = 1;
