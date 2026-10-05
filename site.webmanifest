@@ -3,8 +3,8 @@
   "short_name": "elliott",
   "start_url": "/",
   "display": "standalone",
-  "background_color": "#fff3dc",
-  "theme_color": "#fff3dc",
+  "background_color": "#f4f2eb",
+  "theme_color": "#f4f2eb",
   "icons": [
     {
       "src": "/assets/dragon-ball.png",

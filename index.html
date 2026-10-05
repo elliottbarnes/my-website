@@ -1,219 +1,102 @@
 <!doctype html>
-<html lang="en" data-theme="light">
+<html lang="en">
   <head>
     <meta charset="utf-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1">
-    <meta name="description" content="elliott explores AI, builds practical software, and works in financial technology.">
-    <meta name="theme-color" content="#fff3dc">
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+    <meta name="description" content="Elliott builds compilers and interactive systems. Explore Glassbox, Pixel Language, and Automata Lab.">
+    <meta name="theme-color" content="#f4f2eb">
     <meta name="color-scheme" content="light dark">
-    <script data-theme-bootstrap>
-      (() => {
-        let theme;
-        try { theme = localStorage.getItem("elliott-color-theme"); } catch {}
-        document.documentElement.dataset.theme = theme === "light" || theme === "dark"
-          ? theme : window.matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light";
-      })();
-    </script>
-
     <meta property="og:type" content="website">
     <meta property="og:url" content="https://elliottbarnes.ca/">
-    <meta property="og:title" content="elliott">
-    <meta property="og:description" content="Software, AI, and things worth trying.">
+    <meta property="og:title" content="elliott — software, opened up">
+    <meta property="og:description" content="Compilers, graphics, and the systems underneath. Three interactive projects to take apart.">
     <meta property="og:image" content="https://elliottbarnes.ca/assets/dragon-ball.png">
     <meta property="og:image:type" content="image/png">
     <meta property="og:image:width" content="256">
     <meta property="og:image:height" content="256">
     <meta property="og:image:alt" content="One-star Dragon Ball">
     <meta name="twitter:card" content="summary">
-    <meta name="twitter:title" content="elliott">
-    <meta name="twitter:description" content="Software, AI, and things worth trying.">
+    <meta name="twitter:title" content="elliott — software, opened up">
+    <meta name="twitter:description" content="Compilers, graphics, and the systems underneath.">
     <meta name="twitter:image" content="https://elliottbarnes.ca/assets/dragon-ball.png">
-    <meta name="twitter:image:alt" content="One-star Dragon Ball">
-
-    <title>elliott</title>
+    <title>elliott — software, opened up</title>
     <link rel="canonical" href="https://elliottbarnes.ca/">
     <link rel="icon" href="/assets/dragon-ball.png" type="image/png" sizes="256x256">
     <link rel="apple-touch-icon" href="/assets/dragon-ball.png" type="image/png" sizes="256x256">
     <link rel="manifest" href="/site.webmanifest">
-    <link rel="stylesheet" href="/styles.css?v=6e1bf2df68a2">
-
-    <link rel="stylesheet" href="/assets/interactive/playground.css?v=521fd8f9c1a9">
-    <link rel="stylesheet" href="/assets/interactive/arcade.css?v=d787af64edcb">
-    <link rel="stylesheet" href="/assets/interactive/interactions.css?v=907c770e7f62">
-
+    <link rel="stylesheet" href="/styles.css?v=b8bfacd88b56">
     <script type="application/ld+json">
       {
         "@context": "https://schema.org",
         "@type": "Person",
         "name": "elliott",
         "url": "https://elliottbarnes.ca/",
-        "description": "elliott explores AI, builds practical software, and works in financial technology.",
-        "worksFor": {
-          "@type": "Organization",
-          "name": "Nasdaq Verafin"
-        },
-        "sameAs": [
-          "https://github.com/elliottbarnes",
-          "https://www.linkedin.com/in/elliottbarnes1/"
-        ],
-        "knowsAbout": ["Software development", "Financial technology", "Artificial intelligence", "Cloud computing"]
+        "description": "Software developer building compilers and interactive systems.",
+        "sameAs": ["https://github.com/elliottbarnes", "https://www.linkedin.com/in/elliottbarnes1/"]
       }
     </script>
   </head>
-
-  <body class="fx-off">
-    <a class="skip-link" href="#main">Skip to main content</a>
-
-    <div class="site-shell">
-      <div class="page">
-        <main id="main">
-          <section class="console-stage" id="top" aria-labelledby="hero-title">
-            <div class="device-frame controller-area">
-              <img class="device-art" src="/assets/barnes-handheld.webp" width="1774" height="887" fetchpriority="high" draggable="false" alt="Orange handheld with a navy D-pad and blue A and red B buttons.">
-              <div class="hardware-controls" role="group" aria-label="Optional controller shortcuts" hidden>
-                <button class="hardware-hit device-previous" type="button" data-select-step="-1" aria-label="Previous project" title="Previous project"></button>
-                <button class="hardware-hit device-next" type="button" data-select-step="1" aria-label="Next project" title="Next project"></button>
-                <button class="hardware-hit device-left" type="button" data-select-step="-1" aria-label="Previous project (left)" title="Previous project"></button>
-                <button class="hardware-hit device-right" type="button" data-select-step="1" aria-label="Next project (right)" title="Next project"></button>
-                <button class="hardware-hit device-open" type="button" data-controller-open aria-label="A: Open selected demo" title="Open selected demo"></button>
-                <button class="hardware-hit device-back" type="button" data-controller-back aria-label="B: Back to projects" title="Back to projects"></button>
-              </div>
-              <div class="console-screen">
-                <header class="console-header" data-header>
-                  <div class="console-identity">
-                    <h1 id="hero-title">elliott</h1>
-                  </div>
-                  <div class="console-navigation">
-                    <nav class="command-nav" aria-label="Primary navigation">
-                      <a href="#work" data-shortcut="1" data-projects-home>Projects</a>
-                      <a href="#toolkit" data-shortcut="2">Toolkit</a>
-                      <a href="#contact" data-shortcut="3">Contact</a>
-                    </nav>
-                    <button class="console-texture-button" type="button" aria-label="Screen texture" aria-pressed="false" title="Scanlines and a phosphor glow" data-fx-toggle><span class="texture-swatch" aria-hidden="true"></span><span data-fx-label>Texture: off</span></button>
-                  </div>
-                  <p class="console-intro">Senior Software Developer at Nasdaq Verafin.<br> Software, AI, and things worth trying.</p>
-                </header>
-                <div id="work" data-console-home>
-                  <div class="project-grid" role="group" aria-label="Choose a project">
-                    <button class="project-card project-choice" type="button" data-project="batchline" aria-pressed="true" disabled><span class="project-number">01</span><span data-project-name>Batchline</span><span class="project-kind">INFERENCE LAB</span></button>
-                    <button class="project-card project-choice" type="button" data-project="evaldeck" aria-pressed="false" disabled><span class="project-number">02</span><span data-project-name>EvalDeck</span><span class="project-kind">AI EVALUATION</span></button>
-                    <button class="project-card project-choice" type="button" data-project="reconcile-kit" aria-pressed="false" disabled><span class="project-number">03</span><span data-project-name>Reconcile Kit</span><span class="project-kind">DATA TOOLING</span></button>
-                    <button class="project-card project-choice" type="button" data-project="prism-studio" aria-pressed="false" disabled><span class="project-number">04</span><span data-project-name>Prism Studio</span><span class="project-kind">IMAGE GENERATION</span></button>
-                  </div>
-                  <section class="featured-project" aria-labelledby="work-title">
-                    <div class="featured-copy">
-                      <p class="eyebrow" data-feature-category>01 / INFERENCE LAB</p>
-                      <h2 id="work-title" data-feature-title>Batchline</h2>
-                      <p data-feature-description>Explore how batching keeps a busy AI service moving without an endless queue.</p>
-                      <div class="featured-actions">
-                        <a class="demo-launch" href="https://github.com/elliottbarnes/batchline" data-controller-open><span aria-hidden="true">▶</span> Try demo</a>
-                        <a class="source-link" data-feature-source href="https://github.com/elliottbarnes/batchline" target="_blank" rel="noopener">View source <span aria-hidden="true">↗</span></a>
-                      </div>
-                    </div>
-                    <div class="project-preview" data-feature-preview>
-                      <div class="preview-top"><span>Request queue</span><span>2 / 18</span></div>
-                      <div class="queue-preview" aria-label="Illustration: two of eighteen queue slots occupied"><span class="occupied"></span><span class="occupied"></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span></div>
-                      <p>Try a busier queue.</p>
-                      <small>Concept preview · sample data</small>
-                    </div>
-                  </section>
-                  <p class="selection-status visually-hidden" data-selection-status aria-live="polite" hidden>01 / Batchline selected</p>
-                  <p class="keyboard-hint" hidden>Arrow keys: choose <span>·</span> A: open <span>·</span> B: back <span class="hint-optional">· Or just click.</span></p>
-                </div>
-                <section data-console-demo hidden aria-label="Project demo"></section>
-                <section data-console-arcade hidden aria-label="Dragon Ball trivia"></section>
-              </div>
-            </div>
-            <noscript>
-              <div class="console-fallback">
-                <p>Interactive demos need JavaScript. Explore the project source instead:</p>
-                <p><a href="https://github.com/elliottbarnes/batchline">Batchline</a> · <a href="https://github.com/elliottbarnes/evaldeck">EvalDeck</a> · <a href="https://github.com/elliottbarnes/reconcile-kit">Reconcile Kit</a> · <a href="https://github.com/elliottbarnes/prism-studio">Prism Studio</a></p>
-              </div>
-            </noscript>
-            <div class="console-caption"><span>A few things I wanted to try.</span><button class="text-button terminal-launch" type="button" data-terminal-open hidden>Open terminal <kbd>/</kbd></button></div>
-          </section>
-
-          <section class="toolkit section-block" id="toolkit" aria-labelledby="toolkit-title">
-            <div class="section-title-row">
-              <div>
-                <p class="eyebrow">02 / INVENTORY</p>
-                <h2 id="toolkit-title">Toolkit</h2>
-              </div>
-              <p data-tool-hint>The tools behind the experiments.</p>
-            </div>
-
-            <ul class="tool-grid">
-              <li><button type="button" class="tool-button" disabled data-tool="Java" aria-pressed="false"><span class="tool-icon" aria-hidden="true"><img class="tool-logo tool-logo--java" src="assets/toolkit/java.svg" alt="" width="36" height="36" loading="lazy" decoding="async"></span>Java</button></li>
-              <li><button type="button" class="tool-button" disabled data-tool="Python" aria-pressed="false"><span class="tool-icon" aria-hidden="true"><img class="tool-logo tool-logo--dense" src="assets/toolkit/python.svg" alt="" width="36" height="36" loading="lazy" decoding="async"></span>Python</button></li>
-              <li><button type="button" class="tool-button" disabled data-tool="Gradle" aria-pressed="false"><span class="tool-icon" aria-hidden="true"><img class="tool-logo tool-logo--wide" src="assets/toolkit/gradle.svg" alt="" width="36" height="36" loading="lazy" decoding="async"></span>Gradle</button></li>
-              <li><button type="button" class="tool-button" disabled data-tool="awk" aria-pressed="false"><span class="tool-icon" aria-hidden="true"><img class="tool-logo" src="assets/toolkit/awk.svg" alt="" width="36" height="36" loading="lazy" decoding="async"></span>awk</button></li>
-              <li><button type="button" class="tool-button" disabled data-tool="C++" aria-pressed="false"><span class="tool-icon" aria-hidden="true"><img class="tool-logo tool-logo--dense" src="assets/toolkit/cplusplus.svg" alt="" width="36" height="36" loading="lazy" decoding="async"></span>C++</button></li>
-              <li><button type="button" class="tool-button" disabled data-tool="PyTorch" aria-pressed="false"><span class="tool-icon" aria-hidden="true"><img class="tool-logo" src="assets/toolkit/pytorch.svg" alt="" width="36" height="36" loading="lazy" decoding="async"></span>PyTorch</button></li>
-              <li><button type="button" class="tool-button" disabled data-tool="Streamlit" aria-pressed="false"><span class="tool-icon" aria-hidden="true"><img class="tool-logo tool-logo--wide" src="assets/toolkit/streamlit.svg" alt="" width="36" height="36" loading="lazy" decoding="async"></span>Streamlit</button></li>
-              <li><button type="button" class="tool-button" disabled data-tool="Docker" aria-pressed="false"><span class="tool-icon" aria-hidden="true"><img class="tool-logo tool-logo--wide" src="assets/toolkit/docker.svg" alt="" width="36" height="36" loading="lazy" decoding="async"></span>Docker</button></li>
-              <li><button type="button" class="tool-button" disabled data-tool="AWS" aria-pressed="false"><span class="tool-icon" aria-hidden="true"><img class="tool-logo tool-logo--wide" src="assets/toolkit/aws.svg" alt="" width="36" height="36" loading="lazy" decoding="async"></span>AWS</button></li>
-              <li><button type="button" class="tool-button" disabled data-tool="Diffusers" aria-pressed="false"><span class="tool-icon" aria-hidden="true"><img class="tool-logo" src="assets/toolkit/diffusers.svg" alt="" width="36" height="36" loading="lazy" decoding="async"></span>Diffusers</button></li>
-            </ul>
-            <p class="visually-hidden" role="status" data-tool-status></p>
-            <div class="tool-detail" id="tool-detail" hidden>
-              <p data-tool-description></p>
-              <div data-tool-projects></div>
-              <button type="button" class="text-button" data-tool-reset hidden>Clear selection</button>
-            </div>
-          </section>
-
-          <section class="contact section-block" id="contact" aria-labelledby="contact-title">
-            <div class="quote-panel">
-              <blockquote>A computer has always been a bicycle of the mind.</blockquote>
-              <cite><a href="https://americanarchive.org/catalog/cpb-aacip-15-qj77s7j327" target="_blank" rel="noopener">— STEVE JOBS, 1990 ↗</a></cite>
-            </div>
-
-            <div class="contact-main">
-              <p class="eyebrow">03 / CONNECT</p>
-              <h2 id="contact-title">Let’s talk.</h2>
-              <div class="contact-links">
-                <a href="https://github.com/elliottbarnes" target="_blank" rel="me noopener">
-                  <span aria-hidden="true">GH</span>
-                  <strong>GitHub</strong>
-                  <small>Code, projects, experiments</small>
-                  <i aria-hidden="true">→</i>
-                </a>
-                <a href="https://www.linkedin.com/in/elliottbarnes1/" target="_blank" rel="me noopener">
-                  <span aria-hidden="true">in</span>
-                  <strong>Message on LinkedIn</strong>
-                  <small>Open my profile to connect</small>
-                  <i aria-hidden="true">→</i>
-                </a>
-              </div>
-            </div>
-          </section>
-        </main>
-
-        <div class="preferences" aria-label="Display and sound preferences">
-          <button class="text-button" type="button" aria-label="Dark mode" aria-pressed="false" data-theme-toggle><span data-theme-label>Dark mode: off</span></button>
-          <div class="comfort-controls" hidden>
-            <button type="button" class="text-button" data-sound-toggle aria-pressed="false">Sound: off</button>
-            <button type="button" class="text-button" data-motion-toggle aria-pressed="false">Motion: on</button>
-          </div>
-        </div>
-        <footer class="site-footer">
-          <button class="text-button secret-cartridge" type="button" data-arcade-open aria-label="Open secret arcade cartridge" hidden>Cartridge 05: ?</button>
-          <div class="footer-identity">
-            <p>© <span data-current-year>2026</span> elliott</p>
-            <details class="icon-credits">
-              <summary>Icon credits</summary>
-              <p>Dragon Ball icon by <a href="https://www.iconarchive.com/show/dragon-ballz-icons-by-musett/Dragon-Ball-icon.html">Musett.com</a> · <a href="https://creativecommons.org/licenses/by-nc-nd/4.0/">CC BY-NC-ND 4.0</a></p>
-            </details>
-          </div>
-          <!-- Dragon Ball icon: unmodified artwork by Musett.com. Characters depicted are © their respective copyright owners. No affiliation or endorsement implied. -->
-          <a href="#top">BACK TO START <span aria-hidden="true">↑</span></a>
-        </footer>
-      </div>
+  <body>
+    <a class="skip-link" href="#projects">Skip to projects</a>
+    <div class="page">
+      <header class="masthead">
+        <a class="wordmark" href="/" aria-label="elliott, home">e<span aria-hidden="true">.</span></a>
+        <p>Software, opened up.</p>
+        <span class="index-mark" aria-hidden="true">EB / 001</span>
+      </header>
+      <main id="main">
+        <section class="intro" aria-labelledby="name">
+          <p class="eyebrow">Hello, I’m</p>
+          <h1 id="name">elliott<span>.</span></h1>
+          <p class="statement">Compilers, graphics,<br>and the systems underneath.</p>
+          <p class="role">Senior Software Developer<br><span>Nasdaq Verafin</span></p>
+          <svg class="signal" viewBox="0 0 296 64" fill="none" aria-hidden="true">
+            <path d="M1 32h49m40 0h40m36 0h40m40 0h49" stroke="currentColor"/>
+            <path d="m59 20-9 12 9 12m21-24 9 12-9 12" stroke="currentColor" stroke-width="2"/>
+            <rect x="130" y="14" width="36" height="36" rx="3" stroke="currentColor"/>
+            <path d="M141 25h14m-14 7h10m-10 7h14" stroke="currentColor"/>
+            <path d="m216 19 23 13-23 13V19Z" stroke="currentColor" stroke-width="2"/>
+            <circle cx="295" cy="32" r="1" fill="currentColor"/>
+          </svg>
+        </section>
+        <section class="projects" id="projects" aria-labelledby="projects-title" tabindex="-1">
+          <div class="section-label"><h2 id="projects-title">Selected projects</h2><span>01 — 03</span></div>
+          <article class="project" data-project="glassbox">
+            <span class="project-number" aria-hidden="true">01</span>
+            <a class="project-demo" data-demo="glassbox" href="https://elliottbarnes.github.io/glassbox/" aria-label="Open Glassbox live demo">
+              <span class="project-kind">WebAssembly compiler</span>
+              <h3>Glassbox <span class="arrow" aria-hidden="true">↗</span></h3>
+              <p>Follow code from source to execution.</p>
+            </a>
+            <a class="source" data-source="glassbox" href="https://github.com/elliottbarnes/glassbox" aria-label="Glassbox source on GitHub">Code <span aria-hidden="true">↗</span></a>
+          </article>
+          <article class="project" data-project="pixel-language">
+            <span class="project-number" aria-hidden="true">02</span>
+            <a class="project-demo" data-demo="pixel-language" href="https://elliottbarnes.github.io/pixel-language/" aria-label="Open Pixel Language live demo">
+              <span class="project-kind">Graphics language</span>
+              <h3>Pixel Language <span class="arrow" aria-hidden="true">↗</span></h3>
+              <p>Turn expressions into moving pixels.</p>
+            </a>
+            <a class="source" data-source="pixel-language" href="https://github.com/elliottbarnes/pixel-language" aria-label="Pixel Language source on GitHub">Code <span aria-hidden="true">↗</span></a>
+          </article>
+          <article class="project" data-project="automata-lab">
+            <span class="project-number" aria-hidden="true">03</span>
+            <a class="project-demo" data-demo="automata-lab" href="https://elliottbarnes.github.io/automata-lab/" aria-label="Open Automata Lab live demo">
+              <span class="project-kind">Regular expression engine</span>
+              <h3>Automata Lab <span class="arrow" aria-hidden="true">↗</span></h3>
+              <p>Build a machine. Trace every transition.</p>
+            </a>
+            <a class="source" data-source="automata-lab" href="https://github.com/elliottbarnes/automata-lab" aria-label="Automata Lab source on GitHub">Code <span aria-hidden="true">↗</span></a>
+          </article>
+          <p class="project-note">Open a project to explore the live playground.</p>
+        </section>
+      </main>
+      <footer>
+        <nav aria-label="Connect"><a href="https://github.com/elliottbarnes" rel="me">GitHub <span aria-hidden="true">↗</span></a><a href="https://www.linkedin.com/in/elliottbarnes1/" rel="me">LinkedIn <span aria-hidden="true">↗</span></a></nav>
+        <p class="copyright">© <span data-current-year>2026</span> elliott</p>
+        <p class="icon-credit">Icon: <a href="https://www.iconarchive.com/show/dragon-ballz-icons-by-musett/Dragon-Ball-icon.html">Musett</a> / <a href="https://creativecommons.org/licenses/by-nc-nd/4.0/">CC BY-NC-ND</a></p>
+      </footer>
     </div>
-
-    <script src="/assets/interactive/playground.js?v=dfb895b35e76" defer></script>
-    <script src="/assets/interactive/arcade.js?v=7a7812340fc2" defer></script>
-    <script src="/assets/interactive/interactions.js?v=ae08fd7cf437" defer></script>
-    <script src="/script.js?v=40217ba812f8" defer></script>
+    <script src="/script.js?v=9022fbdecc13" defer></script>
   </body>
 </html>
