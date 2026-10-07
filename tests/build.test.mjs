@@ -128,6 +128,8 @@ test("verification catches broken links, metadata, and project destinations", as
     ["index.html", (s) => s.replace('href="#projects"', 'href="#missing"'), /missing fragment/],
     ["index.html", (s) => s.replace(/src="\/script\.js(?:\?[^"]*)?"/, 'src="/unpublished.js"'), /not published/],
     ["index.html", (s) => s.replace('data-demo="pixel-language"', 'data-demo="glassbox"'), /three unique data-demo/],
+    ["index.html", (s) => s.replaceAll('architecture-lab', 'automata-lab'), /three unique data-demo/],
+    ["index.html", (s) => s.replace('https://elliottbarnes.github.io/architecture-lab/', 'https://elliottbarnes.github.io/automata-lab/'), /invalid data-demo/],
     ["index.html", (s) => s.replace('https://elliottbarnes.github.io/glassbox/', 'https://example.com/'), /invalid data-demo/],
     ["index.html", (s) => s.replace('aria-label="Glassbox source on GitHub"', ''), /invalid data-source/],
     ["index.html", (s) => s.replace('"@type": "Person"', '"@type":'), /invalid Person JSON-LD/],
