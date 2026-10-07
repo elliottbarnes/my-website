@@ -1,4 +1,4 @@
-# elliott / Software, opened up
+# elliott / ai wizard
 
 A compact, dependency-free portfolio at [elliottbarnes.ca](https://elliottbarnes.ca).
 
