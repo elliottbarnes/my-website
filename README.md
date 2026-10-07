@@ -12,7 +12,7 @@ The homepage introduces Elliott and links to three independent systems projects.
 
 ## Layout and accessibility
 
-The landing page is designed to fit common portrait phone viewports without scrolling at default text settings. It uses the small viewport height (`svh`) so expanded mobile browser controls do not cover the footer. There is no fixed-height clipping or scroll lock: enlarged text and unusually short windows can flow naturally. All project and contact navigation uses ordinary links and works without JavaScript. The only script updates the copyright year.
+The landing page is compact at common portrait phone sizes. Role and project text stay readable on smaller phones, where the page can scroll naturally. It uses the small viewport height (`svh`) so expanded mobile browser controls do not cover the footer. There is no fixed-height clipping or scroll lock. All project and contact navigation uses ordinary links and works without JavaScript. The only script updates the copyright year. See [the current browser checks](design-qa.md) for tested dimensions and limits.
 
 The palette follows the system light/dark preference. Keyboard focus remains visible, a skip link leads to the projects, and hover transitions respect reduced-motion settings. Demos open as separate pages in the same tab and have their own layouts; the homepage does not embed them.
 
