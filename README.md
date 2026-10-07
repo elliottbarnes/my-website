@@ -8,7 +8,7 @@ The homepage introduces Elliott and links to three independent systems projects.
 | --- | --- | --- |
 | Glassbox — inspectable WebAssembly compiler | [Run the compiler](https://elliottbarnes.github.io/glassbox/) | [Repository](https://github.com/elliottbarnes/glassbox) |
 | Pixel Language — typed graphics language | [Write a shader](https://elliottbarnes.github.io/pixel-language/) | [Repository](https://github.com/elliottbarnes/pixel-language) |
-| Automata Lab — regex compiler and state machines | [Explore the machines](https://elliottbarnes.github.io/automata-lab/) | [Repository](https://github.com/elliottbarnes/automata-lab) |
+| Architecture Lab — interactive Macintosh 128K | [Open the Macintosh](https://elliottbarnes.github.io/architecture-lab/) | [Repository](https://github.com/elliottbarnes/architecture-lab) |
 
 ## Layout and accessibility
 
