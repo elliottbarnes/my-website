@@ -68,3 +68,10 @@ final result: passed
 - Made the command button available at every width, with direct shortcuts for all four projects.
 - Browser review: 320×568, 390×844, and 1280×800; no horizontal page overflow at the phone widths. Verified wraparound, wheel Home/End, command selection, native details End scrolling, the scroll cue hiding at the bottom, light/dark themes, pause, and Enter from the entrance. No browser warnings or errors observed.
 - Evidence and step-by-step review are in the ignored local `.design/refinement-pass/` folder. This is a focused browser/keyboard check, not a full assistive-technology or physical-device certification.
+
+
+## Dragon Ball radar — 11 October 2026
+
+The About graphic is now a theme-aware project radar using the existing, unmodified Dragon Ball icon. Four native hash links open the featured projects; each is named for assistive technology and has a 44×44 CSS-pixel target. The decorative canvas is excluded from the accessibility tree. The scan and signal rings stop with paused/reduced motion and while hidden; selecting a signal gives a brief, non-blocking energy pulse only when motion is enabled.
+
+Checked the 1280×800 desktop composition in Terminal and Paperwhite, the 320×568 phone layout without horizontal page overflow, all four destinations by keyboard, and paused/running states. No browser warnings or errors were observed. Existing 91 Node tests passed; source-aware verification still publishes exactly 21 files. Existing artwork attribution remains in the footer. Physical-device and full screen-reader testing were not performed.

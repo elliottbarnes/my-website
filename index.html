@@ -24,7 +24,7 @@
     <link rel="icon" href="/assets/dragon-ball.png" type="image/png" sizes="256x256">
     <link rel="apple-touch-icon" href="/assets/dragon-ball.png" type="image/png" sizes="256x256">
     <link rel="manifest" href="/site.webmanifest">
-    <link rel="stylesheet" href="/styles.css?v=95ed27a29f76">
+    <link rel="stylesheet" href="/styles.css?v=ab453163cd48">
     <link rel="stylesheet" href="/assets/themes.css?v=07412e345894">
     <script type="application/ld+json">
       {
@@ -93,7 +93,17 @@
           <div class="terminal" tabindex="0" role="region" aria-label="Portfolio details">
             <div class="terminal-title"><span>fish —</span><span data-selected-path>~</span><span class="scroll-cue" data-scroll-cue aria-hidden="true" hidden>more ↓</span></div>
             <article id="about" class="terminal-panel about-panel" data-panel="about" tabindex="-1" aria-labelledby="about-title">
-              <div class="profile-plot"><canvas id="profile-plot" aria-label="Animated contour study of the initials EB" role="img"></canvas><span class="plot-caption">EB / source study <span>4 selected projects</span></span></div><p class="prompt"><span>elliott@dev</span> ~ <span class="prompt-command">› whoami</span></p>
+              <div class="profile-plot dragon-radar" aria-label="Dragon Ball project radar">
+                <div class="plot-caption">DRAGON RADAR <span>4 project signals</span></div>
+                <div class="radar-stage">
+                  <canvas id="profile-plot" aria-hidden="true"></canvas>
+                  <a class="radar-signal" data-radar-route="glassbox" href="#glassbox" aria-label="Signal 1: open Glassbox"><img src="/assets/dragon-ball.png" alt=""><span>01</span><span class="radar-tooltip">Glassbox</span></a>
+                  <a class="radar-signal" data-radar-route="pixel-language" href="#pixel-language" aria-label="Signal 2: open Pixel Language"><img src="/assets/dragon-ball.png" alt=""><span>02</span><span class="radar-tooltip">Pixel Language</span></a>
+                  <a class="radar-signal" data-radar-route="architecture-lab" href="#architecture-lab" aria-label="Signal 3: open Architecture Lab"><img src="/assets/dragon-ball.png" alt=""><span>03</span><span class="radar-tooltip">Architecture Lab</span></a>
+                  <a class="radar-signal" data-radar-route="automata-lab" href="#automata-lab" aria-label="Signal 4: open Automata Lab"><img src="/assets/dragon-ball.png" alt=""><span>04</span><span class="radar-tooltip">Automata Lab</span></a>
+                  <div class="radar-legend" aria-hidden="true"><span>PROJECT SIGNALS</span><p>01 glassbox</p><p>02 pixel language</p><p>03 architecture lab</p><p>04 automata lab</p><small>select a Dragon Ball</small></div>
+                </div>
+              </div><p class="prompt"><span>elliott@dev</span> ~ <span class="prompt-command">› whoami</span></p>
               <h2 id="about-title">elliott<span class="text-cursor" aria-hidden="true">_</span></h2>
               <p class="about-tagline">ai wizard<br><span>“a computer can be a bicycle for the mind”</span></p>
               <p class="about-role">Senior Software Developer<br><span>Nasdaq Verafin</span></p>
@@ -159,7 +169,7 @@ output color * (0.35 + 0.65 * glow);</code></pre></div>
     <dialog id="command-dialog" aria-labelledby="command-title"><div class="dialog-heading"><h2 id="command-title">Command</h2><button type="button" data-command-close aria-label="Close command menu">esc</button></div><form id="command-form"><label for="command-input">Where would you like to go?</label><div class="command-input-row"><span aria-hidden="true">:</span><input id="command-input" type="text" autocomplete="off" spellcheck="false" placeholder="whoami, projects, theme…"><button type="submit">run ↵</button></div></form><div class="command-options"><button type="button" data-command="about">whoami</button><button type="button" data-command="glassbox">glassbox</button><button type="button" data-command="pixel-language">pixel language</button><button type="button" data-command="architecture-lab">architecture lab</button><button type="button" data-command="automata-lab">automata lab</button><button type="button" data-command="connect">links</button><button type="button" data-command="theme">theme</button><button type="button" data-command="motion">motion</button><button type="button" data-command="help">help</button></div><p id="command-feedback" role="status">A small set of shortcuts. Try “help”.</p></dialog>
     <script src="/assets/themes.js?v=0291c1ac5528" defer></script>
     <script src="/script.js?v=dc53f5459b6a" defer></script>
-    <script src="/assets/workspace.js?v=f4904913db4f" defer></script>
+    <script src="/assets/workspace.js?v=f0544c2dd8fc" defer></script>
     <script src="/assets/animation.js?v=4652fd951eca" defer></script>
   </body>
 </html>
