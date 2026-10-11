@@ -57,14 +57,14 @@ const snippets = [{"repo": "glassbox", "title": "source → WebAssembly", "path"
   if (hudContext) scene.append(inputHud);
   const words = new Set("export function const let return if else for of in new throw true false null undefined class async await output".split(" "));
   const glyphs = snippets.map(snippet => snippet.code.replace(/\s+/g, " ")).join(" ");
-  const cycleLength = 12400;
+  const cycleLength = 4800;
   const entryDuration = 420;
   const rowCache = new Map();
   const tokenCache = new Map();
   let width = 0, height = 0, ratio = 1, fontSize = 12, cell = 7.2, lineHeight = 17;
   let frame = 0, lastFrame = 0, elapsed = 0, sourceImage = null, portrait = [];
   let lastInput = -Infinity, pointerRect = null;
-  let gesture = null, interaction = null, hover = null, idleUntil = 0;
+  let gesture = null, interaction = null;
   let releaseAt = Infinity;
   let sourceRows = [], renderedSnippet = snippets[0], displayedGraphic = null;
   let pointerX = 0, pointerY = 0, targetX = 0, targetY = 0, lastReadout = 0;
@@ -232,7 +232,6 @@ const snippets = [{"repo": "glassbox", "title": "source → WebAssembly", "path"
     return { row: rows[cursorRow].line, column: cursorColumn + 1 };
   }
 
-  function type(text, time, duration) { return text.slice(0, Math.floor(text.length * clamp(time / duration))); }
 
   function avatar(amount, time) {
     const size = Math.min(width * .82, height * .87, 300) * (.55 + .45 * ease(amount));
@@ -403,7 +402,7 @@ const snippets = [{"repo": "glassbox", "title": "source → WebAssembly", "path"
   function openGraphic(row, pointerType) {
     if (!row || !visible() || still() || leaving || document.querySelector("dialog[open]")) return;
     const now = performance.now();
-    const next = { kind: "object", snippet: renderedSnippet, anchor: makeAnchor(row),
+    const next = { kind: renderedSnippet.repo === "glassbox" ? "avatar" : "object", snippet: renderedSnippet, anchor: makeAnchor(row),
       amount: 0, velocity: 0, target: 1, expires: now + (pointerType === "touch" || pointerType === "pen" ? 6000 : 9000) };
     if (interaction && interaction.kind === "object" && interaction.snippet === next.snippet) {
       // Retarget an existing spring rather than snapping a repeated tap back to zero.
@@ -414,7 +413,7 @@ const snippets = [{"repo": "glassbox", "title": "source → WebAssembly", "path"
     } else if (displayedGraphic && displayedGraphic.amount > .02) {
       interaction = { ...displayedGraphic, velocity: 0, target: 0, next };
     } else interaction = next;
-    hover = null;
+
     lastInput = now;
     schedule();
   }
@@ -422,12 +421,12 @@ const snippets = [{"repo": "glassbox", "title": "source → WebAssembly", "path"
   function closeGraphic() {
     if (!interaction && displayedGraphic) interaction = { ...displayedGraphic, velocity: 0 };
     if (interaction) { interaction.target = 0; interaction.next = null; }
-    hover = null;
+
   }
 
   function updateInteraction(now, delta) {
     if (!interaction) return;
-    if (now >= interaction.expires) { interaction.target = 0; hover = null; }
+    if (now >= interaction.expires) { interaction.target = 0; }
     const dt = Math.min(delta || 16.67, 48) / 1000;
     const frequency = interaction.target ? 14 : 20;
     const offset = interaction.amount - interaction.target;
@@ -442,8 +441,7 @@ const snippets = [{"repo": "glassbox", "title": "source → WebAssembly", "path"
     }
     if (!interaction.target && interaction.amount < .012) {
       const next = interaction.next;
-      idleUntil = now + 3000;
-      hover = null;
+
       interaction = next || null;
     }
   }
@@ -451,7 +449,7 @@ const snippets = [{"repo": "glassbox", "title": "source → WebAssembly", "path"
   function drawInteraction(time) {
     const { snippet, amount, kind, anchor } = interaction;
     scene.dataset.phase = "interactive";
-    editor(snippet, 1, 1 - amount * .96, time, false, false);
+    editor(snippet, (time % cycleLength) / cycleLength, 1 - amount * .70, time, true, true);
     if (kind === "avatar") avatar(amount, time);
     else liveObject(snippet, amount, time, anchor);
     status(snippet, "NORMAL", kind === "avatar" ? "!./avatar --track" : `!./${snippet.repo} --live`);
@@ -462,68 +460,19 @@ const snippets = [{"repo": "glassbox", "title": "source → WebAssembly", "path"
     context.clearRect(0, 0, width, height);
     displayedGraphic = null;
     if (!width || !height) return;
+    const clock = time % cycleLength;
+    const snippet = snippets[Math.floor(time / cycleLength) % snippets.length];
     if (still()) {
-      const snippet = snippets[0];
-      editor(snippet, 1, .045, 0, false, false);
-      avatar(1, 0);
-      status(snippet, "NORMAL", "!./avatar --track");
+      editor(snippet, 1, 1, 0, false, false);
+      status(snippet, "NORMAL", "");
       scene.dataset.phase = "still";
       drawInputHud(time);
       return;
     }
-    if (interaction) { drawInteraction(performance.now()); return; }
-    if (performance.now() < idleUntil) {
-      scene.dataset.phase = "editing";
-      editor(renderedSnippet, 1, 1, time, true, false);
-      status(renderedSnippet, "NORMAL", "");
-      drawInputHud(time);
-      return;
-    }
-    const clock = time % cycleLength;
-    const cycle = Math.floor(time / cycleLength);
-    const first = snippets[cycle % snippets.length];
-    const second = snippets[(cycle + 1) % snippets.length];
-    let position;
-    if (clock < 1600) {
-      scene.dataset.phase = "editing";
-      position = editor(first, clamp(clock / 1400), 1, time, true, true);
-      status(first, clock < 1400 ? "INSERT" : "NORMAL", "", position.row, position.column);
-    } else if (clock < 1900) {
-      scene.dataset.phase = "colorscheme";
-      position = editor(first, 1, 1, time, true, false);
-      status(first, "NORMAL", type(`colorscheme ${window.PortfolioThemes?.label || root.dataset.theme || "saiyan"}`, clock - 1600, 250), position.row, position.column);
-    } else if (clock < 2200) {
-      scene.dataset.phase = "avatar-command";
-      editor(first, 1, 1, time, false, false);
-      status(first, "NORMAL", type("!./avatar --track", clock - 1900, 250));
-    } else if (clock < 5700) {
-      scene.dataset.phase = "avatar";
-      const local = clock - 2200;
-      const amount = local < 360 ? ease(local / 360) : local > 3140 ? 1 - ease((local - 3140) / 360) : 1;
-      editor(first, 1, 1 - amount * .96, time, false, false);
-      avatar(amount, time);
-      status(first, "NORMAL", "!./avatar --track");
-    } else if (clock < 7300) {
-      scene.dataset.phase = "editing";
-      const local = clock - 5700;
-      position = editor(second, clamp(local / 1400), 1, time, true, true);
-      status(second, local < 1400 ? "INSERT" : "NORMAL", "", position.row, position.column);
-    } else if (clock < 7650) {
-      scene.dataset.phase = "object-command";
-      editor(second, 1, 1, time, false, false);
-      status(second, "NORMAL", type(second.repo === "architecture-lab" ? "!./framebuffer --trace" : "!./interference --live", clock - 7300, 300));
-    } else if (clock < 11800) {
-      scene.dataset.phase = "object";
-      const local = clock - 7650;
-      const amount = local < 350 ? ease(local / 350) : local > 3800 ? 1 - ease((local - 3800) / 350) : 1;
-      editor(second, 1, 1 - amount * .96, time, false, false);
-      liveObject(second, amount, time);
-      status(second, "NORMAL", second.repo === "architecture-lab" ? "!./framebuffer --trace" : "!./interference --live");
-    } else {
-      scene.dataset.phase = "normal";
-      position = editor(second, 1, 1, time, true, false);
-      status(second, "NORMAL", "write | next", position.row, position.column);
-    }
+    if (interaction) { drawInteraction(time); return; }
+    scene.dataset.phase = "editing";
+    const position = editor(snippet, clock / cycleLength, 1, time, true, true);
+    status(snippet, "INSERT", "", position.row, position.column);
     drawInputHud(time);
   }
 
@@ -576,7 +525,7 @@ const snippets = [{"repo": "glassbox", "title": "source → WebAssembly", "path"
   function enter() {
     if (entryPromise) return entryPromise;
     if (!visible() || still() || motion.matches) return Promise.resolve();
-    gesture = null; interaction = null; hover = null;
+    gesture = null; interaction = null;
     const parent = canvas.parentElement;
     entryLayout = { canvas: canvas.style.cssText, parent, parentStyle: parent?.style.cssText || "" };
     Object.assign(canvas.style, { position: "fixed", inset: "0", width: "100vw", height: "100svh",
@@ -634,11 +583,9 @@ const snippets = [{"repo": "glassbox", "title": "source → WebAssembly", "path"
     pointerX += (targetX - pointerX) * follow;
     pointerY += (targetY - pointerY) * follow;
     if (now >= releaseAt) { targetX = 0; targetY = 0; releaseAt = Infinity; }
-    if (document.querySelector("dialog[open]")) hover = null;
-    if (hover && !interaction && now - hover.started >= 900) openGraphic(hover.row, "mouse");
     updateInteraction(now, delta);
     if (leaving) drawDive(now);
-    else { if (!interaction && now >= idleUntil) elapsed += delta; drawScene(elapsed); }
+    else { elapsed += delta; drawScene(elapsed); }
     schedule();
   }
 
@@ -649,7 +596,7 @@ const snippets = [{"repo": "glassbox", "title": "source → WebAssembly", "path"
     if (frame) cancelAnimationFrame(frame);
     frame = 0; lastFrame = 0;
     if (!visible() || still()) {
-      gesture = null; interaction = null; hover = null; displayedGraphic = null;
+      gesture = null; interaction = null; displayedGraphic = null;
       releaseAt = Infinity;
       targetX = 0; targetY = 0;
     }
@@ -664,16 +611,12 @@ const snippets = [{"repo": "glassbox", "title": "source → WebAssembly", "path"
       || Boolean(event.target?.closest?.(controlsSelector)) || Boolean(document.querySelector("dialog[open]"));
   }
   function trackPointer(event) {
-    if (ignoresInput(event)) { hover = null; return; }
+    if (ignoresInput(event)) { return; }
     const rect = pointerRect || canvas.getBoundingClientRect();
     if (!rect.width || !rect.height) return;
     targetX = clamp((event.clientX - rect.left) / rect.width) - .5;
     targetY = clamp((event.clientY - rect.top) / rect.height) - .5;
     lastInput = performance.now();
-    if (event.pointerType === "mouse" && !gesture && !interaction && performance.now() >= idleUntil) {
-      const row = sourceHit(event.clientX - rect.left, event.clientY - rect.top);
-      if (row?.line !== hover?.row.line) hover = row ? { row, started: lastInput } : null;
-    }
     if (readout && event.timeStamp - lastReadout > 50) {
       readout.textContent = `x ${(targetX + .5).toFixed(3)} / y ${(targetY + .5).toFixed(3)}`;
       lastReadout = event.timeStamp;
@@ -687,16 +630,16 @@ const snippets = [{"repo": "glassbox", "title": "source → WebAssembly", "path"
   }
   const inputSurface = entrance || canvas;
   inputSurface.addEventListener("pointerdown", event => {
-    if (event.isPrimary === false) { gesture = null; hover = null; return; }
+    if (event.isPrimary === false) { gesture = null; return; }
     if (ignoresInput(event) || (event.button !== undefined && event.button !== 0)) return;
     pointerRect = canvas.getBoundingClientRect();
     gesture = { id: event.pointerId, x: event.clientX, y: event.clientY, started: performance.now(), distance: 0 };
     releaseAt = Infinity;
-    hover = null;
+
     trackPointer(event);
   }, { passive: true });
   inputSurface.addEventListener("pointermove", event => { trackGesture(event); trackPointer(event); }, { passive: true });
-  inputSurface.addEventListener("pointerleave", () => { hover = null; if (!gesture) releasePointer(); });
+  inputSurface.addEventListener("pointerleave", () => { if (!gesture) releasePointer(); });
   window.addEventListener("pointermove", trackGesture, { passive: true });
   window.addEventListener("pointerup", event => {
     if (!gesture || event.pointerId !== gesture.id) return;
@@ -720,7 +663,7 @@ const snippets = [{"repo": "glassbox", "title": "source → WebAssembly", "path"
   }, { passive: true });
   window.addEventListener("pointercancel", event => {
     if (gesture?.id !== event.pointerId) return;
-    gesture = null; hover = null; releasePointer();
+    gesture = null; releasePointer();
   }, { passive: true });
   window.addEventListener("scroll", () => { pointerRect = null; }, { passive: true });
   window.addEventListener("portfolio:preferences", refresh);
