@@ -137,7 +137,8 @@
   function draw() {
     if (!width || !height) return;
     context.clearRect(0, 0, width, height);
-    const angle = quiet() ? -.65 : elapsed / 1700;
+    // Pausing stops the clock, not the drawing state, so resume stays continuous.
+    const angle = elapsed / 1700;
     context.lineWidth = .7;
     context.strokeStyle = muted;
     context.globalAlpha = .45;
@@ -177,7 +178,7 @@
       context.stroke();
     }
     locations.forEach(([x, y], index) => {
-      const phase = quiet() ? .35 : (elapsed / 1800 + index / 4) % 1;
+      const phase = (elapsed / 1800 + index / 4) % 1;
       context.strokeStyle = accent;
       context.globalAlpha = selected === index ? .85 : .45 * (1 - phase);
       circle(centerX + x * radius, centerY + y * radius, selected === index ? 19 : 12 + phase * 11);
