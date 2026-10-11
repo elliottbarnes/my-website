@@ -7,6 +7,9 @@ export const PUBLIC_FILES = Object.freeze([
   "index.html", "404.html", "styles.css", "script.js", "robots.txt",
   "sitemap.xml", "site.webmanifest", "assets/favicon.svg", "assets/social-card.svg",
   "assets/dragon-ball.png",
+  "assets/themes.css", "assets/themes.js", "assets/workspace.js",
+  "assets/projects/glassbox.jpg", "assets/projects/pixel-language.jpg", "assets/projects/architecture-lab.jpg", "assets/projects/automata-lab.jpg",
+  "assets/animation.js", "assets/github-avatar.jpg", "assets/fonts/IBMPlexMono-Regular.ttf", "assets/fonts/OFL.txt",
 ]);
 
 export const VERSIONED_FILES = Object.freeze(PUBLIC_FILES.filter((file) => /\.(?:css|js)$/.test(file)));
@@ -19,6 +22,7 @@ export const CONTENT_TYPES = Object.freeze({
   ".png": "image/png",
   ".webp": "image/webp",
   ".svg": "image/svg+xml",
+  ".ttf": "font/ttf",
   ".txt": "text/plain; charset=utf-8",
   ".webmanifest": "application/manifest+json; charset=utf-8",
   ".xml": "application/xml; charset=utf-8",

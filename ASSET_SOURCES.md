@@ -1,8 +1,18 @@
 # Asset sources
 
+## Terminal redesign typography
+
+`assets/fonts/IBMPlexMono-Regular.ttf` is the unmodified IBM Plex Mono Regular font by IBM, downloaded on 2026-10-11 from the [official Google Fonts repository](https://github.com/google/fonts/tree/main/ofl/ibmplexmono) ([font source](https://raw.githubusercontent.com/google/fonts/main/ofl/ibmplexmono/IBMPlexMono-Regular.ttf)). Copyright © 2017 IBM Corp., with Reserved Font Name “Plex”. It is licensed under the SIL Open Font License 1.1; the complete notice is retained and published at [`assets/fonts/OFL.txt`](assets/fonts/OFL.txt). The font is served locally, without a runtime request to Google Fonts.
+
+The terminal styling is inspired by the user-selected reference, [hancore.dev](https://hancore.dev). The animation and interface implementation is original to this repository. Its creator’s face, personal information, and branding are not used. The EB contour graphic is generated locally. The 28 theme names and palette values follow the reference’s public colorscheme catalog, with provenance described in `assets/themes.js`.
+
+## Code animation references
+
+The code used to personalize the terminal animation comes from Elliott's public, MIT-licensed projects. Exact snippets, commit-pinned source URLs, line ranges, and complete license notices are recorded in `.design/code-references.json`. They were checked against public GitHub sources on 2026-10-11: Glassbox (`c7ae7bd3eb374580b0c28e0b554108b5504a1c00`), Pixel Language (`bf7abf01bd02a9a3f40216a81f6a6b8809009ea2`), Architecture Lab (`db570f2adea137f8a362ee171ca4230f5f7b76fc`), and Automata Lab (`5f6754580cfb0ffcf393d9e3d944ce1753cc1554`). Display-only excerpts do not execute or connect to external services. Any excerpts included in the published animation script retain their MIT license notice in that script.
+
 ## Portfolio artwork
 
-The current homepage housing is `assets/barnes-handheld.webp`, generated with the built-in Image Gen tool from the user-selected **Option 1: Barnes handheld console** concept. It preserves the orange molded shell, navy D-pad and screen bezel, blue A button, red B button, and embossed “Barnes” badge. The dark screen is blank in the artwork: its text, project choices, demos, and navigation are semantic HTML. WebP encoding preserves the generated transparency. [Handheld provenance](assets/BARNES_HANDHELD.md) records the exact prompts, encoding, and screen/control bounds.
+The archived homepage housing is `assets/barnes-handheld.webp`, generated with the built-in Image Gen tool from the user-selected **Option 1: Barnes handheld console** concept. It preserves the orange molded shell, navy D-pad and screen bezel, blue A button, red B button, and embossed “Barnes” badge. The dark screen is blank in the artwork: its text, project choices, demos, and navigation are semantic HTML. WebP encoding preserves the generated transparency. [Handheld provenance](assets/BARNES_HANDHELD.md) records the exact prompts, encoding, and screen/control bounds.
 
 The earlier compact SNES-style gamepad remains at `assets/barnes-controller.webp` as archived artwork and is no longer displayed by the site or its sharing metadata. [Compact-controller provenance](assets/BARNES_CONTROLLER.md) describes that earlier design.
 
@@ -61,3 +71,11 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 ## Prism illustrative gallery
 
 Three original illustrations were generated for the browser demo using OpenAI image generation, then exported as 512×512 JPEGs. See `assets/prism/SOURCES.md` for prompts and descriptions. They are illustrative samples, not recorded outputs of Prism Studio; their numeric IDs are not reproducible generation seeds. PNG masters and provenance are excluded from the publication allowlist.
+
+## GitHub avatar
+
+`assets/github-avatar.jpg` is the unmodified public avatar returned by the GitHub API for `elliottbarnes` on 2026-10-11: https://avatars.githubusercontent.com/u/54964377?v=4. The owner explicitly selected this image for their site. The canvas renders it as moving source-code characters locally; the image file remains unchanged. No browser request to GitHub is needed.
+
+## Project preview images
+
+The four JPEGs under `assets/projects/` are browser screenshots of Elliott’s own public Glassbox, Pixel Language, Architecture Lab, and Automata Lab playgrounds, captured on 2026-10-11. They are local previews linking to those independent projects, not remotely loaded embeds.

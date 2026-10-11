@@ -4,7 +4,7 @@
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
     <meta name="description" content="elliott — ai wizard. “bicycle for the mind”">
-    <meta name="theme-color" content="#f4f2eb">
+    <meta name="theme-color" content="#0c0c0c">
     <meta name="color-scheme" content="light dark">
     <meta property="og:type" content="website">
     <meta property="og:url" content="https://elliottbarnes.ca/">
@@ -24,7 +24,8 @@
     <link rel="icon" href="/assets/dragon-ball.png" type="image/png" sizes="256x256">
     <link rel="apple-touch-icon" href="/assets/dragon-ball.png" type="image/png" sizes="256x256">
     <link rel="manifest" href="/site.webmanifest">
-    <link rel="stylesheet" href="/styles.css?v=dc4f0d1579a8">
+    <link rel="stylesheet" href="/styles.css?v=8f6bf5bb2cb8">
+    <link rel="stylesheet" href="/assets/themes.css?v=a5ab1e0c0eb8">
     <script type="application/ld+json">
       {
         "@context": "https://schema.org",
@@ -40,63 +41,119 @@
     <a class="skip-link" href="#projects">Skip to projects</a>
     <div class="page">
       <header class="masthead">
-        <a class="wordmark" href="/" aria-label="elliott, home">e<span aria-hidden="true">.</span></a>
-        <p>ai wizard</p>
-        <span class="index-mark" aria-hidden="true">EB / 001</span>
+        <a class="wordmark" data-home href="#" aria-label="elliott, home"><span class="brand">eb</span><span>elliottbarnes.ca</span></a>
+        <span class="byline visually-hidden">ai wizard</span>
+        <a class="github-link" href="https://github.com/elliottbarnes" rel="me">github</a>
       </header>
       <main id="main">
-        <section class="intro" aria-labelledby="name">
-          <p class="eyebrow">Hello, I’m</p>
-          <h1 id="name">elliott<span>.</span></h1>
-          <p class="statement">“bicycle for the mind”</p>
-          <p class="role">Senior Software Developer<br><span>Nasdaq Verafin</span></p>
-          <svg class="signal" viewBox="0 0 296 64" fill="none" aria-hidden="true">
-            <path d="M1 32h49m40 0h40m36 0h40m40 0h49" stroke="currentColor"/>
-            <path d="m59 20-9 12 9 12m21-24 9 12-9 12" stroke="currentColor" stroke-width="2"/>
-            <rect x="130" y="14" width="36" height="36" rx="3" stroke="currentColor"/>
-            <path d="M141 25h14m-14 7h10m-10 7h14" stroke="currentColor"/>
-            <path d="m216 19 23 13-23 13V19Z" stroke="currentColor" stroke-width="2"/>
-            <circle cx="295" cy="32" r="1" fill="currentColor"/>
-          </svg>
+        <section id="entrance" class="entrance" aria-labelledby="entrance-title">
+          <h1 id="entrance-title" class="visually-hidden">elliott — ai wizard. “bicycle for the mind”</h1>
+          <div class="scene" id="scene">
+            <div class="scene-heading" aria-hidden="true"><span>// ~/elliott/</span><span data-scene-file>glassbox/docs/core.js</span></div>
+            <div class="scene-body">
+              <pre class="code-wall" aria-hidden="true"><code id="code-wall">export function compile(source, { optimized = true } = {}) {
+  const tokens = tokenize(source); const ast = parse(tokens); const ir = lower(ast); const optimization = optimize(ir);
+  const selectedIR = optimized ? optimization.ir : ir; const wasm = emitWasm(selectedIR);
+  if (!WebAssembly.validate(wasm)) throw new Error(&#x27;Internal compiler error: emitted invalid WebAssembly.&#x27;);
+  return { ast, ir, optimizedIr: optimization.ir, changes: optimization.changes, wasm, tokens: tokens.length - 1, resultType: ir.functions[ir.entry].result };
+}</code></pre>
+              <canvas id="code-field" aria-hidden="true"></canvas>
+              <span class="monogram-fallback" aria-hidden="true">eb</span>
+              <div class="scene-annotation" aria-hidden="true"><span>elliott typing…</span><span data-pointer-readout>x 0.500 / y 0.500</span><span>code → thought → code</span></div>
+            </div>
+            <div class="editor-status" aria-hidden="true"><span class="mode">NORMAL</span><span class="file-path" data-scene-path>~/Projects/glassbox/docs/core.js</span><span class="status-position">1:1&nbsp; All</span></div>
+            <div class="editor-command" aria-hidden="true">:<span id="typed-command">hello, world.</span><span class="cursor">▌</span></div>
+          </div>
+          <p class="entrance-hint visually-hidden">Press Enter to step inside. Use the theme button to select a colour scheme.</p>
+          <div class="entrance-footer">
+            <p>// “bicycle for the mind”</p>
+            <div class="entrance-controls"><button type="button" data-motion-toggle aria-label="Pause animation">:pause</button><button type="button" data-theme-toggle aria-label="Change theme">:theme</button><a class="enter-link" data-enter href="#about">enter <span aria-hidden="true">↵</span></a></div>
+          </div>
         </section>
-        <section class="projects" id="projects" aria-labelledby="projects-title" tabindex="-1">
-          <div class="section-label"><h2 id="projects-title">Selected projects</h2><span>01 — 03</span></div>
-          <article class="project" data-project="glassbox">
-            <span class="project-number" aria-hidden="true">01</span>
-            <a class="project-demo" data-demo="glassbox" href="https://elliottbarnes.github.io/glassbox/" aria-label="Open Glassbox live demo">
-              <span class="project-kind">WebAssembly compiler</span>
-              <h3>Glassbox <span class="arrow" aria-hidden="true">↗</span></h3>
-              <p>A typed WebAssembly compiler with differential execution checks.</p>
-            </a>
-            <a class="source" data-source="glassbox" href="https://github.com/elliottbarnes/glassbox" aria-label="Glassbox source on GitHub">Code <span aria-hidden="true">↗</span></a>
-          </article>
-          <article class="project" data-project="pixel-language">
-            <span class="project-number" aria-hidden="true">02</span>
-            <a class="project-demo" data-demo="pixel-language" href="https://elliottbarnes.github.io/pixel-language/" aria-label="Open Pixel Language live demo">
-              <span class="project-kind">Graphics language</span>
-              <h3>Pixel Language <span class="arrow" aria-hidden="true">↗</span></h3>
-              <p>A typed graphics language that emits inspectable GLSL.</p>
-            </a>
-            <a class="source" data-source="pixel-language" href="https://github.com/elliottbarnes/pixel-language" aria-label="Pixel Language source on GitHub">Code <span aria-hidden="true">↗</span></a>
-          </article>
-          <article class="project" data-project="architecture-lab">
-            <span class="project-number" aria-hidden="true">03</span>
-            <a class="project-demo" data-demo="architecture-lab" href="https://elliottbarnes.github.io/architecture-lab/" aria-label="Open Architecture Lab live demo">
-              <span class="project-kind">Computer architecture</span>
-              <h3>Architecture Lab <span class="arrow" aria-hidden="true">↗</span></h3>
-              <p>Explore three generations of Mac hardware in interactive 3D.</p>
-            </a>
-            <a class="source" data-source="architecture-lab" href="https://github.com/elliottbarnes/architecture-lab" aria-label="Architecture Lab source on GitHub">Code <span aria-hidden="true">↗</span></a>
-          </article>
-          <p class="project-note">Open a project to explore the live playground.</p>
+        <section id="workspace" class="workspace" aria-label="Elliott’s terminal portfolio">
+          <aside class="project-tree" id="projects" tabindex="-1">
+            <h2>~/elliott/</h2>
+            <nav class="file-list" aria-label="Explore portfolio">
+              <button type="button" data-select="about" aria-pressed="true"><img src="/assets/github-avatar.jpg" alt=""><span class="file-index">00</span><span>whoami</span><span class="file-extension">.md</span></button>
+              <button type="button" data-select="glassbox" aria-pressed="false"><img src="/assets/projects/glassbox.jpg" alt="" loading="lazy"><span class="file-index">01</span><span>glassbox</span><span class="file-extension">/</span></button>
+              <button type="button" data-select="pixel-language" aria-pressed="false"><img src="/assets/projects/pixel-language.jpg" alt="" loading="lazy"><span class="file-index">02</span><span>pixel-language</span><span class="file-extension">/</span></button>
+              <button type="button" data-select="architecture-lab" aria-pressed="false"><img src="/assets/projects/architecture-lab.jpg" alt="" loading="lazy"><span class="file-index">03</span><span>architecture-lab</span><span class="file-extension">/</span></button>
+              <button type="button" data-select="automata-lab" aria-pressed="false"><img src="/assets/projects/automata-lab.jpg" alt="" loading="lazy"><span class="file-index">04</span><span>automata-lab</span><span class="file-extension">/</span></button>
+              <button type="button" data-select="connect" aria-pressed="false"><span class="links-preview" aria-hidden="true">github<br>linkedin</span><span class="file-index">05</span><span>links</span><span class="file-extension">/</span></button>
+            </nav>
+            <p class="tree-note">scroll · drag the wheel</p>
+            <button class="command-trigger" data-command-open type="button">: command <kbd>/</kbd></button>
+          </aside>
+          <div class="terminal">
+            <div class="terminal-title"><span>fish —</span><span data-selected-path>~</span><span class="terminal-title-end">UTF-8</span></div>
+            <article id="about" class="terminal-panel about-panel" data-panel="about" tabindex="-1" aria-labelledby="about-title">
+              <div class="profile-plot"><canvas id="profile-plot" aria-label="Animated contour study of the initials EB" role="img"></canvas><span class="plot-caption">EB / source study <span>4 selected projects</span></span></div><p class="prompt"><span>elliott@dev</span> ~ <span class="prompt-command">› whoami</span></p>
+              <h2 id="about-title">elliott<span class="text-cursor" aria-hidden="true">_</span></h2>
+              <p class="about-tagline">ai wizard<br><span>“bicycle for the mind”</span></p>
+              <p class="about-role">Senior Software Developer<br><span>Nasdaq Verafin</span></p>
+              <p class="about-text">Compilers, interactive systems, and small worlds you can take apart.</p>
+              <p class="prompt"><span>elliott@dev</span> ~ <span class="prompt-command">› ls projects/</span></p>
+              <p class="about-text">Type a little code. Follow a signal. See what happens inside.</p>
+              <div class="about-projects"><a href="#glassbox">glassbox/</a><a href="#pixel-language">pixel-language/</a><a href="#architecture-lab">architecture-lab/</a><a href="#automata-lab">automata-lab/</a></div>
+              <p class="prompt idle-prompt" aria-hidden="true"><span>elliott@dev</span> ~ › <span class="cursor">▌</span></p>
+            </article>
+            <article id="glassbox" class="terminal-panel" data-panel="glassbox" tabindex="-1" aria-labelledby="glassbox-title">
+              <p class="prompt"><span>elliott@dev</span> ~/projects <span class="prompt-command">› open glassbox</span></p><p class="project-kind">01 / WebAssembly compiler</p><h2 id="glassbox-title">Glassbox</h2><p class="project-description">A typed WebAssembly compiler with differential execution checks.</p>
+              <img class="project-screenshot" src="/assets/projects/glassbox.jpg" alt="Glassbox live playground preview" loading="lazy"><div class="code-preview"><div>compiler / docs/core.js</div><pre><code>export function compile(source, { optimized = true } = {}) {
+  const tokens = tokenize(source); const ast = parse(tokens); const ir = lower(ast); const optimization = optimize(ir);
+  const selectedIR = optimized ? optimization.ir : ir; const wasm = emitWasm(selectedIR);
+  if (!WebAssembly.validate(wasm)) throw new Error(&#x27;Internal compiler error: emitted invalid WebAssembly.&#x27;);
+  return { ast, ir, optimizedIr: optimization.ir, changes: optimization.changes, wasm, tokens: tokens.length - 1, resultType: ir.functions[ir.entry].result };
+}</code></pre></div>
+              <div class="project-actions"><a data-demo="glassbox" href="https://elliottbarnes.github.io/glassbox/" aria-label="Open Glassbox live demo">open playground ↗</a><a data-source="glassbox" href="https://github.com/elliottbarnes/glassbox" aria-label="Glassbox source on GitHub">source ↗</a></div>
+            </article>
+            <article id="pixel-language" class="terminal-panel" data-panel="pixel-language" tabindex="-1" aria-labelledby="pixel-title">
+              <p class="prompt"><span>elliott@dev</span> ~/projects <span class="prompt-command">› open pixel-language</span></p><p class="project-kind">02 / Graphics language</p><h2 id="pixel-title">Pixel Language</h2><p class="project-description">A typed graphics language that emits inspectable GLSL.</p>
+              <img class="project-screenshot" src="/assets/projects/pixel-language.jpg" alt="Pixel Language live playground preview" loading="lazy"><div class="code-preview"><div>interference.pixel / docs/presets.js</div><pre><code>// Interference · a field of phase-shifted waves
+let p = (uv - 0.5) * vec2(resolution.x / resolution.y, 1);
+let t = time * 0.32;
+let a = sin(p.x * 9 + t);
+let b = cos(p.y * 11 - t * 1.3);
+let c = sin(length(p) * 15 - t * 2);
+let field = (a + b + c) / 3;
+let phase = field * 2.4 + vec3(0, 1.8, 3.9);
+let color = 0.5 + 0.5 * cos(phase);
+let glow = pow(1 - abs(field), 3);
+output color * (0.35 + 0.65 * glow);</code></pre></div>
+              <div class="project-actions"><a data-demo="pixel-language" href="https://elliottbarnes.github.io/pixel-language/" aria-label="Open Pixel Language live demo">open playground ↗</a><a data-source="pixel-language" href="https://github.com/elliottbarnes/pixel-language" aria-label="Pixel Language source on GitHub">source ↗</a></div>
+            </article>
+            <article id="architecture-lab" class="terminal-panel" data-panel="architecture-lab" tabindex="-1" aria-labelledby="architecture-title">
+              <p class="prompt"><span>elliott@dev</span> ~/projects <span class="prompt-command">› open architecture-lab</span></p><p class="project-kind">03 / Computer architecture</p><h2 id="architecture-title">Architecture Lab</h2><p class="project-description">Explore three generations of Mac hardware in interactive 3D.</p>
+              <img class="project-screenshot" src="/assets/projects/architecture-lab.jpg" alt="Architecture Lab live playground preview" loading="lazy"><div class="code-preview"><div>input → instructions → memory → display</div><pre><code><span class="syntax-comment">// look beneath the screen</span>
+
+01  explore the machine
+02  follow a signal
+03  inspect the memory
+04  connect the pieces</code></pre></div>
+              <div class="project-actions"><a data-demo="architecture-lab" href="https://elliottbarnes.github.io/architecture-lab/" aria-label="Open Architecture Lab live demo">open exhibit ↗</a><a data-source="architecture-lab" href="https://github.com/elliottbarnes/architecture-lab" aria-label="Architecture Lab source on GitHub">source ↗</a></div>
+            </article>
+            <article id="automata-lab" class="terminal-panel" data-panel="automata-lab" tabindex="-1" aria-labelledby="automata-title">
+              <p class="prompt"><span>elliott@dev</span> ~/projects <span class="prompt-command">› open automata-lab</span></p><p class="project-kind">04 / Regular expression engine</p><h2 id="automata-title">Automata Lab</h2><p class="project-description">Bounded regex compilation with independently checked minimization.</p>
+              <img class="project-screenshot" src="/assets/projects/automata-lab.jpg" alt="Automata Lab live playground preview" loading="lazy"><div class="code-preview"><div>regular expression → NFA → DFA → minimization</div><pre><code><span class="syntax-value">(a|b)*abb</span>
+
+<span class="syntax-comment">// turn a pattern into a machine</span>
+<span class="syntax-comment">// step through a string</span>
+<span class="syntax-comment">// see exactly why it matches</span></code></pre></div>
+              <div class="project-actions"><a href="https://elliottbarnes.github.io/automata-lab/" aria-label="Open Automata Lab live demo">open playground ↗</a><a href="https://github.com/elliottbarnes/automata-lab" aria-label="Automata Lab source on GitHub">source ↗</a></div>
+            </article>
+            <article id="connect" class="terminal-panel" data-panel="connect" tabindex="-1" aria-labelledby="connect-title">
+              <p class="prompt"><span>elliott@dev</span> ~ <span class="prompt-command">› ls links/</span></p><h2 id="connect-title">Elsewhere.</h2><p class="project-description">Code, experiments, and a way to connect.</p><div class="connect-links"><a href="https://github.com/elliottbarnes" rel="me"><span>github</span><span>elliottbarnes ↗</span></a><a href="https://www.linkedin.com/in/elliottbarnes1/" rel="me"><span>linkedin</span><span>elliott barnes ↗</span></a></div>
+            </article>
+          </div>
+          <aside class="workspace-avatar" aria-hidden="true"><img src="/assets/github-avatar.jpg" alt=""><p>[pointer] <span data-workspace-pointer>0.500, 0.500</span><br>input: local<br>state: exploring</p></aside><div class="workspace-status"><span><span class="mode">NORMAL</span> <span id="status-view">whoami</span></span><span id="keyboard-help">↑↓ project · ↵ open · : cmd</span><span class="github-stat" title="Public GitHub snapshot · 11 October 2026"><small>REPOS</small>42</span><span class="github-stat" title="Public GitHub snapshot · 11 October 2026"><small>STARS</small>4</span><span class="github-stat" title="Public GitHub snapshot · 11 October 2026"><small>FOLLOWERS</small>15</span><div><button class="mobile-command" type="button" data-command-open aria-label="Open command menu">:cmd</button><button type="button" data-motion-toggle aria-label="Pause animation">:pause</button><button type="button" data-theme-toggle aria-label="Change theme">:theme</button><a data-home href="#">:home</a></div></div>
         </section>
       </main>
-      <footer>
-        <nav aria-label="Connect"><a href="https://github.com/elliottbarnes" rel="me">GitHub <span aria-hidden="true">↗</span></a><a href="https://www.linkedin.com/in/elliottbarnes1/" rel="me">LinkedIn <span aria-hidden="true">↗</span></a></nav>
-        <p class="copyright">© <span data-current-year>2026</span> elliott</p>
-        <p class="icon-credit">Icon: <a href="https://www.iconarchive.com/show/dragon-ballz-icons-by-musett/Dragon-Ball-icon.html">Musett</a> / <a href="https://creativecommons.org/licenses/by-nc-nd/4.0/">CC BY-NC-ND</a></p>
-      </footer>
+      <footer class="colophon"><p>© <span data-current-year>2026</span> elliott</p><p>Icon: <a href="https://www.iconarchive.com/show/dragon-ballz-icons-by-musett/Dragon-Ball-icon.html">Musett</a> / <a href="https://creativecommons.org/licenses/by-nc-nd/4.0/">CC BY-NC-ND</a></p></footer>
     </div>
-    <script src="/script.js?v=9022fbdecc13" defer></script>
+    <dialog id="command-dialog" aria-labelledby="command-title"><div class="dialog-heading"><h2 id="command-title">Command</h2><button type="button" data-command-close aria-label="Close command menu">esc</button></div><form id="command-form"><label for="command-input">Where would you like to go?</label><div class="command-input-row"><span aria-hidden="true">:</span><input id="command-input" type="text" autocomplete="off" spellcheck="false" placeholder="whoami, projects, theme…"><button type="submit">run ↵</button></div></form><div class="command-options"><button type="button" data-command="about">whoami</button><button type="button" data-command="projects">projects</button><button type="button" data-command="connect">links</button><button type="button" data-command="theme">theme</button><button type="button" data-command="motion">motion</button><button type="button" data-command="help">help</button></div><p id="command-feedback" role="status">A small set of shortcuts. Try “help”.</p></dialog>
+    <script src="/assets/themes.js?v=16c5bc6ba569" defer></script>
+    <script src="/script.js?v=059e4b2f3f2b" defer></script>
+    <script src="/assets/workspace.js?v=be07d9d937d9" defer></script>
+    <script src="/assets/animation.js?v=e370abdca965" defer></script>
   </body>
 </html>
