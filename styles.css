@@ -138,3 +138,35 @@ a:focus-visible,button:focus-visible,input:focus-visible{outline-color:var(--ink
  .terminal{padding-right:0}
  .workspace-avatar{display:none}
 }
+
+/* Keep wheel controls outside the moving cards and use available reading space. */
+[data-enhanced] .workspace{--workspace-height:clamp(400px,calc(100svh - 230px),600px)}
+[data-enhanced] .project-tree{height:var(--workspace-height);padding-bottom:0;overflow:clip}
+[data-enhanced] .file-list{height:calc(100% - 72px);overflow:clip;padding:0}
+[data-enhanced] .file-list button{top:calc(50% - 47px)}
+.wheel-controls{position:absolute;bottom:0;left:3px;width:150px;display:grid;grid-template-columns:44px 1fr 44px;align-items:center;border-top:1px solid var(--line);background:var(--paper)}
+.wheel-controls button{min-width:44px;min-height:44px;font-size:16px;padding:0}
+.wheel-controls button:focus-visible,.file-list button:focus-visible{outline-offset:-4px}
+.wheel-position{text-align:center;white-space:nowrap;font-size:10px;color:var(--muted);font-variant-numeric:tabular-nums}
+.wheel-help{grid-column:1/-1;text-align:center;font-size:9px;color:var(--muted);padding:0 0 8px}
+[data-enhanced] .terminal{height:var(--workspace-height);overscroll-behavior-y:contain;scrollbar-color:var(--muted) transparent}
+.terminal:focus-visible{outline:1px solid var(--muted);outline-offset:3px}
+.terminal-title{padding:8px 0;gap:8px;align-items:center;min-height:30px}
+.terminal-title [data-selected-path]{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.scroll-cue{margin-left:auto;white-space:nowrap;font-size:9px;color:var(--muted)}
+.workspace-status #keyboard-help{top:calc(var(--workspace-height) + 29px)}
+.command-access{display:inline-flex;align-items:center}
+.workspace-status>span:first-child{flex-shrink:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.colophon{margin-top:24px}
+@media(max-width:760px){
+ [data-enhanced] .workspace{--workspace-height:clamp(360px,calc(100svh - 240px),600px)}
+ [data-enhanced] .file-list{height:calc(100% - 94px)}
+ [data-enhanced] .file-list button{top:calc(50% - 34.5px)}
+ .wheel-controls{left:0;width:94px;grid-template-columns:44px 44px;justify-content:space-between}
+ .wheel-position{grid-column:1/-1;grid-row:1;font-size:9px;padding-top:8px}
+ .wheel-controls button{grid-row:2}
+ .wheel-help{font-size:8px;padding-bottom:8px}
+ .terminal-title{font-size:9px;gap:6px}
+ .scroll-cue{font-size:8px}
+ .colophon{margin-top:0}
+}

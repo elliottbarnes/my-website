@@ -110,8 +110,19 @@
     document.querySelectorAll("[data-selected-path]").forEach((label) => {
       label.textContent = id && !["about", "connect"].includes(id) ? `~/projects/${id}` : id === "connect" ? "~/connect" : "~";
     });
+    const position = document.querySelector("[data-wheel-position]");
+    if (position && id) {
+      const current = routes.indexOf(id) + 1;
+      position.textContent = `${String(current).padStart(2, "0")} / ${String(routes.length).padStart(2, "0")}`;
+      position.setAttribute("aria-label", `Section ${current} of ${routes.length}`);
+    }
+    if (changed && id) {
+      const announcement = document.querySelector("[data-wheel-announcement]");
+      const title = panels.get(id)?.querySelector("h2")?.textContent.replace(/_$/, "").trim() || id;
+      if (announcement) announcement.textContent = `${title}, section ${routes.indexOf(id) + 1} of ${routes.length}`;
+    }
     const status = document.getElementById("status-view");
-    if (status) status.textContent = id || "entrance";
+    if (status) { status.textContent = id || "entrance"; status.title = id || "entrance"; }
     if (changed) {
       const terminal = workspace.querySelector(".terminal");
       if (terminal) terminal.scrollTop = 0;
@@ -204,7 +215,7 @@
       say(`Animation ${motion === "paused" ? "paused" : "running"}.`);
     } else if (command === "help" || command === "?") {
       if (help) help.hidden = !help.hidden;
-      say("Commands: about, projects, glassbox, pixel, architecture, automata, connect, home, theme, light, dark, motion, help. Use arrow keys or j/k to browse sections; Escape returns home.");
+      say("Commands: about, projects, glassbox, pixel, architecture, automata, connect, home, theme, light, dark, motion, help. Use arrow keys on the wheel or j/k to browse sections; Home/End select its first/last item. Escape returns home.");
     } else {
       say(command ? "Unknown command. Type help to see the available commands." : "Enter a command, such as about or theme.");
     }
@@ -229,6 +240,11 @@
   });
 
   selectors.forEach((button) => button.addEventListener("click", () => navigate(button.dataset.select, false)));
+  document.querySelectorAll("[data-wheel-step]").forEach((button) => button.addEventListener("click", () => {
+    if (!activeRoute) return;
+    const index = (routes.indexOf(activeRoute) + Number(button.dataset.wheelStep) + routes.length) % routes.length;
+    navigate(routes[index], false);
+  }));
   document.querySelectorAll("[data-enter], [data-home]").forEach((link) => link.addEventListener("click", (event) => {
     if (event.button !== 0 || event.metaKey || event.ctrlKey || event.shiftKey || event.altKey) return;
     const id = link.hasAttribute("data-home") ? null : "about";
@@ -240,9 +256,16 @@
 
   window.addEventListener("hashchange", () => {
     renderRoute(routeFromHash(), true);
+    // Native fragment navigation can scroll the inner pane under its sticky title.
+    const terminal = workspace?.querySelector(".terminal");
+    if (terminal) terminal.scrollTop = 0;
     window.scrollTo({ top: 0, left: 0, behavior: "instant" });
   });
-  window.addEventListener("load", () => window.scrollTo({ top: 0, left: 0, behavior: "instant" }));
+  window.addEventListener("load", () => {
+    const terminal = workspace?.querySelector(".terminal");
+    if (terminal) terminal.scrollTop = 0;
+    window.scrollTo({ top: 0, left: 0, behavior: "instant" });
+  });
   document.addEventListener("keydown", (event) => {
     if (event.defaultPrevented || event.isComposing || event.ctrlKey || event.metaKey || event.altKey) return;
     if (document.getElementById("theme-dialog")?.open) return;
@@ -274,14 +297,18 @@
     } else if (!activeRoute && event.key === "Enter" && [document.body, root].includes(target)) {
       event.preventDefault();
       enterWorkspace();
-    } else if (activeRoute && !event.shiftKey && ["ArrowDown", "ArrowUp", "ArrowRight", "ArrowLeft", "j", "k"].includes(event.key)) {
+    } else if (activeRoute && selector && ["Home", "End"].includes(event.key)) {
+      event.preventDefault();
+      const next = event.key === "Home" ? routes[0] : routes.at(-1);
+      navigate(next, false);
+      selectors.find((button) => button.dataset.select === next)?.focus({ preventScroll: true });
+    } else if (activeRoute && !event.shiftKey && (["j", "k"].includes(event.key) || (selector && ["ArrowDown", "ArrowUp", "ArrowRight", "ArrowLeft"].includes(event.key)))) {
       const step = ["ArrowDown", "ArrowRight", "j"].includes(event.key) ? 1 : -1;
       const index = (routes.indexOf(activeRoute) + step + routes.length) % routes.length;
       event.preventDefault();
       navigate(routes[index], false);
       const selected = selectors.find((button) => button.dataset.select === routes[index]);
       selected?.focus({ preventScroll: true });
-      selected?.scrollIntoView({ block: "nearest", inline: "nearest", behavior: "instant" });
     }
   });
 

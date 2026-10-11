@@ -24,7 +24,7 @@
     <link rel="icon" href="/assets/dragon-ball.png" type="image/png" sizes="256x256">
     <link rel="apple-touch-icon" href="/assets/dragon-ball.png" type="image/png" sizes="256x256">
     <link rel="manifest" href="/site.webmanifest">
-    <link rel="stylesheet" href="/styles.css?v=38908cc0eb89">
+    <link rel="stylesheet" href="/styles.css?v=95ed27a29f76">
     <link rel="stylesheet" href="/assets/themes.css?v=07412e345894">
     <script type="application/ld+json">
       {
@@ -81,11 +81,17 @@
               <button type="button" data-select="automata-lab" aria-pressed="false"><img src="/assets/projects/automata-lab.jpg" alt="" loading="lazy"><span class="file-index">04</span><span>automata-lab</span><span class="file-extension">/</span></button>
               <button type="button" data-select="connect" aria-pressed="false"><span class="links-preview" aria-hidden="true">github<br>linkedin</span><span class="file-index">05</span><span>links</span><span class="file-extension">/</span></button>
             </nav>
-            <p class="tree-note">scroll · drag the wheel</p>
+            <div class="wheel-controls" aria-label="Wheel controls">
+              <button type="button" data-wheel-step="-1" aria-label="Previous section" title="Previous section">↑</button>
+              <span class="wheel-position" data-wheel-position aria-label="Section 1 of 6">01 / 06</span>
+              <button type="button" data-wheel-step="1" aria-label="Next section" title="Next section">↓</button>
+              <p class="wheel-help">scroll · drag · ↑↓</p>
+            </div>
+            <span class="visually-hidden" data-wheel-announcement role="status" aria-live="polite" aria-atomic="true"></span>
             <button class="command-trigger" data-command-open type="button">: command <kbd>/</kbd></button>
           </aside>
-          <div class="terminal">
-            <div class="terminal-title"><span>fish —</span><span data-selected-path>~</span><span class="terminal-title-end">UTF-8</span></div>
+          <div class="terminal" tabindex="0" role="region" aria-label="Portfolio details">
+            <div class="terminal-title"><span>fish —</span><span data-selected-path>~</span><span class="scroll-cue" data-scroll-cue aria-hidden="true" hidden>more ↓</span></div>
             <article id="about" class="terminal-panel about-panel" data-panel="about" tabindex="-1" aria-labelledby="about-title">
               <div class="profile-plot"><canvas id="profile-plot" aria-label="Animated contour study of the initials EB" role="img"></canvas><span class="plot-caption">EB / source study <span>4 selected projects</span></span></div><p class="prompt"><span>elliott@dev</span> ~ <span class="prompt-command">› whoami</span></p>
               <h2 id="about-title">elliott<span class="text-cursor" aria-hidden="true">_</span></h2>
@@ -145,15 +151,15 @@ output color * (0.35 + 0.65 * glow);</code></pre></div>
               <p class="prompt"><span>elliott@dev</span> ~ <span class="prompt-command">› ls links/</span></p><h2 id="connect-title">Elsewhere.</h2><p class="project-description">Code, experiments, and a way to connect.</p><div class="connect-links"><a href="https://github.com/elliottbarnes" rel="me"><span>github</span><span>elliottbarnes ↗</span></a><a href="https://www.linkedin.com/in/elliottbarnes1/" rel="me"><span>linkedin</span><span>elliott barnes ↗</span></a></div>
             </article>
           </div>
-          <aside class="workspace-avatar" aria-hidden="true"><img src="/assets/github-avatar.jpg" alt=""><p>[pointer] <span data-workspace-pointer>0.500, 0.500</span><br>input: local<br>state: exploring</p></aside><div class="workspace-status"><span><span class="mode">NORMAL</span> <span id="status-view">whoami</span></span><span id="keyboard-help">↑↓ browse · : cmd · esc home</span><span class="github-stat" title="Public GitHub snapshot · 11 October 2026"><small>REPOS</small>42</span><span class="github-stat" title="Public GitHub snapshot · 11 October 2026"><small>STARS</small>4</span><span class="github-stat" title="Public GitHub snapshot · 11 October 2026"><small>FOLLOWERS</small>15</span><div><button class="mobile-command" type="button" data-command-open aria-label="Open command menu">:cmd</button><button type="button" data-motion-toggle aria-label="Pause animation">:pause</button><button type="button" data-theme-toggle aria-label="Change theme">:theme</button><a data-home href="#">:home</a></div></div>
+          <aside class="workspace-avatar" aria-hidden="true"><img src="/assets/github-avatar.jpg" alt=""><p>[pointer] <span data-workspace-pointer>0.500, 0.500</span><br>input: local<br>state: exploring</p></aside><div class="workspace-status"><span><span class="mode">NORMAL</span> <span id="status-view">whoami</span></span><span id="keyboard-help">↑↓ wheel · j/k browse</span><span class="github-stat" title="Public GitHub snapshot · 11 October 2026"><small>REPOS</small>42</span><span class="github-stat" title="Public GitHub snapshot · 11 October 2026"><small>STARS</small>4</span><span class="github-stat" title="Public GitHub snapshot · 11 October 2026"><small>FOLLOWERS</small>15</span><div><button class="command-access" type="button" data-command-open aria-label="Open command menu">:cmd</button><button type="button" data-motion-toggle aria-label="Pause animation">:pause</button><button type="button" data-theme-toggle aria-label="Change theme">:theme</button><a data-home href="#">:home</a></div></div>
         </section>
       </main>
       <footer class="colophon"><p>© <span data-current-year>2026</span> elliott</p><p>Icon: <a href="https://www.iconarchive.com/show/dragon-ballz-icons-by-musett/Dragon-Ball-icon.html">Musett</a> / <a href="https://creativecommons.org/licenses/by-nc-nd/4.0/">CC BY-NC-ND</a></p></footer>
     </div>
-    <dialog id="command-dialog" aria-labelledby="command-title"><div class="dialog-heading"><h2 id="command-title">Command</h2><button type="button" data-command-close aria-label="Close command menu">esc</button></div><form id="command-form"><label for="command-input">Where would you like to go?</label><div class="command-input-row"><span aria-hidden="true">:</span><input id="command-input" type="text" autocomplete="off" spellcheck="false" placeholder="whoami, projects, theme…"><button type="submit">run ↵</button></div></form><div class="command-options"><button type="button" data-command="about">whoami</button><button type="button" data-command="projects">projects</button><button type="button" data-command="connect">links</button><button type="button" data-command="theme">theme</button><button type="button" data-command="motion">motion</button><button type="button" data-command="help">help</button></div><p id="command-feedback" role="status">A small set of shortcuts. Try “help”.</p></dialog>
+    <dialog id="command-dialog" aria-labelledby="command-title"><div class="dialog-heading"><h2 id="command-title">Command</h2><button type="button" data-command-close aria-label="Close command menu">esc</button></div><form id="command-form"><label for="command-input">Where would you like to go?</label><div class="command-input-row"><span aria-hidden="true">:</span><input id="command-input" type="text" autocomplete="off" spellcheck="false" placeholder="whoami, projects, theme…"><button type="submit">run ↵</button></div></form><div class="command-options"><button type="button" data-command="about">whoami</button><button type="button" data-command="glassbox">glassbox</button><button type="button" data-command="pixel-language">pixel language</button><button type="button" data-command="architecture-lab">architecture lab</button><button type="button" data-command="automata-lab">automata lab</button><button type="button" data-command="connect">links</button><button type="button" data-command="theme">theme</button><button type="button" data-command="motion">motion</button><button type="button" data-command="help">help</button></div><p id="command-feedback" role="status">A small set of shortcuts. Try “help”.</p></dialog>
     <script src="/assets/themes.js?v=0291c1ac5528" defer></script>
-    <script src="/script.js?v=7cae99d26572" defer></script>
-    <script src="/assets/workspace.js?v=bbd7c9ac5a6f" defer></script>
+    <script src="/script.js?v=dc53f5459b6a" defer></script>
+    <script src="/assets/workspace.js?v=f4904913db4f" defer></script>
     <script src="/assets/animation.js?v=4652fd951eca" defer></script>
   </body>
 </html>

@@ -94,6 +94,23 @@
     }, true);
   }
 
+  const terminal = workspace?.querySelector(".terminal");
+  const scrollCue = document.querySelector("[data-scroll-cue]");
+  if (terminal && scrollCue) {
+    const updateScrollCue = () => {
+      scrollCue.hidden = terminal.scrollHeight - terminal.clientHeight - terminal.scrollTop <= 4;
+    };
+    terminal.addEventListener("scroll", updateScrollCue, { passive: true });
+    window.addEventListener("portfolio:view", () => requestAnimationFrame(updateScrollCue));
+    window.addEventListener("resize", updateScrollCue, { passive: true });
+    if (typeof ResizeObserver === "function") {
+      const contentObserver = new ResizeObserver(updateScrollCue);
+      contentObserver.observe(terminal);
+      terminal.querySelectorAll("[data-panel]").forEach(panel => contentObserver.observe(panel));
+    }
+    updateScrollCue();
+  }
+
   if (!canvas || !about) return;
   const context = canvas.getContext("2d");
   if (!context) return;
