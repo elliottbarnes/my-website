@@ -56,9 +56,13 @@ const snippets = [{"repo": "glassbox", "title": "source → WebAssembly", "path"
   if (hudContext) scene.append(inputHud);
   const words = new Set("export function const let return if else for of in new throw true false null undefined class async await output".split(" "));
   const glyphs = snippets.map(snippet => snippet.code.replace(/\s+/g, " ")).join(" ");
-  const cycleLength = 32600;
+  const cycleLength = 12400;
+  const entryDuration = 420;
+  const rowCache = new Map();
+  const tokenCache = new Map();
   let width = 0, height = 0, ratio = 1, fontSize = 12, cell = 7.2, lineHeight = 17;
   let frame = 0, lastFrame = 0, elapsed = 0, sourceImage = null, portrait = [];
+  let lastInput = -Infinity, pointerRect = null;
   let pointerX = 0, pointerY = 0, targetX = 0, targetY = 0, lastReadout = 0;
   let palette = {}, leaving = null, entryPromise = null, finishEntry = null, entryTimer = 0, entryLayout = null;
   let currentFile = "", currentMode = "", currentCommand = "", currentPosition = "";
@@ -106,10 +110,10 @@ const snippets = [{"repo": "glassbox", "title": "source → WebAssembly", "path"
     const sample = sampleCanvas.getContext("2d", { willReadFrequently: true });
     if (!sample) return;
     if (sourceImage) {
-      // The central crop keeps the GitHub avatar legible as individual code glyphs.
-      const side = Math.min(sourceImage.naturalWidth, sourceImage.naturalHeight) * .60;
-      sample.drawImage(sourceImage, (sourceImage.naturalWidth - side) / 2,
-        (sourceImage.naturalHeight - side) / 2, side, side, 0, 0, 120, 120);
+      // Preserve the transparent Memoji's whole silhouette, including hair and chin.
+      const scale = 116 / Math.max(sourceImage.naturalWidth, sourceImage.naturalHeight);
+      const w = sourceImage.naturalWidth * scale, h = sourceImage.naturalHeight * scale;
+      sample.drawImage(sourceImage, (120 - w) / 2, (120 - h) / 2, w, h);
     } else {
       sample.fillStyle = "white";
       sample.font = '78px "Plex Mono", monospace';
@@ -121,15 +125,15 @@ const snippets = [{"repo": "glassbox", "title": "source → WebAssembly", "path"
     const corners = [0, 119 * 4, 119 * 120 * 4, (120 * 120 - 1) * 4];
     const backdrop = corners.reduce((total, index) => total + (pixels[index] + pixels[index + 1] + pixels[index + 2]) / 3, 0) / 4;
     portrait = [];
-    for (let y = 1; y < 119; y += 2) for (let x = 1; x < 119; x += 2) {
+    const step = width < 600 ? 3 : 2;
+    for (let y = 1; y < 119; y += step) for (let x = 1; x < 119; x += step) {
       const i = (y * 120 + x) * 4;
       if (pixels[i + 3] < 30) continue;
       const luminance = (pixels[i] * .2126 + pixels[i + 1] * .7152 + pixels[i + 2] * .0722) / 255;
-      const distance = Math.hypot((x - 60) / 60, (y - 60) / 60);
       const contrast = Math.abs(luminance - backdrop / 255);
       const intensity = backdrop > 140 ? 1 - luminance : luminance;
-      if (distance > 1.02 || (intensity < .045 && contrast < .065)) continue;
-      const edge = clamp((1.02 - distance) * 9);
+      if (intensity < .045 && contrast < .065) continue;
+      const edge = pixels[i + 3] / 255;
       portrait.push({ x: (x - 60) / 120, y: (y - 60) / 120, z: (luminance - .5) * .13,
         brightness: Math.max(.10, intensity) * edge, glyph: glyphs[(x * 7 + y * 19) % glyphs.length], phase: x * .7 + y * .3 });
     }
@@ -138,6 +142,8 @@ const snippets = [{"repo": "glassbox", "title": "source → WebAssembly", "path"
   // Display data only: the excerpt text is never evaluated or executed.
   function rowsFor(snippet) {
     const columns = Math.max(20, Math.floor((width - 46) / cell));
+    const cached = rowCache.get(snippet);
+    if (cached?.columns === columns) return cached.rows;
     const rows = [];
     for (const [index, text] of snippet.code.split("\n").entries()) {
       if (!text.length) rows.push({ text: "", line: snippet.sourceLineStart + index, continuation: false });
@@ -145,19 +151,26 @@ const snippets = [{"repo": "glassbox", "title": "source → WebAssembly", "path"
         rows.push({ text: text.slice(start, start + columns), line: snippet.sourceLineStart + index, continuation: start > 0 });
       }
     }
+    rowCache.set(snippet, { columns, rows });
     return rows;
   }
 
-  function syntaxLine(text, x, y, alpha) {
-    const tokens = text.match(/\/\/.*$|"(?:\\.|[^"\\])*"|'(?:\\.|[^'\\])*'|`(?:\\.|[^`\\])*`|\b\d+(?:\.\d+)?\b|[A-Za-z_$][\w$]*|[^\w$]+/g) || [];
+  function syntaxLine(text, x, y, alpha, amount = text.length) {
+    let tokens = tokenCache.get(text);
+    if (!tokens) {
+      tokens = text.match(/\/\/.*$|"(?:\\.|[^"\\])*"|'(?:\\.|[^'\\])*'|`(?:\\.|[^`\\])*`|\b\d+(?:\.\d+)?\b|[A-Za-z_$][\w$]*|[^\w$]+/g) || [];
+      tokenCache.set(text, tokens);
+    }
     context.globalAlpha = alpha;
     for (const token of tokens) {
+      if (amount <= 0) break;
       const comment = token.startsWith("//");
       context.fillStyle = comment ? palette.muted : words.has(token) ? palette.keyword
         : /^["'`]/.test(token) ? palette.string : /^\d/.test(token) ? palette.number : palette.ink;
       if (comment) context.globalAlpha = alpha * .58;
-      context.fillText(token, x, y);
+      context.fillText(token.slice(0, amount), x, y);
       x += token.length * cell;
+      amount -= token.length;
     }
     context.globalAlpha = 1;
   }
@@ -196,7 +209,7 @@ const snippets = [{"repo": "glassbox", "title": "source → WebAssembly", "path"
       context.globalAlpha = alpha * .37;
       context.fillStyle = palette.muted;
       context.fillText(row.continuation ? "  ·" : String(row.line).padStart(3, " "), 3, y);
-      syntaxLine(row.text.slice(0, amount), gutter, y, alpha * .88);
+      syntaxLine(row.text, gutter, y, alpha * .88, amount);
     });
     if (active && (still() || Math.floor(time / 560) % 2 === 0)) {
       const x = gutter + cursorColumn * cell;
@@ -212,19 +225,19 @@ const snippets = [{"repo": "glassbox", "title": "source → WebAssembly", "path"
   function type(text, time, duration) { return text.slice(0, Math.floor(text.length * clamp(time / duration))); }
 
   function avatar(amount, time) {
-    const size = Math.min(width * .70, height * .90, 282) * (.16 + .84 * ease(amount));
+    const size = Math.min(width * .82, height * .87, 300) * (.55 + .45 * ease(amount));
     const quiet = still();
     const t = quiet ? 0 : time / 1000;
     const yaw = quiet ? 0 : pointerX * .31 + Math.sin(t * .25) * .035;
     const pitch = quiet ? 0 : pointerY * .20;
     const cosine = Math.cos(yaw), sine = Math.sin(yaw);
     const cx = width * .5, cy = height * .49;
-    context.font = `${Math.max(2.7, size / 54)}px "Plex Mono", monospace`;
+    context.font = `${Math.max(3.5, size / (width < 600 ? 40 : 54))}px "Plex Mono", monospace`;
     context.textAlign = "center";
     context.textBaseline = "middle";
     context.fillStyle = palette.ink;
     for (const point of portrait) {
-      const orbit = (1 - ease(amount)) * Math.sin(point.phase) * size * .3;
+      const orbit = (1 - ease(amount)) * Math.sin(point.phase) * size * .18;
       const x = (point.x * cosine + point.z * sine) * size;
       const y = (point.y - point.z * pitch) * size;
       context.globalAlpha = clamp((.09 + point.brightness * 1.02) * amount);
@@ -273,19 +286,6 @@ const snippets = [{"repo": "glassbox", "title": "source → WebAssembly", "path"
     context.fillStyle = palette.muted;
     context.fillText(architecture ? "// memory → signal → pixels" : "// code → interference → light", 15, height - 22);
     context.globalAlpha = 1;
-  }
-
-  function drawBoot(time) {
-    context.font = `${fontSize}px "Plex Mono", monospace`;
-    context.textAlign = "left";
-    context.textBaseline = "top";
-    context.fillStyle = palette.muted;
-    context.fillText("elliott@dev ~/Projects", 15, 22);
-    context.fillStyle = palette.ink;
-    const text = type("nvim ~/Projects", time - 430, 1160);
-    context.fillText(`$ ${text}`, 15, 22 + lineHeight * 2);
-    if (Math.floor(time / 420) % 2 === 0) context.fillRect(15 + (text.length + 2) * cell, 22 + lineHeight * 2, cell, fontSize + 2);
-    status(null, "NORMAL", text);
   }
 
   function drawInputHud(time) {
@@ -374,63 +374,57 @@ const snippets = [{"repo": "glassbox", "title": "source → WebAssembly", "path"
     if (!width || !height) return;
     if (still()) {
       const snippet = snippets[0];
-      editor(snippet, 1, .20, 0, false, false);
+      editor(snippet, 1, .045, 0, false, false);
       avatar(1, 0);
       status(snippet, "NORMAL", "!./avatar --track");
       scene.dataset.phase = "still";
       drawInputHud(time);
       return;
     }
-    if (time < 2400) { scene.dataset.phase = "boot"; drawBoot(time); drawInputHud(time); return; }
-    const clock = (time - 2400) % cycleLength;
-    const cycle = Math.floor((time - 2400) / cycleLength);
+    const clock = time % cycleLength;
+    const cycle = Math.floor(time / cycleLength);
     const first = snippets[cycle % snippets.length];
     const second = snippets[(cycle + 1) % snippets.length];
     let position;
-    if (clock < 5100) {
+    if (clock < 1600) {
       scene.dataset.phase = "editing";
-      const local = clock - 500;
-      // A short backspace/retype beat makes the illustrative edit legible.
-      let progress = clamp(local / 4100);
-      if (local > 2350 && local < 2810) progress = .573 - (local - 2350) / 460 * .07;
-      else if (local >= 2810 && local < 3150) progress = .503 + (local - 2810) / 340 * .265;
-      position = editor(first, progress, ease(clock / 620), time, true, true);
-      status(first, clock < 500 || clock > 4750 ? "NORMAL" : "INSERT", "", position.row, position.column);
-    } else if (clock < 6400) {
+      position = editor(first, clamp(clock / 1400), 1, time, true, true);
+      status(first, clock < 1400 ? "INSERT" : "NORMAL", "", position.row, position.column);
+    } else if (clock < 1900) {
       scene.dataset.phase = "colorscheme";
       position = editor(first, 1, 1, time, true, false);
-      status(first, "NORMAL", type(`colorscheme ${window.PortfolioThemes?.label || root.dataset.theme || "carbon"}`, clock - 5100, 1050), position.row, position.column);
-    } else if (clock < 8000) {
+      status(first, "NORMAL", type(`colorscheme ${window.PortfolioThemes?.label || root.dataset.theme || "saiyan"}`, clock - 1600, 250), position.row, position.column);
+    } else if (clock < 2200) {
       scene.dataset.phase = "avatar-command";
       editor(first, 1, 1, time, false, false);
-      status(first, "NORMAL", type("!./avatar --track", clock - 6400, 1150));
-    } else if (clock < 15800) {
+      status(first, "NORMAL", type("!./avatar --track", clock - 1900, 250));
+    } else if (clock < 5700) {
       scene.dataset.phase = "avatar";
-      const local = clock - 8000;
-      const amount = local < 1050 ? ease(local / 1050) : local > 6900 ? 1 - ease((local - 6900) / 900) : 1;
-      editor(first, 1, 1 - amount * .88, time, false, false);
+      const local = clock - 2200;
+      const amount = local < 360 ? ease(local / 360) : local > 3140 ? 1 - ease((local - 3140) / 360) : 1;
+      editor(first, 1, 1 - amount * .96, time, false, false);
       avatar(amount, time);
       status(first, "NORMAL", "!./avatar --track");
-    } else if (clock < 20500) {
+    } else if (clock < 7300) {
       scene.dataset.phase = "editing";
-      const local = clock - 15800;
-      position = editor(second, clamp((local - 350) / 3900), 1, time, true, true);
-      status(second, local < 350 || local > 4300 ? "NORMAL" : "INSERT", "", position.row, position.column);
-    } else if (clock < 22300) {
+      const local = clock - 5700;
+      position = editor(second, clamp(local / 1400), 1, time, true, true);
+      status(second, local < 1400 ? "INSERT" : "NORMAL", "", position.row, position.column);
+    } else if (clock < 7650) {
       scene.dataset.phase = "object-command";
       editor(second, 1, 1, time, false, false);
-      status(second, "NORMAL", type(second.repo === "architecture-lab" ? "!./framebuffer --trace" : "!./interference --live", clock - 20500, 1400));
-    } else if (clock < 29900) {
+      status(second, "NORMAL", type(second.repo === "architecture-lab" ? "!./framebuffer --trace" : "!./interference --live", clock - 7300, 300));
+    } else if (clock < 11800) {
       scene.dataset.phase = "object";
-      const local = clock - 22300;
-      const amount = local < 900 ? ease(local / 900) : local > 6700 ? 1 - ease((local - 6700) / 900) : 1;
-      editor(second, 1, 1 - amount * .90, time, false, false);
+      const local = clock - 7650;
+      const amount = local < 350 ? ease(local / 350) : local > 3800 ? 1 - ease((local - 3800) / 350) : 1;
+      editor(second, 1, 1 - amount * .96, time, false, false);
       liveObject(second, amount, time);
       status(second, "NORMAL", second.repo === "architecture-lab" ? "!./framebuffer --trace" : "!./interference --live");
     } else {
       scene.dataset.phase = "normal";
       position = editor(second, 1, 1, time, true, false);
-      status(second, "NORMAL", clock < 31000 ? "write | next" : "", position.row, position.column);
+      status(second, "NORMAL", "write | next", position.row, position.column);
     }
     drawInputHud(time);
   }
@@ -438,7 +432,7 @@ const snippets = [{"repo": "glassbox", "title": "source → WebAssembly", "path"
   function drawDive(now) {
     if (!leaving) return;
     inputHud.hidden = true;
-    const progress = clamp((now - leaving.started) / 1700);
+    const progress = clamp((now - leaving.started) / entryDuration);
     context.clearRect(0, 0, width, height);
     const centerX = width * (.5 + pointerX * .12), centerY = height * (.48 + pointerY * .10);
     const travel = Math.pow(progress, 1.5);
@@ -492,7 +486,7 @@ const snippets = [{"repo": "glassbox", "title": "source → WebAssembly", "path"
     root.classList.add("is-leaving");
     resize();
     const particles = [];
-    const count = width < 600 ? 1500 : 2600;
+    const count = width < 600 ? 420 : 800;
     for (let i = 0; i < count; i++) {
       const angle = i * 2.399963;
       const radius = Math.sqrt((i + .5) / count);
@@ -506,32 +500,40 @@ const snippets = [{"repo": "glassbox", "title": "source → WebAssembly", "path"
     status(null, "NORMAL", "open portfolio/");
     entryPromise = new Promise(resolve => { finishEntry = resolve; });
     // This upper bound also completes navigation if the browser stops animation frames.
-    entryTimer = setTimeout(completeEntry, 1800);
+    entryTimer = setTimeout(completeEntry, entryDuration + 80);
     schedule();
     return entryPromise;
   }
 
   function resize() {
     const rect = canvas.getBoundingClientRect();
+    pointerRect = rect;
+    const wasNarrow = width < 600;
     width = rect.width; height = rect.height;
-    ratio = Math.min(window.devicePixelRatio || 1, 2);
+    ratio = Math.min(window.devicePixelRatio || 1, width < 600 ? 1.5 : 2);
     canvas.width = Math.round(width * ratio); canvas.height = Math.round(height * ratio);
     context.setTransform(ratio, 0, 0, ratio, 0, 0);
     fontSize = 12;
     context.font = `${fontSize}px "Plex Mono", monospace`;
+    rowCache.clear();
+    tokenCache.clear();
     cell = context.measureText("M").width || fontSize * .6;
-    lineHeight = 13;
+    lineHeight = 15;
+    if (wasNarrow !== (width < 600)) buildPortrait();
     if (visible()) leaving ? drawDive(performance.now()) : drawScene(elapsed);
   }
 
   function tick(now) {
     frame = 0;
     if (!running()) { lastFrame = 0; return; }
-    if (lastFrame && now - lastFrame < 32) { schedule(); return; }
+    // Rest at 30fps; respond to a pointer or navigation on the next display frame.
+    const interactive = leaving || now - lastInput < 800;
+    if (!interactive && lastFrame && now - lastFrame < 30) { schedule(); return; }
     const delta = lastFrame ? Math.min(now - lastFrame, 80) : 0;
     lastFrame = now;
-    pointerX += (targetX - pointerX) * .10;
-    pointerY += (targetY - pointerY) * .10;
+    const follow = 1 - Math.exp(-(delta || 16.67) / 65);
+    pointerX += (targetX - pointerX) * follow;
+    pointerY += (targetY - pointerY) * follow;
     if (leaving) drawDive(now);
     else { elapsed += delta; drawScene(elapsed); }
     schedule();
@@ -548,17 +550,29 @@ const snippets = [{"repo": "glassbox", "title": "source → WebAssembly", "path"
     schedule();
   }
 
-  canvas.addEventListener("pointermove", event => {
-    const rect = canvas.getBoundingClientRect();
+  function trackPointer(event) {
+    if (still() || leaving) return;
+    const rect = pointerRect || canvas.getBoundingClientRect();
     if (!rect.width || !rect.height) return;
-    targetX = (event.clientX - rect.left) / rect.width - .5;
-    targetY = (event.clientY - rect.top) / rect.height - .5;
-    if (readout && event.timeStamp - lastReadout > 75) {
+    targetX = clamp((event.clientX - rect.left) / rect.width) - .5;
+    targetY = clamp((event.clientY - rect.top) / rect.height) - .5;
+    lastInput = performance.now();
+    if (readout && event.timeStamp - lastReadout > 50) {
       readout.textContent = `x ${(targetX + .5).toFixed(3)} / y ${(targetY + .5).toFixed(3)}`;
       lastReadout = event.timeStamp;
     }
+    schedule();
+  }
+  function releasePointer() { targetX = 0; targetY = 0; lastInput = performance.now(); schedule(); }
+  canvas.addEventListener("pointerdown", event => {
+    pointerRect = canvas.getBoundingClientRect();
+    trackPointer(event);
   }, { passive: true });
-  canvas.addEventListener("pointerleave", () => { targetX = 0; targetY = 0; });
+  canvas.addEventListener("pointermove", trackPointer, { passive: true });
+  canvas.addEventListener("pointerleave", releasePointer);
+  canvas.addEventListener("pointerup", event => { if (event.pointerType !== "mouse") releasePointer(); });
+  canvas.addEventListener("pointercancel", releasePointer);
+  window.addEventListener("scroll", () => { pointerRect = null; }, { passive: true });
   window.addEventListener("portfolio:preferences", refresh);
   window.addEventListener("portfolio:view", () => { resize(); refresh(); });
   document.addEventListener("visibilitychange", refresh);
@@ -568,7 +582,7 @@ const snippets = [{"repo": "glassbox", "title": "source → WebAssembly", "path"
   const image = new Image();
   image.onload = () => { sourceImage = image; buildPortrait(); refresh(); };
   image.onerror = () => { buildPortrait(); refresh(); };
-  image.src = "/assets/github-avatar.jpg";
+  image.src = "/assets/memoji.png";
   if (document.fonts?.ready) document.fonts.ready.then(() => { buildPortrait(); resize(); refresh(); });
   colors();
   buildPortrait();

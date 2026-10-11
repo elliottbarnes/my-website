@@ -74,8 +74,12 @@ Three original illustrations were generated for the browser demo using OpenAI im
 
 ## GitHub avatar
 
-`assets/github-avatar.jpg` is the unmodified public avatar returned by the GitHub API for `elliottbarnes` on 2026-10-11: https://avatars.githubusercontent.com/u/54964377?v=4. The owner explicitly selected this image for their site. The canvas renders it as moving source-code characters locally; the image file remains unchanged. No browser request to GitHub is needed.
+`assets/github-avatar.jpg` is the unmodified public avatar returned by the GitHub API for `elliottbarnes` on 2026-10-11: https://avatars.githubusercontent.com/u/54964377?v=4. The owner explicitly selected this image for their site. It has since been replaced in the published site by the supplied Memoji below. The original remains in source history.
 
 ## Project preview images
 
 The four JPEGs under `assets/projects/` are browser screenshots of Elliott’s own public Glassbox, Pixel Language, Architecture Lab, and Automata Lab playgrounds, captured on 2026-10-11. They are local previews linking to those independent projects, not remotely loaded embeds.
+
+## Selected Memoji
+
+`assets/memoji.png` is the winking Memoji supplied and selected by Elliott on 2026-10-11, decoded from his RTFD attachment into a transparent PNG. It supplies both profile images and the local source-code portrait animation. The animation samples the full silhouette without cropping the hair or chin.
