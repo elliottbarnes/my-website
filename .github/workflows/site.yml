@@ -24,6 +24,9 @@ jobs:
       - name: Syntax and behavior checks
         run: |
           node --check script.js
+          node --check assets/animation.js
+          node --check assets/themes.js
+          node --check assets/workspace.js
           bash -n scripts/deploy.sh
           bash -n scripts/snapshot-object.sh
           node --test

@@ -2,7 +2,7 @@ import assert from "node:assert/strict";
 import { createHash } from "node:crypto";
 import { copyFile, mkdir, mkdtemp, readFile, rm, symlink, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
-import { dirname, join } from "node:path";
+import { dirname, join, posix } from "node:path";
 import { fileURLToPath } from "node:url";
 import test from "node:test";
 import { buildSite } from "../build.mjs";
@@ -34,7 +34,7 @@ test("build publishes the complete allowlist and excludes notes and image master
     await writeFile(join(root, file), "not for publication");
   }
   const destination = await buildSite({ root });
-  assert.equal(PUBLIC_FILES.length, 10);
+  assert.equal(PUBLIC_FILES.length, 21);
   assert.ok(!PUBLIC_FILES.some((file) => /interactive|prism|toolkit|handheld|controller/.test(file)));
   assert.deepEqual(VERSIONED_FILES, PUBLIC_FILES.filter((file) => /\.(?:css|js)$/.test(file)));
   assert.deepEqual(await inspectPublicTree(destination), [...PUBLIC_FILES].sort());
@@ -128,7 +128,7 @@ test("verification catches broken links, metadata, and project destinations", as
     ["index.html", (s) => s.replace('href="#projects"', 'href="#missing"'), /missing fragment/],
     ["index.html", (s) => s.replace(/src="\/script\.js(?:\?[^"]*)?"/, 'src="/unpublished.js"'), /not published/],
     ["index.html", (s) => s.replace('data-demo="pixel-language"', 'data-demo="glassbox"'), /three unique data-demo/],
-    ["index.html", (s) => s.replaceAll('architecture-lab', 'automata-lab'), /three unique data-demo/],
+    ["index.html", (s) => s.replace('data-demo="architecture-lab"', 'data-demo="automata-lab"'), /three unique data-demo/],
     ["index.html", (s) => s.replace('https://elliottbarnes.github.io/architecture-lab/', 'https://elliottbarnes.github.io/automata-lab/'), /invalid data-demo/],
     ["index.html", (s) => s.replace('https://elliottbarnes.github.io/glassbox/', 'https://example.com/'), /invalid data-demo/],
     ["index.html", (s) => s.replace('aria-label="Glassbox source on GitHub"', ''), /invalid data-source/],
@@ -282,7 +282,7 @@ test("verification checks resource URLs in every stylesheet relative to that sty
     await writeFile(path, `${original}\nbody{background-image:url("/missing-image.jpg")}\n`);
     await assert.rejects(verifySite(root), /not published/);
 
-    const relative = file.includes("/") ? "../dragon-ball.png" : "assets/dragon-ball.png";
+    const relative = posix.relative(posix.dirname(file), "assets/dragon-ball.png");
     const valid = `${original}\nbody{background-image:url("${relative}")}\n`;
     await writeFile(path, valid);
     const hash = createHash("sha256").update(valid).digest("hex").slice(0, 12);
