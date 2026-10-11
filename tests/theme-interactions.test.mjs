@@ -113,6 +113,11 @@ test("all 28 themes remain in the scrollable list and touch pointers keep native
   assert.equal(row.emit("pointerdown", { pointerType: "touch" }).defaultPrevented, undefined);
   assert.equal(row.emit("pointerdown", { pointerType: "mouse" }).defaultPrevented, true);
   assert.equal(page.api.current, "blackmoney");
+  assert.equal(page.api.label, "terminal");
+  assert.equal(page.button.getAttribute("aria-label"), "Choose colorscheme; current theme: terminal");
+  const labels = page.list.children.map((row) => row.children[1].textContent);
+  assert.equal(new Set(labels).size, 28);
+  assert.ok(labels.every((label) => label && label.length <= 14));
 });
 
 test("keyboard previews stay transient, reveal offscreen options, and Escape restores the saved theme", () => {
@@ -136,6 +141,7 @@ test("search previews and explicit selection commits without evaluating query te
   page.search("WHITE");
   assert.equal(page.list.children.length, 1);
   assert.equal(page.api.current, "whitegold");
+  assert.equal(page.api.label, "paperwhite");
   assert.equal(page.storage.theme, "blackmoney");
   page.list.children[0].emit("click");
   assert.equal(page.storage.theme, "whitegold");
@@ -144,9 +150,14 @@ test("search previews and explicit selection commits without evaluating query te
   page.search("<img src=x onerror=alert(1)>");
   assert.equal(page.list.children[0].textContent, "no match");
   assert.equal(page.input.getAttribute("aria-activedescendant"), null);
-  page.search("sapphire");
+  page.search("blue hour");
   page.key("Enter");
   assert.equal(page.storage.theme, "sapphire");
+  assert.equal(page.api.apply("parchment"), true);
+  assert.equal(page.api.current, "roseofdune", "a displayed name must take priority over a legacy command alias");
+  assert.equal(page.api.apply("blue hour"), true);
+  assert.equal(page.storage.theme, "sapphire", "renamed commands still store stable IDs");
+  assert.equal(setup({ saved: "parchment" }).api.current, "whitegold", "old stored aliases retain their original colours");
 });
 
 test("compact opening avoids the search keyboard and offers a real Cancel action", () => {
@@ -159,7 +170,7 @@ test("compact opening avoids the search keyboard and offers a real Cancel action
   assert.ok(page.list.scrollTop > 0, "a saved theme near the end should be visible on opening");
   assert.equal(page.key("Tab", page.cancel).defaultPrevented, undefined, "Tab should reach the search field");
   assert.equal(page.key("Enter", page.cancel).defaultPrevented, undefined, "native button activation should reach Cancel");
-  page.search("blackmoney");
+  page.search("terminal");
   page.cancel.emit("click");
   assert.equal(page.api.current, "whitegold");
   assert.equal(page.storage.theme, "whitegold");
@@ -169,11 +180,11 @@ test("compact opening avoids the search keyboard and offers a real Cancel action
 test("storage denial does not break commit or native dialog cancellation", () => {
   const page = setup({ denyStorage: true });
   page.api.open();
-  page.search("harbor");
+  page.search("sea glass");
   page.key("Enter");
   assert.equal(page.api.current, "harbor");
   page.api.open();
-  page.search("blackmoney");
+  page.search("terminal");
   assert.equal(page.dialog.emit("cancel").defaultPrevented, true);
   assert.equal(page.api.current, "harbor");
   assert.equal(page.root.dataset.theme, "harbor");
