@@ -21,7 +21,7 @@ Use “enter” (or Enter from the page) to open the portfolio. Arrow keys and j
 
 GitHub counts are an explicitly dated public snapshot from 11 October 2026 (42 repositories, 4 stars across public repositories, 15 followers); they do not imply live synchronization.
 
-The layout adapts to portrait phones, keeps content scrollable, provides visible focus and a skip link, and respects reduced motion. See [design QA](design-qa.md) for tested dimensions and limits.
+The layout adapts to portrait phones, keeps content scrollable, provides visible focus and a skip link, and respects reduced motion. All 28 themes can be browsed by scrolling; on touch layouts the picker has larger rows and a visible Cancel control, and search takes focus only when requested. Project demo and source links appear before their previews. At tablet widths the decorative portrait gives its space to the main content. See [design QA](design-qa.md) for tested dimensions and limits.
 
 ## Preview and verification
 

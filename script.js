@@ -38,7 +38,7 @@
     else theme = window.PortfolioThemes.current;
     root.dataset.motion = motion;
     document.querySelectorAll("[data-theme-toggle]").forEach((button) => {
-      button.setAttribute("aria-label", `Change theme; current theme: ${theme}`);
+      button.setAttribute("aria-label", `Choose colorscheme; current theme: ${theme}`);
       button.setAttribute("title", "Select a colour theme");
     });
     document.querySelectorAll("[data-theme-label]").forEach((label) => { label.textContent = theme; });

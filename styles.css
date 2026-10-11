@@ -105,3 +105,36 @@ html:not([data-enhanced]) .terminal-title{position:static}
  [data-view=entrance] .entrance-footer>p{display:none}
  [data-view=entrance] [data-theme-toggle],[data-view=entrance] .enter-link{font-size:12px}
 }
+
+/* Live-review refinements: keep the terminal character while revealing useful content. */
+.profile-plot{height:220px}
+.about-role,.about-text,.about-panel .prompt~.about-text,.project-description{font-size:13px;line-height:1.45}
+.about-tagline{line-height:1.45}
+.project-actions{gap:22px;margin:8px 0;font-size:12px}
+.project-actions a{min-height:32px;align-items:center}
+.project-screenshot{margin-top:8px}
+.code-preview pre{font-size:11px;line-height:1.5}
+a:focus-visible,button:focus-visible,input:focus-visible{outline-color:var(--ink)}
+@media(max-width:760px){
+ .profile-plot{height:170px}
+ .about-tagline,.about-role,.about-text,.about-panel .prompt~.about-text,.project-description{font-size:12px;line-height:1.5}
+ .about-projects{font-size:11px;gap:3px 8px}
+ .about-projects a{min-height:28px;display:inline-flex;align-items:center}
+ .project-actions{font-size:11px;gap:6px 18px;margin:8px 0;line-height:1.5}
+ .project-actions a{min-height:40px}
+ .code-preview pre{font-size:10px;line-height:1.5}
+ .file-list button{font-size:9px}
+ .workspace-status>div button,.workspace-status>div a{min-height:36px;display:inline-flex;align-items:center}
+ .colophon{font-size:8px}
+ .command-input-row input{font-size:16px}
+ .command-options button{min-height:36px}
+}
+@media(hover:none),(pointer:coarse){
+ [data-view=entrance] [data-motion-toggle]{opacity:1;min-height:32px;bottom:36px}
+ [data-view=entrance] [data-theme-toggle],[data-view=entrance] .enter-link{min-height:32px;display:inline-flex;align-items:center}
+ .workspace-status>div button,.workspace-status>div a{min-height:36px;display:inline-flex;align-items:center}
+}
+@media(min-width:761px) and (max-width:1000px){
+ .terminal{padding-right:0}
+ .workspace-avatar{display:none}
+}
