@@ -20,7 +20,11 @@ function animation({ reduced = false, paused = false, hidden = false, view = "en
         listeners.get(type).push(listener);
       },
       dispatch(type, values = {}) {
-        for (const listener of listeners.get(type) || []) listener({ timeStamp: now, ...values });
+        const event = { timeStamp: now, target: this, currentTarget: this,
+          pointerId: 1, pointerType: "mouse", isPrimary: true, button: 0,
+          defaultPrevented: false, preventDefault() { this.defaultPrevented = true; }, ...values };
+        for (const listener of listeners.get(type) || []) listener(event);
+        return event;
       },
     };
   }
@@ -38,12 +42,34 @@ function animation({ reduced = false, paused = false, hidden = false, view = "en
     });
     return values;
   }
-  function node() {
+  function node(tagName = "div") {
     const classes = new Set();
+    const attributes = new Map();
     return Object.assign(surface(), {
+      tagName: tagName.toUpperCase(),
       dataset: {}, style: style(), textContent: "", hidden: false,
       classList: { add: (name) => classes.add(name), remove: (name) => classes.delete(name), contains: (name) => classes.has(name) },
-      setAttribute() {}, append(child) { child.parentElement = this; },
+      setAttribute(name, value) { attributes.set(name, String(value)); },
+      hasAttribute: (name) => attributes.has(name),
+      getAttribute: (name) => attributes.get(name) ?? null,
+      append(child) { child.parentElement = this; },
+      contains(child) {
+        for (let current = child; current; current = current.parentElement) if (current === this) return true;
+        return false;
+      },
+      closest(selector) {
+        const matches = selector.split(",").map(value => value.trim());
+        for (let current = this; current; current = current.parentElement) {
+          if (matches.some(value => {
+            if (value.startsWith("#")) return current.id === value.slice(1);
+            if (value === "[contenteditable]:not([contenteditable='false'])") return current.hasAttribute("contenteditable") && current.getAttribute("contenteditable") !== "false";
+            const attribute = value.match(/^\[([\w-]+)(?:=['"]?([^'"\]]+)['"]?)?\]$/);
+            if (attribute) return attribute[2] === undefined ? current.hasAttribute(attribute[1]) : current.getAttribute(attribute[1]) === attribute[2];
+            return value.toUpperCase() === current.tagName;
+          })) return current;
+        }
+        return null;
+      },
     });
   }
   function canvas() {
@@ -62,14 +88,19 @@ function animation({ reduced = false, paused = false, hidden = false, view = "en
         height: element.style.position === "fixed" ? 800 : 320 }),
     });
   }
-  const root = node(), scene = node(), field = canvas(), readout = node();
+  const root = node(), entrance = node("section"), scene = node(), field = canvas(), readout = node();
+  entrance.id = "entrance";
+  entrance.parentElement = root;
+  scene.parentElement = entrance;
   field.parentElement = node();
+  field.parentElement.parentElement = scene;
   root.dataset = { view, ...(paused ? { motion: "paused" } : {}) };
-  const nodes = new Map([["#code-field", field], ["#scene", scene], ["[data-pointer-readout]", readout]]);
+  const nodes = new Map([["#entrance", entrance], ["#code-field", field], ["#scene", scene], ["[data-pointer-readout]", readout]]);
   for (const selector of ["#code-wall", "[data-scene-file]", "[data-scene-path]", "#typed-command", "#entrance .mode", "#entrance .status-position"]) nodes.set(selector, node());
   const document = Object.assign(surface(), {
     documentElement: root, hidden,
-    querySelector: (selector) => nodes.get(selector) || null,
+    querySelector: (selector) => selector === "dialog[open]" ? (document.openDialog || null) : nodes.get(selector) || null,
+    getElementById: (id) => nodes.get(`#${id}`) || null,
     createElement: (tag) => tag === "canvas" ? canvas() : node(),
   });
   const motion = Object.assign(surface(), { matches: reduced });
@@ -90,7 +121,7 @@ function animation({ reduced = false, paused = false, hidden = false, view = "en
     clearTimeout: (id) => timers.delete(id),
   });
   return {
-    root, scene, field, readout, document, motion, window, frames, timers, images,
+    root, entrance, scene, field, readout, document, motion, window, frames, timers, images, node,
     api: window.PortfolioAnimation,
     frame(ms = 16) {
       now += ms;
@@ -184,11 +215,177 @@ test("pointer input is reflected on the next display frame", () => {
   const controls = animation();
   controls.frame();
   const draws = controls.field.calls.clears;
-  controls.field.dispatch("pointermove", { clientX: 480, clientY: 80 });
+  controls.entrance.dispatch("pointermove", { clientX: 480, clientY: 80, target: controls.field });
   assert.match(controls.readout.textContent, /0\.750.*0\.250/);
   controls.frame(16);
   assert.ok(controls.field.calls.clears > draws, "pointer input must not wait for a second 60 Hz display frame");
   assert.equal(controls.frames.size, 1, "input does not duplicate the animation loop");
+});
+
+// Dispatch the browser's down/up sequence without advancing a display frame.
+// A real touch can begin and end before requestAnimationFrame runs.
+function tap(controls, values = {}) {
+  const event = { pointerType: "touch", clientX: 80, clientY: 20, target: controls.field, ...values };
+  const down = controls.entrance.dispatch("pointerdown", event);
+  const up = controls.window.dispatch("pointerup", event);
+  return { down, up };
+}
+
+function displayFor(controls, milliseconds) {
+  for (let time = 0; time < milliseconds; time += 16) controls.frame(16);
+}
+
+test("a quick code-line tap reacts on the next frame and remains open after release", () => {
+  for (const pointerType of ["touch", "pen"]) {
+    const controls = animation();
+    controls.frame();
+    const before = controls.field.calls.clears;
+    const { down, up } = tap(controls, { pointerType });
+    controls.frame();
+    assert.equal(controls.scene.dataset.phase, "interactive", pointerType);
+    assert.ok(controls.field.calls.clears > before, "a fast tap must result in a rendered reaction");
+    displayFor(controls, 1000);
+    assert.equal(controls.scene.dataset.phase, "interactive", "release must not immediately undo a tap");
+    assert.equal(controls.frames.size, 1);
+    assert.equal(down.defaultPrevented, false, "the entrance preserves native touch handling");
+    assert.equal(up.defaultPrevented, false);
+  }
+});
+
+test("blank entrance taps retract a graphic without resetting the source sequence", () => {
+  const controls = animation();
+  tap(controls);
+  displayFor(controls, 160);
+  assert.equal(controls.scene.dataset.phase, "interactive");
+  tap(controls, { clientY: 600, target: controls.entrance });
+  displayFor(controls, 450);
+  assert.equal(controls.scene.dataset.phase, "editing", "retraction resumes the original source sequence");
+  assert.equal(controls.frames.size, 1);
+});
+
+test("tapped graphics hold briefly, then return to the uninterrupted source cycle", () => {
+  const controls = animation();
+  tap(controls);
+  displayFor(controls, 5600);
+  assert.equal(controls.scene.dataset.phase, "interactive", "a graphic remains available for exploration");
+  displayFor(controls, 1000);
+  assert.notEqual(controls.scene.dataset.phase, "interactive", "a tap does not indefinitely suspend the source cycle");
+  assert.equal(controls.frames.size, 1);
+});
+
+test("links, controls, editable content, and dialog backdrops do not trigger graphics", () => {
+  for (const kind of ["a", "button", "input", "textarea", "select", "summary", "role-button", "editable", "dialog"]) {
+    const controls = animation();
+    const target = controls.node(kind === "role-button" || kind === "editable" ? "div" : kind);
+    if (kind === "role-button") target.setAttribute("role", "button");
+    if (kind === "editable") target.setAttribute("contenteditable", "true");
+    target.parentElement = controls.entrance;
+    const child = controls.node("span");
+    child.parentElement = target;
+    if (kind === "dialog") controls.document.openDialog = target;
+    tap(controls, { target: kind === "dialog" ? controls.entrance : child });
+    controls.frame();
+    assert.notEqual(controls.scene.dataset.phase, "interactive", kind);
+  }
+});
+
+test("hover waits for deliberate interest and is cancelled by controls or dialogs", () => {
+  for (const destination of ["source", "control", "dialog"]) {
+    const controls = animation();
+    const event = { pointerType: "mouse", clientX: 80, clientY: 20, target: controls.field };
+    controls.entrance.dispatch("pointermove", event);
+    displayFor(controls, 500);
+    assert.notEqual(controls.scene.dataset.phase, "interactive", "passing over code should not immediately open a graphic");
+    if (destination === "control") {
+      const button = controls.node("button");
+      button.parentElement = controls.entrance;
+      controls.entrance.dispatch("pointermove", { ...event, target: button });
+    } else if (destination === "dialog") controls.document.openDialog = controls.node("dialog");
+    displayFor(controls, 500);
+    if (destination === "source") assert.equal(controls.scene.dataset.phase, "interactive");
+    else assert.notEqual(controls.scene.dataset.phase, "interactive", destination);
+    if (destination === "dialog") {
+      controls.document.openDialog = null;
+      displayFor(controls, 500);
+      assert.notEqual(controls.scene.dataset.phase, "interactive", "closing a dialog must not revive stale hover intent");
+    }
+    assert.equal(controls.frames.size, 1);
+  }
+});
+
+test("a second finger cancels the pending primary tap", () => {
+  const controls = animation();
+  const primary = { pointerId: 1, pointerType: "touch", clientX: 80, clientY: 20, target: controls.field };
+  const secondary = { ...primary, pointerId: 2, isPrimary: false, clientX: 140 };
+  controls.entrance.dispatch("pointerdown", primary);
+  controls.entrance.dispatch("pointerdown", secondary);
+  controls.window.dispatch("pointerup", secondary);
+  controls.window.dispatch("pointerup", primary);
+  controls.frame();
+  assert.notEqual(controls.scene.dataset.phase, "interactive", "a pinch must not leave a primary tap waiting to fire");
+  assert.equal(controls.frames.size, 1);
+});
+
+test("scrolling, long presses, cancellation, and secondary pointers do not count as taps", () => {
+  for (const kind of ["drag", "out-and-back", "long", "cancel", "secondary", "right-button", "different-pointer"]) {
+    const controls = animation();
+    const event = { pointerType: "touch", clientX: 80, clientY: 20, target: controls.field,
+      ...(kind === "secondary" ? { isPrimary: false } : {}), ...(kind === "right-button" ? { button: 2 } : {}) };
+    controls.entrance.dispatch("pointerdown", event);
+    if (kind === "drag" || kind === "out-and-back") {
+      const move = controls.entrance.dispatch("pointermove", { ...event, clientY: 80 });
+      assert.equal(move.defaultPrevented, false, "scroll movement remains native");
+    }
+    if (kind === "long") controls.advance(500);
+    controls.window.dispatch(kind === "cancel" ? "pointercancel" : "pointerup", {
+      ...event, ...(kind === "drag" ? { clientY: 80 } : {}), ...(kind === "different-pointer" ? { pointerId: 2 } : {}),
+    });
+    controls.frame();
+    assert.notEqual(controls.scene.dataset.phase, "interactive", kind);
+  }
+});
+
+test("motion and view changes discard active graphics and pending gestures", () => {
+  for (const state of ["paused", "reduced", "workspace", "hidden"]) {
+    for (const pending of [false, true]) {
+      const controls = animation();
+      const event = { pointerType: "touch", clientX: 80, clientY: 20, target: controls.field };
+      if (pending) controls.entrance.dispatch("pointerdown", event);
+      else { tap(controls); controls.frame(); }
+      const change = (disabled) => {
+        if (state === "paused") {
+          controls.root.dataset.motion = disabled ? "paused" : "running";
+          controls.window.dispatch("portfolio:preferences");
+        } else if (state === "reduced") {
+          controls.motion.matches = disabled;
+          controls.motion.dispatch("change");
+        } else if (state === "workspace") {
+          controls.root.dataset.view = disabled ? "workspace" : "entrance";
+          controls.window.dispatch("portfolio:view");
+        } else {
+          controls.document.hidden = disabled;
+          controls.document.dispatch("visibilitychange");
+        }
+      };
+      change(true);
+      assert.equal(controls.frames.size, 0, `${state} stops the frame loop`);
+      change(false);
+      if (pending) controls.window.dispatch("pointerup", event);
+      controls.frame();
+      assert.notEqual(controls.scene.dataset.phase, "interactive", `${state}, pending=${pending}`);
+      assert.equal(controls.frames.size, 1, `${state} resumes one frame loop`);
+    }
+  }
+});
+
+test("paused or reduced motion never launches a tap reaction", () => {
+  for (const options of [{ paused: true }, { reduced: true }]) {
+    const controls = animation(options);
+    tap(controls);
+    controls.frame();
+    assert.notEqual(controls.scene.dataset.phase, "interactive");
+    assert.equal(controls.frames.size, 0);
+  }
 });
 
 test("cancelling entry or hiding the document settles pending navigation once", async () => {
