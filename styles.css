@@ -237,7 +237,7 @@ a:focus-visible,button:focus-visible,input:focus-visible{outline-color:var(--ink
 .radar-legend>span{color:var(--tech-green)}
 .radar-tooltip{border-color:var(--accent);border-radius:3px}
 .workspace-avatar{top:30px;right:20px;width:168px;border:1px solid var(--line);border-top:2px solid var(--tech-green);border-radius:8px 2px 8px 2px;padding:8px;background:var(--panel)}
-.workspace-avatar img{width:150px;height:150px;filter:none;opacity:.75;mask-image:radial-gradient(ellipse,#000 35%,transparent 74%)}
+.workspace-avatar img{width:150px;height:150px;object-fit:contain;filter:none;opacity:1;mask-image:none}
 .workspace-avatar .scouter-title{padding:0 0 6px;font-size:9px;color:var(--tech-green);letter-spacing:1px;border-bottom:1px solid var(--line)}
 .workspace-avatar p{padding-left:4px;color:var(--tech-blue);font-size:8px;line-height:1.7}
 .project-kind{color:var(--tech-green);letter-spacing:.5px}

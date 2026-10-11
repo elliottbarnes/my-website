@@ -9,7 +9,7 @@ export const PUBLIC_FILES = Object.freeze([
   "assets/dragon-ball.png",
   "assets/themes.css", "assets/themes.js", "assets/workspace.js",
   "assets/projects/glassbox.jpg", "assets/projects/pixel-language.jpg", "assets/projects/architecture-lab.jpg", "assets/projects/automata-lab.jpg",
-  "assets/animation.js", "assets/github-avatar.jpg", "assets/fonts/IBMPlexMono-Regular.ttf", "assets/fonts/OFL.txt",
+  "assets/animation.js", "assets/memoji.png", "assets/fonts/IBMPlexMono-Regular.ttf", "assets/fonts/OFL.txt",
 ]);
 
 export const VERSIONED_FILES = Object.freeze(PUBLIC_FILES.filter((file) => /\.(?:css|js)$/.test(file)));
