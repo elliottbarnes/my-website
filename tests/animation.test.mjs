@@ -289,7 +289,7 @@ test("links, controls, editable content, and dialog backdrops do not trigger gra
   }
 });
 
-test("hover waits for deliberate interest and is cancelled by controls or dialogs", () => {
+test("hover never launches effects, including after leaving controls or dialogs", () => {
   for (const destination of ["source", "control", "dialog"]) {
     const controls = animation();
     const event = { pointerType: "mouse", clientX: 80, clientY: 20, target: controls.field };
@@ -302,8 +302,7 @@ test("hover waits for deliberate interest and is cancelled by controls or dialog
       controls.entrance.dispatch("pointermove", { ...event, target: button });
     } else if (destination === "dialog") controls.document.openDialog = controls.node("dialog");
     displayFor(controls, 500);
-    if (destination === "source") assert.equal(controls.scene.dataset.phase, "interactive");
-    else assert.notEqual(controls.scene.dataset.phase, "interactive", destination);
+    assert.notEqual(controls.scene.dataset.phase, "interactive", destination);
     if (destination === "dialog") {
       controls.document.openDialog = null;
       displayFor(controls, 500);
@@ -401,5 +400,13 @@ test("cancelling entry or hiding the document settles pending navigation once", 
     assert.equal(completions, 1, cancel);
     assert.equal(controls.root.classList.contains("is-leaving"), false);
     assert.equal(controls.timers.size, 0);
+  }
+});
+
+test("unattended typing never launches an effect over multiple complete cycles", () => {
+  const controls = animation();
+  for (let i = 0; i < 1200; i++) {
+    controls.frame(40);
+    assert.equal(controls.scene.dataset.phase, "editing");
   }
 });
