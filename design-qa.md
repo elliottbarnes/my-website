@@ -75,3 +75,10 @@ final result: passed
 The About graphic is now a theme-aware project radar using the existing, unmodified Dragon Ball icon. Four native hash links open the featured projects; each is named for assistive technology and has a 44×44 CSS-pixel target. The decorative canvas is excluded from the accessibility tree. The scan and signal rings stop with paused/reduced motion and while hidden; selecting a signal gives a brief, non-blocking energy pulse only when motion is enabled.
 
 Checked the 1280×800 desktop composition in Terminal and Paperwhite, the 320×568 phone layout without horizontal page overflow, all four destinations by keyboard, and paused/running states. No browser warnings or errors were observed. Existing 91 Node tests passed; source-aware verification still publishes exactly 21 files. Existing artwork attribution remains in the footer. Physical-device and full screen-reader testing were not performed.
+
+
+## Saiyan terminal styling — 11 October 2026
+
+Added an original Saiyan palette under the existing default theme ID, preserving saved selections and all 28 picker options. The former Terminal palette now has navy surfaces, orange actions, energy-blue chrome, and green scouter details. Capsule-tech frames style the entrance, project cards, radar, avatar, and reading pane; other palettes use the same framing with their own colours.
+
+Verified the default theme through the picker, 1280×800 desktop overview, 390×844 phone overview/project actions, and 320×568 project/entrance layouts without horizontal overflow. Adjusted the entrance's top spacing to clear the taller badge header on short phones. The 91 Node tests passed, including updated theme-label expectations. No project destinations or factual profile copy changed.

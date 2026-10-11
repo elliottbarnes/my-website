@@ -113,8 +113,8 @@ test("all 28 themes remain in the scrollable list and touch pointers keep native
   assert.equal(row.emit("pointerdown", { pointerType: "touch" }).defaultPrevented, undefined);
   assert.equal(row.emit("pointerdown", { pointerType: "mouse" }).defaultPrevented, true);
   assert.equal(page.api.current, "blackmoney");
-  assert.equal(page.api.label, "terminal");
-  assert.equal(page.button.getAttribute("aria-label"), "Choose colorscheme; current theme: terminal");
+  assert.equal(page.api.label, "saiyan");
+  assert.equal(page.button.getAttribute("aria-label"), "Choose colorscheme; current theme: saiyan");
   const labels = page.list.children.map((row) => row.children[1].textContent);
   assert.equal(new Set(labels).size, 28);
   assert.ok(labels.every((label) => label && label.length <= 14));
@@ -170,7 +170,7 @@ test("compact opening avoids the search keyboard and offers a real Cancel action
   assert.ok(page.list.scrollTop > 0, "a saved theme near the end should be visible on opening");
   assert.equal(page.key("Tab", page.cancel).defaultPrevented, undefined, "Tab should reach the search field");
   assert.equal(page.key("Enter", page.cancel).defaultPrevented, undefined, "native button activation should reach Cancel");
-  page.search("terminal");
+  page.search("saiyan");
   page.cancel.emit("click");
   assert.equal(page.api.current, "whitegold");
   assert.equal(page.storage.theme, "whitegold");
@@ -184,7 +184,7 @@ test("storage denial does not break commit or native dialog cancellation", () =>
   page.key("Enter");
   assert.equal(page.api.current, "harbor");
   page.api.open();
-  page.search("terminal");
+  page.search("saiyan");
   assert.equal(page.dialog.emit("cancel").defaultPrevented, true);
   assert.equal(page.api.current, "harbor");
   assert.equal(page.root.dataset.theme, "harbor");
