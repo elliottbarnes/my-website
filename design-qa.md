@@ -57,3 +57,14 @@ Fresh production captures are saved under `.design/live-review/` (excluded from 
 Validation for these refinements: 91 Node tests pass, including eight new regression tests for theme focus, scrolling, selection, storage failure, and pointer cleanup. Two pointer tests reproduce the bug against the previous implementation. The 21-file build and source-aware artifact verification pass. Final refinement deployment and live evidence are recorded in the task's live-review report; the physical mobile keyboard, full screen-reader behavior, and cross-browser compatibility have not been tested.
 
 final result: passed
+
+
+## Wheel and reading refinement — 11 October 2026
+
+- Separated moving cards from fixed 44px previous/next controls; added a six-section position counter and polite announcements.
+- Confirmed the original wheel drift in the browser: clicking Glassbox scrolled the clipped project tree by 66px. Using non-scrollable clipping keeps both tree and wheel at zero after selection.
+- Adapted terminal height to the viewport; added a remaining-content cue and made the details region keyboard-focusable. Arrow keys scroll details normally; arrow keys on the wheel browse, and Home/End jump to its boundaries.
+- Corrected native fragment navigation that could hide the first prompt beneath the sticky title. Long status names truncate instead of colliding with GitHub counts.
+- Made the command button available at every width, with direct shortcuts for all four projects.
+- Browser review: 320×568, 390×844, and 1280×800; no horizontal page overflow at the phone widths. Verified wraparound, wheel Home/End, command selection, native details End scrolling, the scroll cue hiding at the bottom, light/dark themes, pause, and Enter from the entrance. No browser warnings or errors observed.
+- Evidence and step-by-step review are in the ignored local `.design/refinement-pass/` folder. This is a focused browser/keyboard check, not a full assistive-technology or physical-device certification.
