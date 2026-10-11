@@ -82,3 +82,9 @@ Checked the 1280×800 desktop composition in Terminal and Paperwhite, the 320×5
 Added an original Saiyan palette under the existing default theme ID, preserving saved selections and all 28 picker options. The former Terminal palette now has navy surfaces, orange actions, energy-blue chrome, and green scouter details. Capsule-tech frames style the entrance, project cards, radar, avatar, and reading pane; other palettes use the same framing with their own colours.
 
 Verified the default theme through the picker, 1280×800 desktop overview, 390×844 phone overview/project actions, and 320×568 project/entrance layouts without horizontal overflow. Adjusted the entrance's top spacing to clear the taller badge header on short phones. The 91 Node tests passed, including updated theme-label expectations. No project destinations or factual profile copy changed.
+
+## Frameless entrance and animation response — 11 October 2026
+
+Removed the added outer terminal borders and backgrounds from the entrance and main reading pane. The entrance starts directly in code, forms the selected Memoji after 2.2 seconds, and enters the main site in 420 ms with a 500 ms fallback. Paused/reduced motion skips this transition. Mobile rendering uses fewer glyphs/particles and a lower canvas pixel cap; pointer events request the next frame and settle with time-based smoothing. Source wrapping and tokenization are cached. Project-wheel transitions are shorter.
+
+Verified phone layouts at 390×844 and 320×568, and desktop at 1280×800. The short phone keeps header, scene, command, pause, and entry controls separate with no horizontal overflow. Confirmed the new full-silhouette Memoji and the unframed workspace. Browser console showed no errors or warnings. All 98 Node tests pass, including seven new animation lifecycle, navigation, and input regression checks. Physical iPhone frame-rate profiling was not performed.
