@@ -399,7 +399,7 @@ const snippets = [{"repo": "glassbox", "title": "source → WebAssembly", "path"
     } else if (clock < 6400) {
       scene.dataset.phase = "colorscheme";
       position = editor(first, 1, 1, time, true, false);
-      status(first, "NORMAL", type(`colorscheme ${root.dataset.theme || "carbon"}`, clock - 5100, 1050), position.row, position.column);
+      status(first, "NORMAL", type(`colorscheme ${window.PortfolioThemes?.label || root.dataset.theme || "carbon"}`, clock - 5100, 1050), position.row, position.column);
     } else if (clock < 8000) {
       scene.dataset.phase = "avatar-command";
       editor(first, 1, 1, time, false, false);

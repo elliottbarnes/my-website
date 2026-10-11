@@ -4,7 +4,7 @@
 
 `assets/fonts/IBMPlexMono-Regular.ttf` is the unmodified IBM Plex Mono Regular font by IBM, downloaded on 2026-10-11 from the [official Google Fonts repository](https://github.com/google/fonts/tree/main/ofl/ibmplexmono) ([font source](https://raw.githubusercontent.com/google/fonts/main/ofl/ibmplexmono/IBMPlexMono-Regular.ttf)). Copyright © 2017 IBM Corp., with Reserved Font Name “Plex”. It is licensed under the SIL Open Font License 1.1; the complete notice is retained and published at [`assets/fonts/OFL.txt`](assets/fonts/OFL.txt). The font is served locally, without a runtime request to Google Fonts.
 
-The terminal styling is inspired by the user-selected reference, [hancore.dev](https://hancore.dev). The animation and interface implementation is original to this repository. Its creator’s face, personal information, and branding are not used. The EB contour graphic is generated locally. The 28 theme names and palette values follow the reference’s public colorscheme catalog, with provenance described in `assets/themes.js`.
+The terminal styling is inspired by the user-selected reference, [hancore.dev](https://hancore.dev). The animation and interface implementation is original to this repository. Its creator’s face, personal information, and branding are not used. The EB contour graphic is generated locally. The 28 palette values follow the reference’s public colorscheme catalog, with provenance described in `assets/themes.js`. Their display names are personalized for Elliott’s site; stable internal source IDs preserve saved preferences.
 
 ## Code animation references
 

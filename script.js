@@ -37,11 +37,12 @@
     if (!window.PortfolioThemes) root.dataset.theme = theme;
     else theme = window.PortfolioThemes.current;
     root.dataset.motion = motion;
+    const themeLabel = window.PortfolioThemes?.label || theme;
     document.querySelectorAll("[data-theme-toggle]").forEach((button) => {
-      button.setAttribute("aria-label", `Choose colorscheme; current theme: ${theme}`);
+      button.setAttribute("aria-label", `Choose colorscheme; current theme: ${themeLabel}`);
       button.setAttribute("title", "Select a colour theme");
     });
-    document.querySelectorAll("[data-theme-label]").forEach((label) => { label.textContent = theme; });
+    document.querySelectorAll("[data-theme-label]").forEach((label) => { label.textContent = themeLabel; });
     document.querySelectorAll("[data-motion-toggle]").forEach((button) => {
       button.setAttribute("aria-label", motion === "paused" ? "Resume animation" : "Pause animation");
       button.setAttribute("aria-pressed", String(motion === "paused"));
@@ -55,7 +56,7 @@
   function setTheme(next) {
     if (window.PortfolioThemes) {
       if (!next) window.PortfolioThemes.open();
-      else window.PortfolioThemes.apply(next === "carbon" ? "blackmoney" : next === "parchment" ? "whitegold" : next === "phosphor" ? "shadesofjade" : next);
+      else window.PortfolioThemes.apply(next);
       theme = window.PortfolioThemes.current;
       return;
     }
@@ -188,7 +189,7 @@
       navigate(null);
       entrance?.querySelector("[data-enter]")?.focus({ preventScroll: true });
       return;
-    } else if (["theme", "light", "dark", "theme light", "theme dark", ...themes.map((name) => `theme ${name}`)].includes(command)) {
+    } else if (["theme", "light", "dark", "theme light", "theme dark", ...[...themes, ...(window.PortfolioThemes?.labels || [])].map((name) => `theme ${name}`)].includes(command)) {
       const requested = command.replace(/^theme\s*/, "");
       if (!requested && window.PortfolioThemes) {
         closeCommands(false);
@@ -196,8 +197,8 @@
         setTheme();
         return;
       }
-      setTheme(requested === "light" ? "parchment" : requested === "dark" ? "carbon" : requested);
-      say(`Theme: ${theme}.`);
+      setTheme(requested === "light" ? (window.PortfolioThemes ? "whitegold" : "parchment") : requested === "dark" ? "carbon" : requested);
+      say(`Theme: ${window.PortfolioThemes?.label || theme}.`);
     } else if (command === "motion") {
       toggleMotion();
       say(`Animation ${motion === "paused" ? "paused" : "running"}.`);
