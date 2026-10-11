@@ -125,7 +125,7 @@ test("verification rejects source/build drift", async (t) => {
 
 test("verification catches broken links, metadata, and project destinations", async (t) => {
   const cases = [
-    ["index.html", (s) => s.replace('href="#projects"', 'href="#missing"'), /missing fragment/],
+    ["index.html", (s) => s.replace('href="#about"', 'href="#missing"'), /missing fragment/],
     ["index.html", (s) => s.replace(/src="\/script\.js(?:\?[^"]*)?"/, 'src="/unpublished.js"'), /not published/],
     ["index.html", (s) => s.replace('data-demo="pixel-language"', 'data-demo="glassbox"'), /three unique data-demo/],
     ["index.html", (s) => s.replace('data-demo="architecture-lab"', 'data-demo="automata-lab"'), /three unique data-demo/],

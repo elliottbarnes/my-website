@@ -1,5 +1,6 @@
 /* Native, searchable counterpart to the reference's compact terminal picker. */
 dialog.theme-picker {
+  --theme-row-height: 13px;
   position: fixed;
   inset: 0;
   width: 332px;
@@ -57,13 +58,25 @@ dialog.theme-picker {
   line-height: 16px;
 }
 .theme-picker-search input:focus-visible { outline: none; }
-.theme-picker-options { height: 104px; touch-action: pan-y; }
+.theme-picker-cancel { display: none; }
+.theme-picker-options {
+  position: relative;
+  height: calc(var(--theme-row-height) * 8);
+  overflow-y: auto;
+  overflow-x: hidden;
+  overscroll-behavior: contain;
+  touch-action: pan-y;
+  scrollbar-width: thin;
+  scrollbar-color: var(--faint) transparent;
+}
+.theme-picker-options::-webkit-scrollbar { width: 3px; }
+.theme-picker-options::-webkit-scrollbar-thumb { background: var(--faint); }
 .theme-picker-option {
   display: grid;
   grid-template-columns: 14px 119px 64px auto;
   align-items: center;
-  min-height: 13px;
-  height: 13px;
+  min-height: var(--theme-row-height);
+  height: var(--theme-row-height);
   color: var(--muted);
   white-space: nowrap;
   cursor: pointer;
@@ -104,4 +117,33 @@ dialog.theme-picker {
 @media (max-width: 360px) {
   .theme-picker-option { grid-template-columns: 13px minmax(100px, 1fr) 64px 38px; }
   .theme-picker-light { padding-left: 6px; font-size: 10px; }
+}
+@media (max-width: 600px), (pointer: coarse) {
+  dialog.theme-picker {
+    --theme-row-height: 32px;
+    width: 332px;
+    height: max-content;
+    max-height: calc(100dvh - 32px);
+    padding-top: 42px;
+    padding-bottom: 15px;
+    font-size: 13px;
+  }
+  .theme-picker-cancel {
+    position: absolute;
+    display: block;
+    top: 5px;
+    right: 10px;
+    min-width: 54px;
+    min-height: 32px;
+    padding: 0 5px;
+    color: var(--ink);
+    font: inherit;
+    font-size: 12px;
+  }
+  .theme-picker-cancel:focus-visible { outline-offset: 0; }
+  .theme-picker-search { height: 38px; align-items: center; }
+  .theme-picker-search input { height: 32px; font-size: 16px; line-height: 32px; }
+  .theme-picker-options { max-height: max(64px, calc(100dvh - 160px)); }
+  .theme-picker-option { grid-template-columns: 14px minmax(112px, 1fr) 64px 41px; }
+  .theme-picker-light { padding-left: 6px; font-size: 11px; }
 }

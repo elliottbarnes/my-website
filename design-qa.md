@@ -41,6 +41,19 @@ Source and implementation were joined and visually inspected in the same compari
 
 The clone reproduces the requested entrance and navigation flow with personalized, original animation code. It is not a byte-for-byte copy of the reference’s animation engine: the source’s recorded face motion and auxiliary worm/eye/ghost effects are not reproduced. Input diagrams are decorative local pointer/typing visuals. Minor timing, artwork, swatch spacing, and line-density differences remain; these do not obstruct the implemented flow. Small terminal-style text follows the chosen reference and is not a claim of an accessibility certification.
 
-Implementation checklist complete: local source changes, source/render comparisons, primary interactions, asset provenance, build verification, and running preview. Production has not been changed; domains have not been purchased.
+Implementation checklist complete: local source changes, source/render comparisons, primary interactions, asset provenance, build verification, and running preview. The initial redesign was published through PR #15 on 11 October 2026 (production commit `ef85a2fa79ad29ea66030e50641e49c20f28343e`), then reviewed in the live browser. Domains have not been purchased.
+
+## Review of the published site
+
+Fresh production captures are saved under `.design/live-review/` (excluded from publication). The review covered arrival and entry, theme selection, reading the profile, browsing projects and opening their demos, and phone/tablet use. The terminal identity, code animation, portrait treatment, and transitions remain intact.
+
+- Fixed: at 1280×720, the About role ended below the terminal viewport (521px versus a 478px panel boundary). Reducing the contour graphic height puts the role within the initial view (456px).
+- Fixed: project demo/source links appeared after large previews and code excerpts. Moving them directly below the description makes the Glassbox actions visible at 248px rather than 900px on desktop. All four project panels use the same order.
+- Fixed: only eight theme rows existed at a time, with 13px touch targets and no native scrolling to the rest. All 28 options now exist in a scrollable list. Touch layouts use 32px rows, 16px search, a visible Cancel button, and initial focus on Cancel. Desktop keeps its compact eight-row viewport. Phone browser checks reached and selected the last theme by scrolling and verified Cancel rollback.
+- Fixed: pointer release outside the selector before drag capture could leave a stale drag. Global release/cancel cleanup and button-state checks prevent later hovering from changing a section.
+- Refined: increased phone body text and action targets, exposed pause on coarse pointers, corrected the skip target for non-scripted content, clarified keyboard hints, increased focus-outline contrast, and aligned the manifest with the dark default.
+- Refined: at 768×1024, hiding the decorative side portrait expands the main content from 273px to 443px. Phone checks at 390×844 and 320×568 found no horizontal overflow. A final phone pass caught and fixed an overly tall theme dialog.
+
+Validation for these refinements: 91 Node tests pass, including eight new regression tests for theme focus, scrolling, selection, storage failure, and pointer cleanup. Two pointer tests reproduce the bug against the previous implementation. The 21-file build and source-aware artifact verification pass. Final refinement deployment and live evidence are recorded in the task's live-review report; the physical mobile keyboard, full screen-reader behavior, and cross-browser compatibility have not been tested.
 
 final result: passed

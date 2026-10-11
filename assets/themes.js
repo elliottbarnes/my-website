@@ -7,7 +7,7 @@
   const root = document.documentElement;
   const preferenceKey = "elliott:theme";
   const aliases = { carbon: "blackmoney", parchment: "whitegold", phosphor: "shadesofjade" };
-  const rowCount = 8;
+  const touchLayout = window.matchMedia?.("(max-width: 600px), (pointer: coarse)");
   let current = "blackmoney";
   let original = current;
   let opener;
@@ -67,6 +67,7 @@
 
   const dialog = element("dialog", { id: "theme-dialog", class: "theme-picker", "aria-labelledby": "theme-picker-title", "aria-describedby": "theme-picker-help" });
   const title = element("h2", { id: "theme-picker-title", class: "theme-picker-title" }, "colorscheme");
+  const cancelButton = element("button", { type: "button", class: "theme-picker-cancel", "aria-label": "Cancel theme selection" }, "cancel");
   const searchRow = element("div", { class: "theme-picker-search" });
   const prompt = element("span", { "aria-hidden": "true" }, ":");
   const input = element("input", {
@@ -79,18 +80,26 @@
   const instructions = element("p", { id: "theme-picker-help", class: "theme-picker-sr" }, "Type to filter. Arrow keys preview a theme. Enter or click to keep it. Escape restores your previous theme.");
   const announcement = element("span", { class: "theme-picker-sr", role: "status", "aria-live": "polite" });
   searchRow.append(prompt, input);
-  dialog.append(title, searchRow, list, counter, instructions, announcement);
+  dialog.append(title, cancelButton, searchRow, list, counter, instructions, announcement);
   document.body.append(dialog);
 
+  function revealSelected() {
+    const option = list.children[selected];
+    if (!option || !options.length || !list.clientHeight) return;
+    const top = option.offsetTop;
+    const bottom = top + option.offsetHeight;
+    if (top < list.scrollTop) list.scrollTop = top;
+    else if (bottom > list.scrollTop + list.clientHeight) list.scrollTop = bottom - list.clientHeight;
+  }
+
   function draw() {
-    const start = Math.max(0, Math.min(selected - Math.floor(rowCount / 2), options.length - rowCount));
+    const scrollTop = list.scrollTop;
     list.replaceChildren();
     if (!options.length) {
       list.append(element("span", { class: "theme-picker-empty" }, "no match"));
       input.removeAttribute("aria-activedescendant");
     }
-    options.slice(start, start + rowCount).forEach((palette, offset) => {
-      const index = start + offset;
+    options.forEach((palette, index) => {
       const chosen = selected === index;
       const option = element("div", {
         id: `theme-option-${palette.name}`, class: "theme-picker-option", role: "option",
@@ -107,7 +116,10 @@
       }
       option.append(arrow, name, swatches);
       if (palette.light) option.append(element("span", { class: "theme-picker-light" }, "light"));
-      option.addEventListener("pointerdown", (event) => event.preventDefault());
+      // Keep desktop search focus; touch pointers must retain native scrolling.
+      option.addEventListener("pointerdown", (event) => {
+        if (event.pointerType === "mouse") event.preventDefault();
+      });
       option.addEventListener("click", () => {
         selected = index;
         apply(palette.name, { persist: false });
@@ -116,6 +128,8 @@
       list.append(option);
       if (chosen) input.setAttribute("aria-activedescendant", option.id);
     });
+    list.scrollTop = scrollTop;
+    revealSelected();
     counter.textContent = `${options.length ? selected + 1 : 0}/${options.length}`;
     announcement.textContent = options.length ? `${options[selected].name}, ${selected + 1} of ${options.length}` : "No matching colorschemes";
   }
@@ -132,12 +146,17 @@
     input.value = "";
     options = palettes;
     selected = Math.max(0, palettes.findIndex((palette) => palette.name === current));
+    list.scrollTop = 0;
+    const focusTarget = touchLayout?.matches ? cancelButton : input;
+    cancelButton.autofocus = focusTarget === cancelButton;
+    input.autofocus = focusTarget === input;
     draw();
     if (typeof dialog.showModal === "function") dialog.showModal();
     else dialog.setAttribute("open", "");
     root.dataset.themePicker = "open";
     window.dispatchEvent(new CustomEvent("portfolio:theme-picker", { detail: { open: true } }));
-    input.focus({ preventScroll: true });
+    revealSelected();
+    focusTarget.focus({ preventScroll: true });
   }
 
   function close(keep = true) {
@@ -155,8 +174,10 @@
     const search = input.value.trim().toLowerCase();
     options = palettes.filter((palette) => palette.name.includes(search));
     selected = 0;
+    list.scrollTop = 0;
     preview();
   });
+  cancelButton.addEventListener("click", () => close(false));
   dialog.addEventListener("keydown", (event) => {
     // Keep the portfolio's global shortcuts out of this native text field.
     event.stopPropagation();
@@ -165,9 +186,10 @@
       event.preventDefault();
       close(false);
     } else if (event.key === "Enter") {
+      if (event.target === cancelButton) return;
       event.preventDefault();
       close(true);
-    } else if (["ArrowDown", "ArrowUp", "Tab"].includes(event.key)) {
+    } else if (["ArrowDown", "ArrowUp"].includes(event.key) || (event.key === "Tab" && !touchLayout?.matches)) {
       event.preventDefault();
       if (!options.length) return;
       const direction = event.key === "ArrowUp" || (event.key === "Tab" && event.shiftKey) ? -1 : 1;
@@ -184,12 +206,6 @@
     const bounds = dialog.getBoundingClientRect();
     if (event.clientX < bounds.left || event.clientX > bounds.right || event.clientY < bounds.top || event.clientY > bounds.bottom) close(true);
   });
-  list.addEventListener("wheel", (event) => {
-    if (!options.length || !event.deltaY) return;
-    event.preventDefault();
-    selected = Math.max(0, Math.min(options.length - 1, selected + Math.sign(event.deltaY)));
-    preview();
-  }, { passive: false });
   document.querySelectorAll("[data-theme-toggle]").forEach((button) => button.addEventListener("click", open));
 
   window.PortfolioThemes = Object.freeze({

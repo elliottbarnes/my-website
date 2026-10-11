@@ -58,6 +58,12 @@
     });
     navigation.addEventListener("pointermove", event => {
       if (!drag || drag.id !== event.pointerId) return;
+      // A release outside the wheel can precede pointer capture. Never let the
+      // next mouse/pen hover continue that drag; touch streams need no button mask.
+      if (["mouse", "pen"].includes(event.pointerType) && (event.buttons & 1) === 0) {
+        endDrag(event);
+        return;
+      }
       const dy = event.clientY - drag.y, dx = event.clientX - drag.x;
       if (Math.abs(dy) < 28 || (!drag.moved && Math.abs(dx) > Math.abs(dy))) return;
       if (select(dy < 0 ? 1 : -1)) {
@@ -77,7 +83,9 @@
     };
     navigation.addEventListener("pointerup", endDrag);
     navigation.addEventListener("pointercancel", endDrag);
-    navigation.addEventListener("lostpointercapture", () => { drag = null; });
+    navigation.addEventListener("lostpointercapture", endDrag);
+    window.addEventListener("pointerup", endDrag, true);
+    window.addEventListener("pointercancel", endDrag, true);
     navigation.addEventListener("click", event => {
       if (!synthetic && event.detail > 0 && performance.now() < suppressUntil) {
         event.preventDefault();
