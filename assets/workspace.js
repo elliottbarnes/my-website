@@ -168,8 +168,8 @@
     if (!width || !height) return;
     context.clearRect(0, 0, width, height);
     const compact = width < 360;
-    const x = compact ? 11 : 23, y = compact ? 25 : 34;
-    const plotWidth = width * .68, plotHeight = height - (compact ? 58 : 74);
+    const x = compact ? 11 : 23, y = compact ? 14 : 16;
+    const plotWidth = width * .68, plotHeight = height - y - (compact ? 33 : 40);
     const right = width * .77, sideWidth = width - right - 13;
     const progress = quiet() ? 1 : clamp(reveal / 1350);
     const t = quiet() ? 0 : elapsed / 1000;
@@ -188,7 +188,6 @@
     context.textAlign = "left";
     context.textBaseline = "top";
     context.globalAlpha = .75;
-    context.fillText("contour / EB", x, compact ? 9 : 14);
     context.fillText("x", x + plotWidth + 5, y + plotHeight - 3);
     context.fillText("y", x - 2, y - 13);
     context.fillText("0", x, y + plotHeight + 5);
