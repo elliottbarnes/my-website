@@ -79,7 +79,7 @@
     else if (game.phase === "lost") announce("training complete. try again to collect all seven dragon balls.");
     else if (game.phase === "ready") announce(`move your paddle, then tap or press space to release ki. ${game.lives} ${game.lives === 1 ? "life" : "lives"} remaining.`);
     else if (game.collected.length !== lastCollected) announce(`${game.collected.length} of seven dragon balls collected.`);
-    else if (game.phase !== previousPhase) announce("ki released. clear the shields to collect all seven dragon balls.");
+    else if (game.phase !== previousPhase || lastAnnouncement === "training paused") announce("ki released. clear the shields to collect all seven dragon balls.");
     previousPhase = game.phase;
     lastCollected = game.collected.length;
   }
