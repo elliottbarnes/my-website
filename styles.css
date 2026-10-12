@@ -284,3 +284,12 @@ h1,h2,h3,label,.plot-caption,.terminal-title,.project-kind,.scouter-title,.githu
 .radar-signal:hover img,.radar-signal:focus-visible img{filter:drop-shadow(0 0 9px var(--accent));scale:1.12}
 
 .radar-signal img[src*="dragon-ball-"]{width:31px;height:31px}
+
+.file-list button[data-distance="4"]{opacity:0;pointer-events:none}
+.radar-signal[data-radar-route="glassbox"]{left:50%;top:15%}
+.radar-signal[data-radar-route="pixel-language"]{left:82%;top:32%}
+.radar-signal[data-radar-route="architecture-lab"]{left:82%;top:68%}
+.radar-signal[data-radar-route="automata-lab"]{left:50%;top:85%}
+.radar-signal[data-radar-route="ellmiott"]{left:18%;top:68%}
+.radar-signal[data-radar-route="batchline"]{left:18%;top:32%}
+.radar-signal[data-radar-route="evaldeck"]{left:50%;top:50%}
