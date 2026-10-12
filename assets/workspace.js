@@ -27,6 +27,10 @@
   if (navigation) {
     const buttons = Array.from(navigation.querySelectorAll("[data-select]"));
     let wheelTotal = 0, wheelTime = 0, lastSelection = -Infinity, drag = null, suppressUntil = 0, synthetic = false;
+    function pull(distance, active = true) {
+      navigation.dataset.dragging = String(active && !quiet());
+      navigation.style.setProperty("--wheel-pull", `${quiet() ? 0 : Math.max(-24, Math.min(24, distance * .65))}px`);
+    }
     function select(step) {
       if (!workspaceVisible() || buttons.length < 2) return false;
       const selected = Math.max(0, buttons.findIndex(button => button.getAttribute("aria-pressed") === "true"));
@@ -65,11 +69,15 @@
         return;
       }
       const dy = event.clientY - drag.y, dx = event.clientX - drag.x;
-      if (Math.abs(dy) < 28 || (!drag.moved && Math.abs(dx) > Math.abs(dy))) return;
+      if (!drag.moved && Math.abs(dx) > Math.abs(dy)) return;
+      pull(dy);
+      if (Math.abs(dy) > 6) drag.pulled = true;
+      if (Math.abs(dy) < 28) return;
       if (select(dy < 0 ? 1 : -1)) {
         drag.moved = true;
         drag.y = event.clientY;
         drag.x = event.clientX;
+        pull(0);
         suppressUntil = performance.now() + 500;
         try { navigation.setPointerCapture(event.pointerId); } catch { /* Pointer may already have ended. */ }
         if (event.cancelable) event.preventDefault();
@@ -77,8 +85,9 @@
     }, { passive: false });
     const endDrag = event => {
       if (!drag || event.pointerId !== drag.id) return;
-      if (drag.moved) suppressUntil = performance.now() + 500;
+      if (drag.moved || drag.pulled) suppressUntil = performance.now() + 500;
       drag = null;
+      pull(0, false);
       try { if (navigation.hasPointerCapture(event.pointerId)) navigation.releasePointerCapture(event.pointerId); } catch { /* Already released. */ }
     };
     navigation.addEventListener("pointerup", endDrag);

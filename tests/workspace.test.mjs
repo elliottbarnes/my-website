@@ -44,7 +44,9 @@ function wheel() {
     getAttribute: name => name === "aria-pressed" ? String(index === selected) : null,
     click: () => click(index, 0),
   }));
+  const properties = new Map();
   Object.assign(navigation, {
+    dataset: {}, style: { setProperty: (name, value) => properties.set(name, value) },
     querySelectorAll: () => buttons,
     setPointerCapture: id => captures.add(id),
     hasPointerCapture: id => captures.has(id),
@@ -59,7 +61,7 @@ function wheel() {
   };
   vm.runInNewContext(source, { window, document, performance: { now: () => now } });
   return {
-    navigation, window, captures, click,
+    navigation, window, captures, click, properties,
     get selected() { return selected; },
     advance(ms) { now += ms; },
   };
@@ -128,4 +130,17 @@ test("touch capture transfer from a card does not cancel continued wheel draggin
   assert.ok(controls.captures.has(1));
   controls.navigation.dispatch("pointerup", { pointerType: "touch" });
   assert.equal(controls.captures.size, 0);
+});
+
+test("short swipes follow the finger and spring home without changing selection", () => {
+  const controls = wheel();
+  controls.navigation.dispatch("pointerdown", { pointerType: "touch" });
+  controls.navigation.dispatch("pointermove", { pointerType: "touch", clientY: 85 });
+  assert.equal(controls.selected, 0);
+  assert.equal(controls.navigation.dataset.dragging, "true");
+  assert.equal(controls.properties.get("--wheel-pull"), "-9.75px");
+  controls.window.dispatch("pointerup", { pointerType: "touch" });
+  assert.equal(controls.navigation.dataset.dragging, "false");
+  assert.equal(controls.properties.get("--wheel-pull"), "0px");
+  assert.ok(controls.click(1).defaultPrevented);
 });
