@@ -24,7 +24,7 @@
     <link rel="icon" href="/assets/dragon-ball.png" type="image/png" sizes="256x256">
     <link rel="apple-touch-icon" href="/assets/dragon-ball.png" type="image/png" sizes="256x256">
     <link rel="manifest" href="/site.webmanifest">
-    <link rel="stylesheet" href="/styles.css?v=a6e9bb4658f6">
+    <link rel="stylesheet" href="/styles.css?v=0df93458de28">
     <link rel="stylesheet" href="/assets/themes.css?v=07412e345894">
     <script type="application/ld+json">
       {
@@ -49,7 +49,7 @@
         <section id="entrance" class="entrance" aria-labelledby="entrance-title">
           <h1 id="entrance-title" class="visually-hidden">elliott — ai wizard. “a computer can be a bicycle for the mind”</h1>
           <div class="scene" id="scene">
-            <div class="scene-heading" aria-hidden="true"><span>~/projects</span><span data-scene-file>glassbox/docs/core.js</span></div>
+            <div class="scene-heading"><span aria-hidden="true">~/projects</span><button type="button" data-scene-file aria-label="Show this project’s Git history" title="git history">glassbox/docs/core.js</button></div>
             <div class="scene-body">
               <pre class="code-wall" aria-hidden="true"><code id="code-wall">export function compile(source, { optimized = true } = {}) {
   const tokens = tokenize(source); const ast = parse(tokens); const ir = lower(ast); const optimization = optimize(ir);
@@ -188,6 +188,7 @@ output color * (0.35 + 0.65 * glow);</code></pre></div>
     <script src="/assets/themes.js?v=78009717e35f" defer></script>
     <script src="/script.js?v=8c1b0cae3252" defer></script>
     <script src="/assets/workspace.js?v=9df804affabc" defer></script>
-    <script src="/assets/animation.js?v=80fa5f031611" defer></script>
+    <script src="/assets/entrance-effects.js?v=d44907124af6" defer></script>
+    <script src="/assets/animation.js?v=16995d1ab693" defer></script>
   </body>
 </html>

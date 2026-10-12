@@ -46,6 +46,8 @@ const snippets = [{"repo": "glassbox", "title": "source → WebAssembly", "path"
   const command = document.querySelector("#typed-command");
   const modeLabel = document.querySelector("#entrance .mode");
   const positionLabel = document.querySelector("#entrance .status-position");
+  // Public commit snapshot; no browser API requests or fabricated history.
+  const commitHistory = {"glassbox":[{"sha":"c7ae7bd3eb374580b0c28e0b554108b5504a1c00","parents":["5789eec04c64bea45b2f5b9bce3adc6387128d81"],"message":"docs: make the README a concise project entry point (#2)"},{"sha":"5789eec04c64bea45b2f5b9bce3adc6387128d81","parents":["6baf3aacc2b86458bd42dfb4d3f511721005bcef"],"message":"docs: expand project guide and protect local files (#1)"},{"sha":"6baf3aacc2b86458bd42dfb4d3f511721005bcef","parents":[],"message":"Build an inspectable typed compiler with a WebAssembly backend"}],"pixel-language":[{"sha":"bf7abf01bd02a9a3f40216a81f6a6b8809009ea2","parents":["cd06ed6f5e2d42fb484af4d330905266417d9098"],"message":"docs: make the README a concise project entry point (#2)"},{"sha":"cd06ed6f5e2d42fb484af4d330905266417d9098","parents":["fe0af8647aedf8d711789868bf717e4663081889"],"message":"docs: expand project guide and protect local files (#1)"},{"sha":"fe0af8647aedf8d711789868bf717e4663081889","parents":["62ab5f3b97880c16763dc0e78163a8d536542735"],"message":"Use the repository owner handle for copyright attribution"},{"sha":"62ab5f3b97880c16763dc0e78163a8d536542735","parents":[],"message":"Build a typed graphics language and live WebGL compiler playground"}],"architecture-lab":[{"sha":"c452bb8ff75c68809035e3efa569e49473932cb2","parents":["19e468a1cb4fe2eee032afc94079da63a6dc9d52"],"message":"Version published assets to prevent stale mixed releases"},{"sha":"19e468a1cb4fe2eee032afc94079da63a6dc9d52","parents":["db570f2adea137f8a362ee171ca4230f5f7b76fc"],"message":"Explore three generations of Macintosh hardware in interactive 3D"},{"sha":"db570f2adea137f8a362ee171ca4230f5f7b76fc","parents":["81349c74afb61f8444e664c154ab56a882d27b7c"],"message":"Refine Macintosh lab with rainbow styling and integrated experiments"},{"sha":"81349c74afb61f8444e664c154ab56a882d27b7c","parents":[],"message":"Build an interactive Macintosh 128K architecture exhibit"}],"automata-lab":[{"sha":"5f6754580cfb0ffcf393d9e3d944ce1753cc1554","parents":["e0faf5ceae6eeb2c8a0cb00b51496976dad9655d"],"message":"Document regex resource limits with a bounded research harness (#2)"},{"sha":"e0faf5ceae6eeb2c8a0cb00b51496976dad9655d","parents":["4747efde9b7da4a791ea51809697a5bcbe2cdf96"],"message":"docs: expand project guide and protect local files (#1)"},{"sha":"4747efde9b7da4a791ea51809697a5bcbe2cdf96","parents":["ccd219aeaba07d3c214fcf216f623fb9d2a577af"],"message":"Link the lab back to the portfolio"},{"sha":"ccd219aeaba07d3c214fcf216f623fb9d2a577af","parents":[],"message":"Build an inspectable regex compiler and automata playground"}]};
   const motion = window.matchMedia("(prefers-reduced-motion: reduce)");
   const inputHud = document.createElement("canvas");
   inputHud.setAttribute("aria-hidden", "true");
@@ -388,7 +390,11 @@ const snippets = [{"repo": "glassbox", "title": "source → WebAssembly", "path"
   }
 
   function sourceHit(x, y) {
-    return sourceRows.find(row => x >= row.x - 12 && x <= row.right + 12 && y >= row.y && y < row.bottom);
+    const row = sourceRows.find(row => x >= 3 && x <= row.right + 12 && y >= row.y && y < row.bottom);
+    if (!row) return null;
+    const column = Math.floor((x - row.x) / cell);
+    const token = [...row.text.matchAll(/[A-Za-z_$][\w$]*/g)].find(match => column >= match.index && column < match.index + match[0].length)?.[0];
+    return { ...row, gutter: x < row.x - 4, token };
   }
 
   function makeAnchor(row) {
@@ -399,12 +405,13 @@ const snippets = [{"repo": "glassbox", "title": "source → WebAssembly", "path"
       sourceX: row.x / width, sourceY: row.y / height, text: row.text || "code" };
   }
 
-  function openGraphic(row, pointerType) {
+  function openGraphic(row, pointerType, requestedKind) {
     if (!row || !visible() || still() || leaving || document.querySelector("dialog[open]")) return;
     const now = performance.now();
-    const next = { kind: renderedSnippet.repo === "glassbox" ? "avatar" : "object", snippet: renderedSnippet, anchor: makeAnchor(row),
+    const kind = requestedKind || (row.gutter ? "history" : ["tokens", "tokenize", "ast", "ir", "wasm", "emitWasm", "compile", "lower", "optimize", "output", "byteLocation", "match"].includes(row.token) ? "tokens" : renderedSnippet.repo === "glassbox" ? "avatar" : "object");
+    const next = { kind, snippet: renderedSnippet, anchor: makeAnchor(row),
       amount: 0, velocity: 0, target: 1, expires: now + (pointerType === "touch" || pointerType === "pen" ? 6000 : 9000) };
-    if (interaction && interaction.kind === "object" && interaction.snippet === next.snippet) {
+    if (interaction && interaction.kind === next.kind && interaction.kind !== "avatar" && interaction.snippet === next.snippet) {
       // Retarget an existing spring rather than snapping a repeated tap back to zero.
       interaction.destination = next.anchor;
       interaction.target = 1;
@@ -449,16 +456,22 @@ const snippets = [{"repo": "glassbox", "title": "source → WebAssembly", "path"
   function drawInteraction(time) {
     const { snippet, amount, kind, anchor } = interaction;
     scene.dataset.phase = "interactive";
-    editor(snippet, (time % cycleLength) / cycleLength, 1 - amount * .70, time, true, true);
-    if (kind === "avatar") avatar(amount, time);
+    editor(snippet, (time % cycleLength) / cycleLength, 1 - amount * (["history", "tokens"].includes(kind) ? .88 : .70), time, true, true);
+    scene.dataset.effect = kind;
+    if (["history", "tokens"].includes(kind) && window.PortfolioEntranceEffects) {
+      const bounds = window.PortfolioEntranceEffects.draw(kind, { context, width, height, amount, time, anchor, snippet,
+        history: commitHistory[snippet.repo] || [], ...palette });
+      displayedGraphic = { kind, snippet, amount, anchor, bounds };
+    } else if (kind === "avatar") avatar(amount, time);
     else liveObject(snippet, amount, time, anchor);
-    status(snippet, "NORMAL", kind === "avatar" ? "!./avatar --track" : `!./${snippet.repo} --live`);
+    status(snippet, "NORMAL", kind === "history" ? "git log --graph --oneline" : kind === "tokens" ? "./source --inspect" : kind === "avatar" ? "!./avatar --track" : `!./${snippet.repo} --live`);
     drawInputHud(time);
   }
 
   function drawScene(time) {
     context.clearRect(0, 0, width, height);
     displayedGraphic = null;
+    scene.dataset.effect = interaction?.kind || "";
     if (!width || !height) return;
     const clock = time % cycleLength;
     const snippet = snippets[Math.floor(time / cycleLength) % snippets.length];
@@ -652,7 +665,7 @@ const snippets = [{"repo": "glassbox", "title": "source → WebAssembly", "path"
       const rect = canvas.getBoundingClientRect();
       const x = event.clientX - rect.left, y = event.clientY - rect.top;
       const bounds = displayedGraphic?.bounds;
-      const insideGraphic = bounds && x >= bounds.left && x <= bounds.right && y >= bounds.top && y <= bounds.bottom;
+      const insideGraphic = displayedGraphic?.amount > .35 && bounds && x >= bounds.left && x <= bounds.right && y >= bounds.top && y <= bounds.bottom;
       const row = sourceHit(x, y);
       if (insideGraphic || !row) closeGraphic();
       else openGraphic(row, event.pointerType);
@@ -672,6 +685,14 @@ const snippets = [{"repo": "glassbox", "title": "source → WebAssembly", "path"
   document.addEventListener("visibilitychange", refresh);
   motion.addEventListener("change", refresh);
   window.addEventListener("resize", resize, { passive: true });
+  fileLabel?.addEventListener("click", () => {
+    const row = sourceRows[0];
+    if (!row) return;
+    if (interaction?.kind === "history" && interaction.target) closeGraphic();
+    else openGraphic(row, "mouse", "history");
+    lastInput = performance.now();
+    schedule();
+  });
   window.PortfolioAnimation = Object.freeze({ enter, cancel: completeEntry });
   const image = new Image();
   image.onload = () => { sourceImage = image; buildPortrait(); refresh(); };

@@ -48,3 +48,5 @@ The unmodified Dragon Ball favicon is by [Musett.com](https://www.iconarchive.co
 The terminal uses capsule-tech framing, scouter labels, and a Saiyan colour scheme (navy, orange, blue, and green). The former Terminal palette keeps its saved internal ID and now uses Saiyan colours; other saved palettes remain available. The styling adapts to their colours too.
 
 The seven-ball radar includes ellmiott (language-model internals), batchline (batching/backpressure), and evaldeck (replay contract checks), each with its public browser demo and repository.
+
+Tap the entrance filename or line-number gutter to unfold real public commit history and its source path. Tap compiler identifiers such as `tokens`, `wasm`, or `compile` for a source-to-token sketch; remaining code taps retain the portrait and procedural effects. All effects are user-triggered and typing continues. The history is a dated embedded public snapshot, not a live API query; token outputs are an explicitly labeled compile sketch, not a compiler execution.

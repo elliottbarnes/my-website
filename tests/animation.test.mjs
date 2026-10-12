@@ -4,6 +4,7 @@ import test from "node:test";
 import vm from "node:vm";
 import { PUBLIC_FILES } from "../scripts/public-files.mjs";
 
+const effectsSource = await readFile(new URL("../assets/entrance-effects.js", import.meta.url), "utf8");
 const source = await readFile(new URL("../assets/animation.js", import.meta.url), "utf8");
 
 // Exercise the shipped animation controller and its clock without a browser
@@ -114,6 +115,7 @@ function animation({ reduced = false, paused = false, hidden = false, view = "en
   class Image {
     constructor() { this.naturalWidth = 420; this.naturalHeight = 500; images.push(this); }
   }
+  vm.runInNewContext(effectsSource, { window });
   vm.runInNewContext(source, {
     document, window, Image, performance, requestAnimationFrame, cancelAnimationFrame,
     getComputedStyle: () => ({ getPropertyValue: () => "" }),
@@ -417,4 +419,27 @@ test("mobile code renders at native Retina density while large transitions stay 
   assert.equal(controls.field.height, 960);
   controls.api.enter();
   assert.ok(controls.field.width * controls.field.height < 4010000);
+});
+
+test("line-number taps reveal genuine history while source keywords reveal tokens", () => {
+  for (const [x, expected] of [[10, "history"], [163, "tokens"], [80, "avatar"]]) {
+    const controls = animation();
+    controls.entrance.dispatch("pointerdown", { clientX: x, clientY: 20, target: controls.field });
+    controls.window.dispatch("pointerup", { clientX: x, clientY: 20, target: controls.field });
+    controls.frame(40);
+    assert.equal(controls.scene.dataset.effect, expected);
+    assert.equal(controls.scene.dataset.phase, "interactive");
+  }
+});
+
+test("the filename opens history and a second filename click retracts it", () => {
+  const controls = animation();
+  const filename = controls.document.querySelector("[data-scene-file]");
+  filename.dispatch("click");
+  controls.frame(40);
+  assert.equal(controls.scene.dataset.effect, "history");
+  for (let i = 0; i < 20; i++) controls.frame(40);
+  filename.dispatch("click");
+  for (let i = 0; i < 25; i++) controls.frame(40);
+  assert.equal(controls.scene.dataset.phase, "editing");
 });
