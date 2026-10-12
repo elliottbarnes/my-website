@@ -122,7 +122,7 @@
       if (announcement) announcement.textContent = `${title}, section ${routes.indexOf(id) + 1} of ${routes.length}`;
     }
     const status = document.getElementById("status-view");
-    if (status) { status.textContent = id || "entrance"; status.title = id || "entrance"; }
+    if (status) { status.textContent = ({ "pixel-language": "pixel", "architecture-lab": "architecture", "automata-lab": "automata" })[id] || id || "entrance"; status.title = id || "entrance"; }
     if (changed) {
       const terminal = workspace.querySelector(".terminal");
       if (terminal) terminal.scrollTop = 0;

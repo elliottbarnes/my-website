@@ -17,7 +17,7 @@ function wheel() {
       },
       dispatch(type, values = {}) {
         const event = {
-          pointerId: 1, pointerType: "mouse", button: 0, buttons: 1,
+          target: this, pointerId: 1, pointerType: "mouse", button: 0, buttons: 1,
           isPrimary: true, clientX: 30, clientY: 100, cancelable: true,
           defaultPrevented: false, stopped: false,
           preventDefault() { this.defaultPrevented = true; },
@@ -116,4 +116,16 @@ test("normal mouse and touch drags select a project and suppress their trailing 
     controls.click(3);
     assert.equal(controls.selected, 3, "later intentional clicks still work");
   }
+});
+
+test("touch capture transfer from a card does not cancel continued wheel dragging", () => {
+  const controls = wheel();
+  controls.navigation.dispatch("pointerdown", { pointerType: "touch" });
+  controls.navigation.dispatch("pointermove", { pointerType: "touch", clientY: 70, buttons: 0 });
+  controls.navigation.dispatch("lostpointercapture", { target: {}, pointerType: "touch" });
+  controls.navigation.dispatch("pointermove", { pointerType: "touch", clientY: 40, buttons: 0 });
+  assert.equal(controls.selected, 2);
+  assert.ok(controls.captures.has(1));
+  controls.navigation.dispatch("pointerup", { pointerType: "touch" });
+  assert.equal(controls.captures.size, 0);
 });

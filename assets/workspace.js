@@ -83,7 +83,11 @@
     };
     navigation.addEventListener("pointerup", endDrag);
     navigation.addEventListener("pointercancel", endDrag);
-    navigation.addEventListener("lostpointercapture", endDrag);
+    // Touch starts with implicit capture on the card. Transferring it to the
+    // wheel emits a bubbling capture-loss event from that card, not the wheel.
+    navigation.addEventListener("lostpointercapture", event => {
+      if (event.target === navigation) endDrag(event);
+    });
     window.addEventListener("pointerup", endDrag, true);
     window.addEventListener("pointercancel", endDrag, true);
     navigation.addEventListener("click", event => {
