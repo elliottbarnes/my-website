@@ -133,7 +133,7 @@
   const locations = [[-.48, -.35], [.38, -.53], [.56, .26], [-.35, .51]];
   let width = 0, height = 0, frame = 0, lastFrame = 0, elapsed = 0;
   let ink = "#c9b798", muted = "#969082", accent = ink;
-  let centerX = 0, centerY = 0, radius = 0, selected = -1, energyAnimation;
+  let centerX = 0, centerY = 0, radius = 0, selected = -1, energyAnimation, pulseAt = -Infinity;
   const active = () => workspaceVisible() && !about.hidden;
   const tau = Math.PI * 2;
 
@@ -160,6 +160,16 @@
     circle(centerX, centerY, radius + 4);
     context.save();
     context.beginPath(); context.arc(centerX, centerY, radius, 0, tau); context.clip();
+    // A tap sends a ki ripple through the radar; the same clock respects pause.
+    const pulse = (elapsed - pulseAt) / 850;
+    if (pulse >= 0 && pulse < 1) {
+      context.strokeStyle = accent;
+      context.lineWidth = 1.5;
+      context.globalAlpha = (1 - pulse) * .65;
+      circle(centerX, centerY, radius * pulse);
+      context.strokeStyle = muted;
+      context.lineWidth = .7;
+    }
     // A real polar grid: rings, compass axes, and a rotating scan sector.
     for (const fraction of [.25, .5, .75]) circle(centerX, centerY, radius * fraction);
     context.globalAlpha = .22;
@@ -211,7 +221,12 @@
     const ratio = Math.min(window.devicePixelRatio || 1, 2);
     canvas.width = Math.round(width * ratio); canvas.height = Math.round(height * ratio);
     context.setTransform(ratio, 0, 0, ratio, 0, 0);
-    signals.forEach((signal, index) => {
+    radar.addEventListener?.("click", event => {
+    if (!active() || quiet() || event.target.closest?.("a,button")) return;
+    pulseAt = elapsed;
+    draw();
+  });
+  signals.forEach((signal, index) => {
       signal.style.left = `${centerX + locations[index][0] * radius}px`;
       signal.style.top = `${centerY + locations[index][1] * radius}px`;
     });
@@ -232,6 +247,11 @@
     colors(); resize();
     if (active() && !quiet()) frame = requestAnimationFrame(tick);
   }
+  radar.addEventListener?.("click", event => {
+    if (!active() || quiet() || event.target.closest?.("a,button")) return;
+    pulseAt = elapsed;
+    draw();
+  });
   signals.forEach((signal, index) => {
     const highlight = () => { selected = index; if (active()) draw(); };
     const unhighlight = () => { selected = -1; if (active()) draw(); };
