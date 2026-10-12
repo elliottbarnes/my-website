@@ -106,3 +106,11 @@ Supersedes the automatic sequence and hover activation described above. Idle pla
 3. Implementation: added original public-commit history and a source-token compile sketch, unfolding from the tap position. Filename activation is keyboard-accessible; line-number and token taps are touch-accessible. Typing stays active; idle and hover do not launch effects. Existing pause/reduced motion and gesture exclusions remain. Git SHA/parent records are a public snapshot; the compile sketch is explanatory rather than measured compiler output.
 
 Screenshots cannot establish full accessibility or physical iPhone frame performance. Local tests cover history authenticity, source token content, mobile bounds, gesture handling, and lifecycle.
+
+## Training chamber and character transformation — 12 October 2026
+
+Added a hidden footer trigger and secret command for the local brick-breaker game. The modal uses existing Dragon Ball artwork and the Saiyan Memoji, three lives, a collected-ball display, energy trails, keyboard/touch input, pause/resume, and a replay flow. It starts only on an explicit launch. Background entrance/radar drawing suspends while the chamber is open; visibility loss pauses the game.
+
+Source morphing now lifts actual visible characters, blends them into effect labels and connection particles, and reverses toward their current code positions. Individual character paths have a curved flight and stagger, rather than scaling the entire diagram. Typing remains continuous and only taps/clicks trigger effects.
+
+Local validation: physics tests cover collisions, tunneling, aiming, win/loss, all-seven collection, and restart; renderer tests cover real source glyphs and return positions. Mobile-width browser checks cover drag, launch/hit, pause, Escape, secret command, keyboard input, and source morphing. Physical iPhone frame profiling was not performed.

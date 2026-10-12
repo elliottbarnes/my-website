@@ -134,7 +134,7 @@
   let width = 0, height = 0, frame = 0, lastFrame = 0, elapsed = 0;
   let ink = "#c9b798", muted = "#969082", accent = ink;
   let centerX = 0, centerY = 0, radius = 0, selected = -1, energyAnimation, pulseAt = -Infinity;
-  const active = () => workspaceVisible() && !about.hidden;
+  const active = () => workspaceVisible() && !about.hidden && !document.querySelector("#training-dialog[open]");
   const tau = Math.PI * 2;
 
   function colors() {
@@ -271,6 +271,7 @@
   });
   window.addEventListener("portfolio:view", refresh);
   window.addEventListener("portfolio:preferences", refresh);
+  window.addEventListener("portfolio:training", refresh);
   document.addEventListener("visibilitychange", refresh);
   window.addEventListener("resize", resize, { passive: true });
   motion.addEventListener("change", refresh);

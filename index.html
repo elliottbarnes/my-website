@@ -24,7 +24,7 @@
     <link rel="icon" href="/assets/dragon-ball.png" type="image/png" sizes="256x256">
     <link rel="apple-touch-icon" href="/assets/dragon-ball.png" type="image/png" sizes="256x256">
     <link rel="manifest" href="/site.webmanifest">
-    <link rel="stylesheet" href="/styles.css?v=0df93458de28">
+    <link rel="stylesheet" href="/styles.css?v=6228cc5748bf">
     <link rel="stylesheet" href="/assets/themes.css?v=07412e345894">
     <script type="application/ld+json">
       {
@@ -182,13 +182,23 @@ output color * (0.35 + 0.65 * glow);</code></pre></div>
           <aside class="workspace-avatar" aria-hidden="true"><p class="scouter-title">scouter / EB</p><img src="/assets/memoji-saiyan.png" alt=""><p>cursor <span data-workspace-pointer>0.500, 0.500</span><br>input / local<br>mode / explore</p></aside><div class="workspace-status"><span><span class="mode">NORMAL</span> <span id="status-view">whoami</span></span><span id="keyboard-help">↑↓ wheel · j/k browse</span><span class="github-stat" title="Public GitHub snapshot · 11 October 2026"><small>REPOS</small>42</span><span class="github-stat" title="Public GitHub snapshot · 11 October 2026"><small>STARS</small>4</span><span class="github-stat" title="Public GitHub snapshot · 11 October 2026"><small>FOLLOWERS</small>15</span><div><button class="command-access" type="button" data-command-open aria-label="Open command menu">:cmd</button><button type="button" data-motion-toggle aria-label="Pause animation">:pause</button><button type="button" data-theme-toggle aria-label="Change theme">:theme</button><a data-home href="#">:home</a></div></div>
         </section>
       </main>
-      <footer class="colophon"><p>© <span data-current-year>2026</span> elliott</p><p>Icon: <a href="https://www.iconarchive.com/show/dragon-ballz-icons-by-musett/Dragon-Ball-icon.html">Musett</a> / <a href="https://creativecommons.org/licenses/by-nc-nd/4.0/">CC BY-NC-ND</a></p></footer>
+      <footer class="colophon"><button class="training-trigger" type="button" data-training-open aria-label="Open the training chamber" title="training chamber"><img src="/assets/dragon-ball-7.png" alt=""></button><p>© <span data-current-year>2026</span> elliott</p><p>Icon: <a href="https://www.iconarchive.com/show/dragon-ballz-icons-by-musett/Dragon-Ball-icon.html">Musett</a> / <a href="https://creativecommons.org/licenses/by-nc-nd/4.0/">CC BY-NC-ND</a></p></footer>
     </div>
     <dialog id="command-dialog" aria-labelledby="command-title"><div class="dialog-heading"><h2 id="command-title">command</h2><button type="button" data-command-close aria-label="Close command menu">esc</button></div><form id="command-form"><label for="command-input">Where would you like to go?</label><div class="command-input-row"><span aria-hidden="true">:</span><input id="command-input" type="text" autocomplete="off" spellcheck="false" placeholder="whoami, projects, theme…"><button type="submit">run ↵</button></div></form><div class="command-options"><button type="button" data-command="about">whoami</button><button type="button" data-command="glassbox">glassbox</button><button type="button" data-command="pixel-language">pixel language</button><button type="button" data-command="architecture-lab">architecture lab</button><button type="button" data-command="automata-lab">automata lab</button><button type="button" data-command="ellmiott">ellmiott</button><button type="button" data-command="batchline">batchline</button><button type="button" data-command="evaldeck">evaldeck</button><button type="button" data-command="connect">links</button><button type="button" data-command="theme">theme</button><button type="button" data-command="motion">motion</button><button type="button" data-command="help">help</button></div><p id="command-feedback" role="status">A small set of shortcuts. Try “help”.</p></dialog>
+    <dialog id="training-dialog" aria-labelledby="training-title">
+      <div class="training-heading"><img src="/assets/memoji-saiyan.png" alt="" aria-hidden="true"><h2 id="training-title">training chamber</h2><button type="button" data-training-close aria-label="Close training chamber">esc</button></div>
+      <div class="training-hud"><span>power <strong id="training-score">0</strong></span><span>lives <strong id="training-lives">3</strong></span></div>
+      <div class="training-stage"><canvas id="training-canvas" width="360" height="480" tabindex="0" aria-label="Dragon Ball brick breaker" aria-describedby="training-instructions training-status"></canvas></div>
+      <p id="training-status" role="status" aria-live="polite">ready to train</p>
+      <div class="training-controls"><button id="training-action" type="button">launch ki ↗</button><button id="training-pause" type="button">pause</button></div>
+      <p id="training-instructions">drag to guide · arrows or a/d · space to launch · esc to leave</p>
+    </dialog>
+    <script src="/assets/brick-breaker.js?v=8737b05f9c6c" defer></script>
+    <script src="/assets/training-chamber.js?v=583ae7a14ecc" defer></script>
     <script src="/assets/themes.js?v=78009717e35f" defer></script>
-    <script src="/script.js?v=8c1b0cae3252" defer></script>
-    <script src="/assets/workspace.js?v=9df804affabc" defer></script>
-    <script src="/assets/entrance-effects.js?v=d44907124af6" defer></script>
-    <script src="/assets/animation.js?v=16995d1ab693" defer></script>
+    <script src="/script.js?v=c75f227e1fb6" defer></script>
+    <script src="/assets/workspace.js?v=4510495e6cb5" defer></script>
+    <script src="/assets/entrance-effects.js?v=866273fec228" defer></script>
+    <script src="/assets/animation.js?v=2c99665d89ec" defer></script>
   </body>
 </html>

@@ -151,3 +151,16 @@ test("unsupported effects and unavailable canvases are harmless", () => {
   assert.equal(effects.draw("history", { context: surface().context, width: 0, height: 360 }), null);
   assert.equal(draw("unknown").bounds, null);
 });
+
+test("source glyphs travel into effect text and return toward their original cells", () => {
+  const glyphs = [{ glyph: "=", x: 45, y: 24, size: 12 }];
+  const history = [{ sha: "abcdef1234567890", parents: [], message: "initial source" }];
+  const opening = draw("history", { glyphs, history, amount: .02 });
+  const settled = draw("history", { glyphs, history, amount: 1 });
+  const returning = draw("history", { glyphs, history, amount: .001 });
+  assert.equal(opening.calls.text[0].value, "=");
+  assert.equal(settled.calls.text[0].value, "g");
+  assert.equal(returning.calls.text[0].value, "=");
+  assert.ok(Math.hypot(returning.calls.text[0].x - 45, returning.calls.text[0].y - 24) < .01);
+  assert.ok(Math.hypot(settled.calls.text[0].x - 45, settled.calls.text[0].y - 24) > 20);
+});

@@ -186,6 +186,11 @@
 
   function runCommand(raw) {
     const command = raw.trim().toLowerCase().replace(/^[:/]\s*/, "").replace(/\s+/g, " ");
+    if (["kamehameha", "training", "breaker"].includes(command)) {
+      closeCommands(false);
+      window.PortfolioTraining?.open();
+      return;
+    }
     const aliases = { whoami: "about", links: "connect", projects: "glassbox", pixel: "pixel-language", architecture: "architecture-lab", automata: "automata-lab" };
     const route = Object.hasOwn(aliases, command) ? aliases[command] : command;
     if (routes.includes(route)) {
@@ -268,7 +273,7 @@
   });
   document.addEventListener("keydown", (event) => {
     if (event.defaultPrevented || event.isComposing || event.ctrlKey || event.metaKey || event.altKey) return;
-    if (document.getElementById("theme-dialog")?.open) return;
+    if (document.getElementById("theme-dialog")?.open || document.getElementById("training-dialog")?.open) return;
     if (dialog?.open) {
       if (event.key === "Escape" && typeof dialog.close !== "function") {
         event.preventDefault();
