@@ -6,7 +6,7 @@
   const entrance = document.getElementById("entrance");
   const workspace = document.getElementById("workspace");
   const panels = new Map(Array.from(document.querySelectorAll("[data-panel]"), (panel) => [panel.dataset.panel, panel]));
-  const routes = ["about", "glassbox", "pixel-language", "architecture-lab", "automata-lab", "connect"].filter((id) => panels.has(id));
+  const routes = ["about", "glassbox", "pixel-language", "architecture-lab", "automata-lab", "ellmiott", "batchline", "evaldeck", "connect"].filter((id) => panels.has(id));
   const selectors = Array.from(document.querySelectorAll("[data-select]"));
   const themes = ["carbon", "parchment", "phosphor"];
   const dialog = document.getElementById("command-dialog");

@@ -113,9 +113,9 @@ export async function verifySite(directory, { sourceRoot } = {}) {
   // demo and source links, each with an accessible name.
   for (const [attribute, base] of [["data-demo", "https://elliottbarnes.github.io/"], ["data-source", "https://github.com/elliottbarnes/"]]) {
     const links = index.filter((tag) => tag.attrs.has(attribute));
-    const expected = ["architecture-lab", "glassbox", "pixel-language"];
+    const expected = ["architecture-lab", "automata-lab", "batchline", "ellmiott", "evaldeck", "glassbox", "pixel-language"];
     if (JSON.stringify(links.map((tag) => tag.attrs.get(attribute)).sort()) !== JSON.stringify(expected)) {
-      throw new Error(`index.html: expected three unique ${attribute} links`);
+      throw new Error(`index.html: expected seven unique ${attribute} links`);
     }
     for (const tag of links) {
       const slug = tag.attrs.get(attribute);

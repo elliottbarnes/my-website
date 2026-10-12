@@ -130,7 +130,7 @@
   if (!context) return;
   const radar = canvas.closest(".dragon-radar");
   const signals = Array.from(radar.querySelectorAll("[data-radar-route]"));
-  const locations = [[-.48, -.35], [.38, -.53], [.56, .26], [-.35, .51]];
+  const locations = [[0, -.70], [.64, -.37], [.64, .37], [0, .70], [-.64, .37], [-.64, -.37], [0, 0]];
   let width = 0, height = 0, frame = 0, lastFrame = 0, elapsed = 0;
   let ink = "#c9b798", muted = "#969082", accent = ink;
   let centerX = 0, centerY = 0, radius = 0, selected = -1, energyAnimation, pulseAt = -Infinity;
@@ -202,7 +202,7 @@
       context.stroke();
     }
     locations.forEach(([x, y], index) => {
-      const phase = (elapsed / 1800 + index / 4) % 1;
+      const phase = (elapsed / 1800 + index / locations.length) % 1;
       context.strokeStyle = accent;
       context.globalAlpha = selected === index ? .85 : .45 * (1 - phase);
       circle(centerX + x * radius, centerY + y * radius, selected === index ? 19 : 12 + phase * 11);
