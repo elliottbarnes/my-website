@@ -293,3 +293,7 @@ h1,h2,h3,label,.plot-caption,.terminal-title,.project-kind,.scouter-title,.githu
 .radar-signal[data-radar-route="ellmiott"]{left:18%;top:68%}
 .radar-signal[data-radar-route="batchline"]{left:18%;top:32%}
 .radar-signal[data-radar-route="evaldeck"]{left:50%;top:50%}
+
+.scene-heading{align-items:center}
+.scene-heading [data-scene-file]{min-height:24px;padding:0;font:inherit;color:inherit;text-align:left;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.scene-heading [data-scene-file]:hover{color:var(--accent);text-decoration:underline;text-underline-offset:3px}

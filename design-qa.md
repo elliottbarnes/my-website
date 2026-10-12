@@ -98,3 +98,11 @@ All 107 Node tests pass, including tap/pen release-before-frame, hold/retract, s
 ## Continuous typing with tap-only effects — 11 October 2026
 
 Supersedes the automatic sequence and hover activation described above. Idle playback now types project code continuously; Memoji, interference, and framebuffer effects require a deliberate source tap or click. Code continues typing behind an active effect. Pause and reduced motion remain respected. Regression coverage exercises 48 seconds of unattended playback and confirms hover never activates effects.
+
+## Rich source interactions — 11 October 2026
+
+1. Live hancore entrance: captured source, pointer input, portrait/eye tracking, and source-linked object behavior (`.design/reference-taps-01.jpg`, `reference-taps-02.jpg`). The effects share the code layer and appear near the source. This creates direct, compact interaction; discoverability depends on exploration.
+2. Elliott's supplied recording: its four-digit chain is the OmaQ ratchet effect (verified against public `glimpse.js` mapping and renderer), not a Git commit tree. The recording also shows source-character face tracking. Screenshot evidence: `.design/reference-taps-03-ratchet.png`. Touch markers are absent, so individual recorded touch positions cannot be reconstructed.
+3. Implementation: added original public-commit history and a source-token compile sketch, unfolding from the tap position. Filename activation is keyboard-accessible; line-number and token taps are touch-accessible. Typing stays active; idle and hover do not launch effects. Existing pause/reduced motion and gesture exclusions remain. Git SHA/parent records are a public snapshot; the compile sketch is explanatory rather than measured compiler output.
+
+Screenshots cannot establish full accessibility or physical iPhone frame performance. Local tests cover history authenticity, source token content, mobile bounds, gesture handling, and lifecycle.
