@@ -268,3 +268,7 @@ a:focus-visible,button:focus-visible,input:focus-visible{outline-color:var(--ink
 [data-view=entrance] .scene{margin-top:max(104px,14svh)}
 
 [data-view=entrance] [data-motion-toggle]{bottom:52px;min-height:32px}
+
+/* Finger-following pull, with a short elastic settle when released. */
+.file-list button{translate:0 var(--wheel-pull,0px);transition:transform .38s cubic-bezier(.22,1.35,.36,1),translate .42s cubic-bezier(.22,1.55,.36,1),opacity .18s,border-color .18s;will-change:transform,translate;user-select:none;-webkit-user-select:none}
+.file-list[data-dragging=true] button{transition:transform .22s ease-out,opacity .18s,border-color .18s}
