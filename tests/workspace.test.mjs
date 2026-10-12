@@ -73,11 +73,11 @@ test("release outside the wheel cannot turn a later hover into a project change"
       const controls = wheel();
       controls.navigation.dispatch("pointerdown", { pointerType });
       if (releaseObserved) controls.window.dispatch("pointerup", { pointerType, buttons: 0 });
-      controls.navigation.dispatch("pointermove", { pointerType, clientY: 60, buttons: 0 });
+      controls.navigation.dispatch("pointermove", { pointerType, clientY: 30, buttons: 0 });
       assert.equal(controls.selected, 0, `${pointerType}; release observed: ${releaseObserved}`);
       assert.equal(controls.captures.size, 0);
       controls.navigation.dispatch("pointerdown", { pointerType });
-      controls.navigation.dispatch("pointermove", { pointerType, clientY: 60 });
+      controls.navigation.dispatch("pointermove", { pointerType, clientY: 30 });
       assert.equal(controls.selected, 1, "a fresh drag still works");
     }
   }
@@ -87,7 +87,7 @@ test("cancellation, capture loss, or released buttons end an active drag and rel
   for (const ending of ["cancel", "lostcapture", "releasedbuttons"]) {
     const controls = wheel();
     controls.navigation.dispatch("pointerdown");
-    controls.navigation.dispatch("pointermove", { clientY: 60 });
+    controls.navigation.dispatch("pointermove", { clientY: 30 });
     assert.equal(controls.selected, 1);
     assert.ok(controls.captures.has(1));
     if (ending === "cancel") controls.window.dispatch("pointercancel");
@@ -106,7 +106,7 @@ test("normal mouse and touch drags select a project and suppress their trailing 
     const controls = wheel();
     controls.navigation.dispatch("pointerdown", { pointerType });
     // Touch input remains valid even when the browser does not supply a button mask.
-    controls.navigation.dispatch("pointermove", { pointerType, clientY: 70, buttons: pointerType === "touch" ? 0 : 1 });
+    controls.navigation.dispatch("pointermove", { pointerType, clientY: 30, buttons: pointerType === "touch" ? 0 : 1 });
     assert.equal(controls.selected, 1);
     controls.navigation.dispatch("pointerup", { pointerType, buttons: 0 });
     assert.equal(controls.captures.size, 0);
@@ -120,13 +120,13 @@ test("normal mouse and touch drags select a project and suppress their trailing 
   }
 });
 
-test("touch capture transfer from a card does not cancel continued wheel dragging", () => {
+test("touch capture transfer keeps the gesture active without skipping more cards", () => {
   const controls = wheel();
   controls.navigation.dispatch("pointerdown", { pointerType: "touch" });
-  controls.navigation.dispatch("pointermove", { pointerType: "touch", clientY: 70, buttons: 0 });
+  controls.navigation.dispatch("pointermove", { pointerType: "touch", clientY: 30, buttons: 0 });
   controls.navigation.dispatch("lostpointercapture", { target: {}, pointerType: "touch" });
   controls.navigation.dispatch("pointermove", { pointerType: "touch", clientY: 40, buttons: 0 });
-  assert.equal(controls.selected, 2);
+  assert.equal(controls.selected, 1);
   assert.ok(controls.captures.has(1));
   controls.navigation.dispatch("pointerup", { pointerType: "touch" });
   assert.equal(controls.captures.size, 0);
@@ -143,4 +143,19 @@ test("short swipes follow the finger and spring home without changing selection"
   assert.equal(controls.navigation.dataset.dragging, "false");
   assert.equal(controls.properties.get("--wheel-pull"), "0px");
   assert.ok(controls.click(1).defaultPrevented);
+});
+
+test("a deliberate swipe changes at most one card, then a new swipe can advance", () => {
+  const controls = wheel();
+  controls.navigation.dispatch("pointerdown", { pointerType: "touch" });
+  controls.navigation.dispatch("pointermove", { pointerType: "touch", clientY: 60 });
+  assert.equal(controls.selected, 0);
+  controls.navigation.dispatch("pointermove", { pointerType: "touch", clientY: 40 });
+  assert.equal(controls.selected, 1);
+  controls.navigation.dispatch("pointermove", { pointerType: "touch", clientY: -100 });
+  assert.equal(controls.selected, 1);
+  controls.window.dispatch("pointerup", { pointerType: "touch" });
+  controls.navigation.dispatch("pointerdown", { pointerType: "touch" });
+  controls.navigation.dispatch("pointermove", { pointerType: "touch", clientY: 40 });
+  assert.equal(controls.selected, 2);
 });
