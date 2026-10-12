@@ -35,7 +35,7 @@ node scripts/verify-site.mjs dist --source .
 node server.mjs --dir dist
 ```
 
-Open `http://localhost:4173`. The explicit thirty-one-file publication list is in `scripts/public-files.mjs`. Build checks reject extra artifacts, symlinks, broken local links, stale asset hashes, and incorrect project destinations.
+Open `http://localhost:4173`. The explicit thirty-four-file publication list is in `scripts/public-files.mjs`. Build checks reject extra artifacts, symlinks, broken local links, stale asset hashes, and incorrect project destinations.
 
 Production still uses the existing GitHub Actions deployment to a private S3 origin and CloudFront, with version-based recovery. See [DEPLOYMENT.md](DEPLOYMENT.md).
 
@@ -50,3 +50,9 @@ The terminal uses capsule-tech framing, scouter labels, and a Saiyan colour sche
 The seven-ball radar includes ellmiott (language-model internals), batchline (batching/backpressure), and evaldeck (replay contract checks), each with its public browser demo and repository.
 
 Tap the entrance filename or line-number gutter to unfold real public commit history and its source path. Tap compiler identifiers such as `tokens`, `wasm`, or `compile` for a source-to-token sketch; remaining code taps retain the portrait and procedural effects. All effects are user-triggered and typing continues. The history is a dated embedded public snapshot, not a live API query; token outputs are an explicitly labeled compile sketch, not a compiler execution.
+
+## Hidden training chamber
+
+The small seven-star ball in the footer opens a Dragon Ball-themed brick breaker. The secret command `kamehameha` (also `training` or `breaker`) opens it through the command menu. Drag the paddle on touch devices, or use arrows/a/d and Space. The game starts only after a launch, has three lives, pauses when hidden, and returns focus on close. Clearing all seven shield columns collects the balls; power passes 9000 on completion. No scores or inputs leave the browser.
+
+Source effects now carry actual visible code characters into hash labels, connections, and token particles. Closing reverses the motion toward current code cells while typing continues, and preserves the source excerpt through the end of its typing cycle.

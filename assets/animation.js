@@ -66,7 +66,7 @@ const snippets = [{"repo": "glassbox", "title": "source → WebAssembly", "path"
   let width = 0, height = 0, ratio = 1, fontSize = 12, cell = 7.2, lineHeight = 17;
   let frame = 0, lastFrame = 0, elapsed = 0, sourceImage = null, portrait = [];
   let lastInput = -Infinity, pointerRect = null;
-  let gesture = null, interaction = null;
+  let gesture = null, interaction = null, resumedSnippet = null, resumeUntil = 0;
   let releaseAt = Infinity;
   let sourceRows = [], renderedSnippet = snippets[0], displayedGraphic = null;
   let pointerX = 0, pointerY = 0, targetX = 0, targetY = 0, lastReadout = 0;
@@ -76,7 +76,7 @@ const snippets = [{"repo": "glassbox", "title": "source → WebAssembly", "path"
   const ease = number => { const t = clamp(number); return t * t * (3 - 2 * t); };
   const visible = () => !document.hidden && root.dataset.view !== "workspace";
   const still = () => root.dataset.motion === "paused" || (root.dataset.motion !== "running" && motion.matches);
-  const running = () => visible() && (!still() || Boolean(leaving));
+  const running = () => visible() && !document.querySelector("#training-dialog[open]") && (!still() || Boolean(leaving));
 
   function colors() {
     const style = getComputedStyle(root);
@@ -152,29 +152,39 @@ const snippets = [{"repo": "glassbox", "title": "source → WebAssembly", "path"
     if (cached?.columns === columns) return cached.rows;
     const rows = [];
     for (const [index, text] of snippet.code.split("\n").entries()) {
-      if (!text.length) rows.push({ text: "", line: snippet.sourceLineStart + index, continuation: false });
+      if (!text.length) rows.push({ text: "", line: snippet.sourceLineStart + index, continuation: false, column: 0 });
       else for (let start = 0; start < text.length; start += columns) {
-        rows.push({ text: text.slice(start, start + columns), line: snippet.sourceLineStart + index, continuation: start > 0 });
+        rows.push({ text: text.slice(start, start + columns), line: snippet.sourceLineStart + index, continuation: start > 0, column: start });
       }
     }
     rowCache.set(snippet, { columns, rows });
     return rows;
   }
 
-  function syntaxLine(text, x, y, alpha, amount = text.length) {
+  function syntaxLine(text, x, y, alpha, amount = text.length, sourceLine = 0, sourceColumn = 0) {
     let tokens = tokenCache.get(text);
     if (!tokens) {
       tokens = text.match(/\/\/.*$|"(?:\\.|[^"\\])*"|'(?:\\.|[^'\\])*'|`(?:\\.|[^`\\])*`|\b\d+(?:\.\d+)?\b|[A-Za-z_$][\w$]*|[^\w$]+/g) || [];
       tokenCache.set(text, tokens);
     }
     context.globalAlpha = alpha;
+    let consumed = 0;
     for (const token of tokens) {
       if (amount <= 0) break;
       const comment = token.startsWith("//");
       context.fillStyle = comment ? palette.muted : words.has(token) ? palette.keyword
         : /^["'`]/.test(token) ? palette.string : /^\d/.test(token) ? palette.number : palette.ink;
       if (comment) context.globalAlpha = alpha * .58;
-      context.fillText(token.slice(0, amount), x, y);
+      const shownToken = token.slice(0, amount);
+      if (interaction?.glyphKeys) {
+        const tokenAlpha = context.globalAlpha;
+        for (let i = 0; i < shownToken.length; i++) {
+          const carried = interaction.glyphKeys.has(`${sourceLine}:${sourceColumn + consumed + i}`);
+          context.globalAlpha = tokenAlpha * (carried ? 1 - clamp(interaction.amount) : 1);
+          context.fillText(shownToken[i], x + i * cell, y);
+        }
+      } else context.fillText(shownToken, x, y);
+      consumed += token.length;
       x += token.length * cell;
       amount -= token.length;
     }
@@ -215,13 +225,13 @@ const snippets = [{"repo": "glassbox", "title": "source → WebAssembly", "path"
       offset += row.text.length + 1;
       if (y < 0 || y > height - lineHeight || (editing && index > cursorRow)) return;
       if (amount > 0 && row.text.trim()) sourceRows.push({
-        text: row.text.slice(0, amount), line: row.line, x: gutter, y,
+        text: row.text.slice(0, amount), line: row.line, column: row.column, x: gutter, y,
         right: Math.min(width, gutter + amount * cell), bottom: y + lineHeight,
       });
       context.globalAlpha = alpha * .37;
       context.fillStyle = palette.muted;
       context.fillText(row.continuation ? "  ·" : String(row.line).padStart(3, " "), 3, y);
-      syntaxLine(row.text, gutter, y, alpha * .88, amount);
+      syntaxLine(row.text, gutter, y, alpha * .88, amount, row.line, row.column);
     });
     if (active && (still() || Math.floor(time / 560) % 2 === 0)) {
       const x = gutter + cursorColumn * cell;
@@ -405,18 +415,35 @@ const snippets = [{"repo": "glassbox", "title": "source → WebAssembly", "path"
       sourceX: row.x / width, sourceY: row.y / height, text: row.text || "code" };
   }
 
+  function sourceGlyphs(row) {
+    const sorted = [...sourceRows].sort((a, b) => Math.abs(a.y - row.y) - Math.abs(b.y - row.y));
+    const points = [];
+    for (const source of sorted) for (let i = 0; i < source.text.length; i++) {
+      if (!source.text[i].trim()) continue;
+      points.push({ key: `${source.line}:${source.column + i}`, glyph: source.text[i], x: source.x + i * cell, y: source.y + fontSize / 2, size: fontSize, line: source.line, column: source.column + i });
+      if (points.length >= 180) return points;
+    }
+    return points;
+  }
+
   function openGraphic(row, pointerType, requestedKind) {
     if (!row || !visible() || still() || leaving || document.querySelector("dialog[open]")) return;
     const now = performance.now();
     const kind = requestedKind || (row.gutter ? "history" : ["tokens", "tokenize", "ast", "ir", "wasm", "emitWasm", "compile", "lower", "optimize", "output", "byteLocation", "match"].includes(row.token) ? "tokens" : renderedSnippet.repo === "glassbox" ? "avatar" : "object");
     const next = { kind, snippet: renderedSnippet, anchor: makeAnchor(row),
       amount: 0, velocity: 0, target: 1, expires: now + (pointerType === "touch" || pointerType === "pen" ? 6000 : 9000) };
+    if (["history", "tokens"].includes(kind)) {
+      next.glyphs = sourceGlyphs(row);
+      next.glyphKeys = new Set(next.glyphs.map(point => point.key));
+    }
     if (interaction && interaction.kind === next.kind && interaction.kind !== "avatar" && interaction.snippet === next.snippet) {
       // Retarget an existing spring rather than snapping a repeated tap back to zero.
       interaction.destination = next.anchor;
       interaction.target = 1;
       interaction.expires = next.expires;
       interaction.next = null;
+      interaction.glyphs = next.glyphs;
+      interaction.glyphKeys = next.glyphKeys;
     } else if (displayedGraphic && displayedGraphic.amount > .02) {
       interaction = { ...displayedGraphic, velocity: 0, target: 0, next };
     } else interaction = next;
@@ -435,7 +462,7 @@ const snippets = [{"repo": "glassbox", "title": "source → WebAssembly", "path"
     if (!interaction) return;
     if (now >= interaction.expires) { interaction.target = 0; }
     const dt = Math.min(delta || 16.67, 48) / 1000;
-    const frequency = interaction.target ? 14 : 20;
+    const frequency = ["history", "tokens"].includes(interaction.kind) ? (interaction.target ? 9 : 11) : interaction.target ? 14 : 20;
     const offset = interaction.amount - interaction.target;
     const impulse = (interaction.velocity + frequency * offset) * dt;
     const decay = Math.exp(-frequency * dt);
@@ -448,7 +475,10 @@ const snippets = [{"repo": "glassbox", "title": "source → WebAssembly", "path"
     }
     if (!interaction.target && interaction.amount < .012) {
       const next = interaction.next;
-
+      if (!next) {
+        resumedSnippet = interaction.snippet;
+        resumeUntil = elapsed + cycleLength - elapsed % cycleLength;
+      }
       interaction = next || null;
     }
   }
@@ -460,8 +490,11 @@ const snippets = [{"repo": "glassbox", "title": "source → WebAssembly", "path"
     scene.dataset.effect = kind;
     if (["history", "tokens"].includes(kind) && window.PortfolioEntranceEffects) {
       const bounds = window.PortfolioEntranceEffects.draw(kind, { context, width, height, amount, time, anchor, snippet,
-        history: commitHistory[snippet.repo] || [], ...palette });
-      displayedGraphic = { kind, snippet, amount, anchor, bounds };
+        history: commitHistory[snippet.repo] || [], glyphs: interaction.glyphs?.map(point => {
+          const row = sourceRows.find(row => row.line === point.line && point.column >= row.column && point.column < row.column + row.text.length);
+          return row ? { ...point, x: row.x + (point.column - row.column) * cell, y: row.y + fontSize / 2 } : point;
+        }), ...palette });
+      displayedGraphic = { kind, snippet, amount, anchor, bounds, glyphs: interaction.glyphs, glyphKeys: interaction.glyphKeys };
     } else if (kind === "avatar") avatar(amount, time);
     else liveObject(snippet, amount, time, anchor);
     status(snippet, "NORMAL", kind === "history" ? "git log --graph --oneline" : kind === "tokens" ? "./source --inspect" : kind === "avatar" ? "!./avatar --track" : `!./${snippet.repo} --live`);
@@ -474,7 +507,7 @@ const snippets = [{"repo": "glassbox", "title": "source → WebAssembly", "path"
     scene.dataset.effect = interaction?.kind || "";
     if (!width || !height) return;
     const clock = time % cycleLength;
-    const snippet = snippets[Math.floor(time / cycleLength) % snippets.length];
+    const snippet = resumedSnippet && time < resumeUntil ? resumedSnippet : snippets[Math.floor(time / cycleLength) % snippets.length];
     if (still()) {
       editor(snippet, 1, 1, 0, false, false);
       status(snippet, "NORMAL", "");
@@ -681,6 +714,7 @@ const snippets = [{"repo": "glassbox", "title": "source → WebAssembly", "path"
   }, { passive: true });
   window.addEventListener("scroll", () => { pointerRect = null; }, { passive: true });
   window.addEventListener("portfolio:preferences", refresh);
+  window.addEventListener("portfolio:training", refresh);
   window.addEventListener("portfolio:view", () => { resize(); refresh(); });
   document.addEventListener("visibilitychange", refresh);
   motion.addEventListener("change", refresh);

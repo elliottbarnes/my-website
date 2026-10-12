@@ -297,3 +297,29 @@ h1,h2,h3,label,.plot-caption,.terminal-title,.project-kind,.scouter-title,.githu
 .scene-heading{align-items:center}
 .scene-heading [data-scene-file]{min-height:24px;padding:0;font:inherit;color:inherit;text-align:left;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .scene-heading [data-scene-file]:hover{color:var(--accent);text-decoration:underline;text-underline-offset:3px}
+
+/* A hidden training room, entered only by the visitor. */
+.colophon{position:relative;align-items:center}
+.training-trigger{order:1;min-width:44px;min-height:44px;padding:6px;margin:auto;color:var(--muted)}
+.training-trigger img{display:block;width:20px;height:20px;object-fit:contain;opacity:.6;transition:opacity .2s,transform .2s}
+.training-trigger:hover img,.training-trigger:focus-visible img{opacity:1;transform:rotate(-12deg)}
+.colophon>p:last-child{order:2}
+#training-dialog{width:min(420px,calc(100% - 24px));max-height:calc(100svh - 24px);margin:auto;padding:16px;background:var(--paper);color:var(--ink);border:1px solid var(--line);border-radius:8px;overflow:auto}
+#training-dialog::backdrop{background:rgb(0 0 0 / .82);backdrop-filter:blur(5px)}
+.training-heading,.training-hud,.training-controls{display:flex;align-items:center;justify-content:space-between;gap:12px}
+.training-heading h2{font-size:14px;font-weight:400;color:var(--accent)}
+.training-heading button{min-width:44px;min-height:44px;color:var(--muted)}
+.training-hud{font-size:10px;color:var(--muted);padding:4px 0 12px}
+.training-hud strong{font-weight:400;color:var(--accent);font-variant-numeric:tabular-nums}
+.training-stage{width:min(100%,calc((100svh - 236px) * .75));margin:auto}
+#training-canvas{display:block;width:100%;aspect-ratio:3/4;background:#080f1e;border:1px solid var(--line);border-radius:4px;touch-action:none;user-select:none;-webkit-user-select:none}
+#training-canvas:focus-visible{outline:1px solid var(--accent);outline-offset:3px}
+#training-status{font-size:10px;color:var(--highlight);min-height:24px;padding-top:10px}
+.training-controls button{min-height:44px;padding:0 14px;border:1px solid var(--line);border-radius:3px}
+#training-action{color:var(--accent)}
+#training-instructions{font-size:9px;color:var(--muted);line-height:1.7;padding-top:10px}
+
+.training-heading>img{width:30px;height:36px;object-fit:contain}
+.training-heading h2{margin-right:auto}
+
+html[data-training=open]{overflow:hidden}

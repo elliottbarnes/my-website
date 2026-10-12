@@ -7,24 +7,28 @@
   const tokensFor = text => (text.match(tokenPattern) || []).filter(token => !token.startsWith("//"));
   const shorten = (text, count) => text.length > count ? `${text.slice(0, Math.max(1, count - 1))}…` : text;
 
+  let flow = null;
+
   function layout(args, desiredHeight) {
     const { width, height, amount, anchor } = args;
     const w = Math.max(1, Math.min(width - 24, 540));
     const h = Math.max(1, Math.min(height - 30, desiredHeight));
     const reveal = smooth(amount);
-    const scale = .06 + .94 * reveal;
+    const morphing = Boolean(args.glyphs?.length);
+    const scale = morphing ? 1 : .06 + .94 * reveal;
     const originX = clamp((anchor?.sourceX ?? .5) * width, 12, width - 12);
     const originY = clamp((anchor?.sourceY ?? .4) * height, 12, height - 12);
     const destinationX = clamp((anchor?.x ?? .5) * width, w / 2 + 12, width - w / 2 - 12);
     const destinationY = clamp((anchor?.y ?? .5) * height, h / 2 + 14, height - h / 2 - 16);
-    const cx = originX + (destinationX - originX) * reveal;
-    const cy = originY + (destinationY - originY) * reveal;
+    const cx = morphing ? destinationX : originX + (destinationX - originX) * reveal;
+    const cy = morphing ? destinationY : originY + (destinationY - originY) * reveal;
     const left = cx - w * scale / 2, top = cy - h * scale / 2;
     return { w, h, reveal, scale, left, top, right: left + w * scale, bottom: top + h * scale };
   }
 
   function begin(args, box) {
     const ctx = args.context;
+    if (args.glyphs?.length) flow = { points: args.glyphs, index: 0, amount: args.amount, box };
     ctx.save();
     ctx.translate(box.left, box.top);
     ctx.scale(box.scale, box.scale);
@@ -36,11 +40,46 @@
     return ctx;
   }
 
+  function carry(ctx, character, x, y, color, alpha, size = 9) {
+    if (!flow) {
+      ctx.globalAlpha = alpha; ctx.fillStyle = color;
+      ctx.font = `${size}px "Plex Mono", monospace`; ctx.fillText(character, x, y); return;
+    }
+    const index = flow.index++;
+    const point = flow.points[index % flow.points.length];
+    const lag = (index % 9) * .018;
+    const progress = smooth((flow.amount - lag) / (1 - lag));
+    const fromX = point.x - flow.box.left, fromY = point.y - flow.box.top;
+    const arc = Math.sin(progress * Math.PI) * (8 + index % 5 * 3);
+    const px = fromX + (x - fromX) * progress;
+    const py = fromY + (y - fromY) * progress - arc;
+    ctx.globalAlpha = alpha; ctx.fillStyle = color;
+    ctx.font = `${(point.size || 12) + (size - (point.size || 12)) * progress}px "Plex Mono", monospace`;
+    const blend = smooth((progress - .30) / .40);
+    if (blend < .995) {
+      ctx.globalAlpha = alpha * (1 - blend);
+      ctx.fillText(point.glyph, px, py);
+    }
+    if (blend > .005) {
+      ctx.globalAlpha = alpha * blend;
+      ctx.fillText(character, px, py);
+    }
+  }
+
   function text(ctx, value, x, y, color, alpha, size = 9) {
-    ctx.globalAlpha = alpha;
-    ctx.fillStyle = color;
-    ctx.font = `${size}px "Plex Mono", monospace`;
-    ctx.fillText(value, x, y);
+    if (!flow) {
+      ctx.globalAlpha = alpha; ctx.fillStyle = color;
+      ctx.font = `${size}px "Plex Mono", monospace`; ctx.fillText(value, x, y); return;
+    }
+    for (let index = 0; index < value.length; index++) {
+      if (value[index] !== " ") carry(ctx, value[index], x + index * size * .6, y, color, alpha, size);
+    }
+  }
+
+  function trace(ctx, x1, y1, x2, y2, color, alpha) {
+    if (!flow) return;
+    const count = Math.max(1, Math.ceil(Math.hypot(x2 - x1, y2 - y1) / 9));
+    for (let i = 0; i <= count; i++) carry(ctx, "·", x1 + (x2 - x1) * i / count, y1 + (y2 - y1) * i / count, color, alpha, 8);
   }
 
   function segment(ctx, x1, y1, x2, y2, color, alpha) {
@@ -50,6 +89,7 @@
     ctx.moveTo(x1, y1);
     ctx.lineTo(x2, y2);
     ctx.stroke();
+    trace(ctx, x1, y1, x2, y2, color, alpha);
   }
 
   function dot(ctx, x, y, color, alpha, radius = 2) {
@@ -94,6 +134,7 @@
         const bend = (x1 + x2) / 2;
         ctx.bezierCurveTo(bend, y1, bend, y2, x2, y2);
         ctx.stroke();
+        trace(ctx, x1, y1, x2, y2, muted, amount * reveal * .7);
         if (previous) {
           const inv = 1 - progress;
           const x = inv * inv * inv * x1 + 3 * inv * inv * progress * bend + 3 * inv * progress * progress * bend + progress * progress * progress * x2;
@@ -104,6 +145,7 @@
       ctx.globalAlpha = amount * reveal * (index === count - 1 ? .75 : .35);
       ctx.strokeStyle = index === count - 1 ? accent : muted;
       ctx.strokeRect(node.x, node.y - 11, hashWidth, 22);
+      trace(ctx, node.x, node.y - 11, node.x + hashWidth, node.y - 11, muted, amount * reveal * .4);
       text(ctx, node.record.sha.slice(0, 7), node.x + 6, node.y, index === count - 1 ? accent : ink, amount * reveal, compact ? 10 : 9);
     }
 
@@ -170,9 +212,12 @@
   window.PortfolioEntranceEffects = Object.freeze({
     draw(kind, args) {
       if (!args?.context || !(args.width > 0) || !(args.height > 0)) return null;
-      if (kind === "history") return history(args);
-      if (kind === "tokens") return tokens(args);
-      return null;
+      flow = null;
+      try {
+        if (kind === "history") return history(args);
+        if (kind === "tokens") return tokens(args);
+        return null;
+      } finally { flow = null; }
     },
   });
 })();
