@@ -315,7 +315,7 @@ const snippets = [{"repo": "glassbox", "title": "source → WebAssembly", "path"
     if (!allowed) return;
     const narrow = window.innerWidth < 600;
     inputHud.style.width = narrow ? "230px" : "310px";
-    const scale = Math.min(window.devicePixelRatio || 1, 2);
+    const scale = Math.min(window.devicePixelRatio || 1, 3);
     if (inputHud.width !== Math.round(310 * scale)) {
       inputHud.width = Math.round(310 * scale);
       inputHud.height = Math.round(140 * scale);
@@ -558,7 +558,8 @@ const snippets = [{"repo": "glassbox", "title": "source → WebAssembly", "path"
     pointerRect = rect;
     const wasNarrow = width < 600;
     width = rect.width; height = rect.height;
-    ratio = Math.min(window.devicePixelRatio || 1, width < 600 ? 1.5 : 2);
+    // Render text at Retina density; cap large entry canvases by pixel area.
+    ratio = Math.min(window.devicePixelRatio || 1, 3, Math.sqrt(4000000 / Math.max(1, width * height)));
     canvas.width = Math.round(width * ratio); canvas.height = Math.round(height * ratio);
     context.setTransform(ratio, 0, 0, ratio, 0, 0);
     fontSize = 12;
