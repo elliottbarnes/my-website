@@ -9,7 +9,7 @@ const source = await readFile(new URL("../assets/animation.js", import.meta.url)
 // Exercise the shipped animation controller and its clock without a browser
 // dependency. These checks cover lifecycle and response time; visual quality
 // and actual frame cost still need a real browser.
-function animation({ reduced = false, paused = false, hidden = false, view = "entrance" } = {}) {
+function animation({ reduced = false, paused = false, hidden = false, view = "entrance", density = 1, fieldWidth = 640 } = {}) {
   let now = 100, nextId = 1;
   const frames = new Map(), timers = new Map(), images = [];
   function surface() {
@@ -84,7 +84,7 @@ function animation({ reduced = false, paused = false, hidden = false, view = "en
     return Object.assign(element, {
       calls, getContext: () => context,
       getBoundingClientRect: () => ({ left: 0, top: 0,
-        width: element.style.position === "fixed" ? 1280 : 640,
+        width: element.style.position === "fixed" ? 1280 : fieldWidth,
         height: element.style.position === "fixed" ? 800 : 320 }),
     });
   }
@@ -108,7 +108,7 @@ function animation({ reduced = false, paused = false, hidden = false, view = "en
   const cancelAnimationFrame = (id) => frames.delete(id);
   const performance = { now: () => now };
   const window = Object.assign(surface(), {
-    matchMedia: () => motion, innerWidth: 1280, innerHeight: 800, devicePixelRatio: 1,
+    matchMedia: () => motion, innerWidth: 1280, innerHeight: 800, devicePixelRatio: density,
     requestAnimationFrame, cancelAnimationFrame, performance,
   });
   class Image {
@@ -409,4 +409,12 @@ test("unattended typing never launches an effect over multiple complete cycles",
     controls.frame(40);
     assert.equal(controls.scene.dataset.phase, "editing");
   }
+});
+
+test("mobile code renders at native Retina density while large transitions stay bounded", () => {
+  const controls = animation({ density: 3, fieldWidth: 348 });
+  assert.equal(controls.field.width, 1044);
+  assert.equal(controls.field.height, 960);
+  controls.api.enter();
+  assert.ok(controls.field.width * controls.field.height < 4010000);
 });
