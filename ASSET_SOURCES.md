@@ -83,3 +83,7 @@ The four JPEGs under `assets/projects/` are browser screenshots of Elliott’s o
 ## Selected Memoji
 
 `assets/memoji.png` is the winking Memoji supplied and selected by Elliott on 2026-10-11, decoded from his RTFD attachment into a transparent PNG. It supplies both profile images and the local source-code portrait animation. The animation samples the full silhouette without cropping the hair or chin.
+
+## Multi-star radar balls
+
+`assets/dragon-ball-2.png`, `assets/dragon-ball-3.png`, and `assets/dragon-ball-4.png` are original transparent images generated with the built-in imagegen tool on 11 October 2026. The existing Musett one-star icon remains unmodified. Each prompt requested one glossy amber-orange sphere, an upper-left yellow highlight, an amber shadow, and exactly two stars side by side, three stars in a triangle, or four stars in a square. No labels or numbers.
