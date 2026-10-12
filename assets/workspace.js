@@ -49,7 +49,7 @@
       if (!Number.isFinite(delta) || Math.abs(event.deltaX) > Math.abs(event.deltaY)) return;
       if (wheelTotal && Math.sign(delta) !== Math.sign(wheelTotal)) wheelTotal = 0;
       wheelTotal += delta;
-      if (Math.abs(wheelTotal) < 34 || now - lastSelection < 180) return;
+      if (Math.abs(wheelTotal) < 80 || now - lastSelection < 400) return;
       if (select(Math.sign(wheelTotal))) {
         event.preventDefault();
         lastSelection = now;
@@ -72,7 +72,8 @@
       if (!drag.moved && Math.abs(dx) > Math.abs(dy)) return;
       pull(dy);
       if (Math.abs(dy) > 6) drag.pulled = true;
-      if (Math.abs(dy) < 28) return;
+      // One deliberate selection per gesture prevents a swipe skipping projects.
+      if (drag.moved || Math.abs(dy) < 56) return;
       if (select(dy < 0 ? 1 : -1)) {
         drag.moved = true;
         drag.y = event.clientY;
