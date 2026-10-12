@@ -675,7 +675,7 @@ const snippets = [{"repo": "glassbox", "title": "source → WebAssembly", "path"
   const image = new Image();
   image.onload = () => { sourceImage = image; buildPortrait(); refresh(); };
   image.onerror = () => { buildPortrait(); refresh(); };
-  image.src = "/assets/memoji.png";
+  image.src = "/assets/memoji-saiyan.png";
   if (document.fonts?.ready) document.fonts.ready.then(() => { buildPortrait(); resize(); refresh(); });
   colors();
   buildPortrait();

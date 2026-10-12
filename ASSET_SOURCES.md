@@ -87,3 +87,7 @@ The four JPEGs under `assets/projects/` are browser screenshots of Elliott’s o
 ## Multi-star radar balls
 
 `assets/dragon-ball-2.png`, `assets/dragon-ball-3.png`, and `assets/dragon-ball-4.png` are original transparent images generated with the built-in imagegen tool on 11 October 2026. The existing Musett one-star icon remains unmodified. Each prompt requested one glossy amber-orange sphere, an upper-left yellow highlight, an amber shadow, and exactly two stars side by side, three stars in a triangle, or four stars in a square. No labels or numbers.
+
+## Saiyan Memoji
+
+`assets/memoji-saiyan.png` was generated with the built-in imagegen edit tool on 11 October 2026 from Elliott's supplied Memoji. Prompt: change only the hairstyle to golden Super Saiyan spikes, preserving face identity, wink, brown eye, tongue-out expression, Memoji material, and transparency. The original `assets/memoji.png` remains in source for recovery and is no longer published. The new image supplies profile cards and the code portrait animation.

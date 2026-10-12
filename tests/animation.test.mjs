@@ -141,7 +141,7 @@ function animation({ reduced = false, paused = false, hidden = false, view = "en
 test("the entrance portrait uses the published Memoji asset", () => {
   const controls = animation();
   assert.equal(controls.images.length, 1);
-  assert.equal(controls.images[0].src, "/assets/memoji.png");
+  assert.equal(controls.images[0].src, "/assets/memoji-saiyan.png");
   assert.ok(PUBLIC_FILES.includes(controls.images[0].src.slice(1)), "the requested image must be in the deployment artifact");
   assert.doesNotThrow(() => controls.images[0].onload());
 });
