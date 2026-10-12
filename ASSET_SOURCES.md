@@ -91,3 +91,5 @@ The four JPEGs under `assets/projects/` are browser screenshots of Elliott’s o
 ## Saiyan Memoji
 
 `assets/memoji-saiyan.png` was generated with the built-in imagegen edit tool on 11 October 2026 from Elliott's supplied Memoji. Prompt: change only the hairstyle to golden Super Saiyan spikes, preserving face identity, wink, brown eye, tongue-out expression, Memoji material, and transparency. The original `assets/memoji.png` remains in source for recovery and is no longer published. The new image supplies profile cards and the code portrait animation.
+
+`assets/dragon-ball-1.png` completes the generated radar set. Built-in imagegen edit prompt: replace only the two stars in `dragon-ball-2.png` with one centered red five-point star, preserving sphere, glossy material, highlights, shadow, framing, and transparency. The original Musett one-star artwork remains used for the favicon.
