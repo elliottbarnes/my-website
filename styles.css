@@ -277,3 +277,8 @@ a:focus-visible,button:focus-visible,input:focus-visible{outline-color:var(--ink
 .wheel-controls{display:block;padding:12px 0;text-align:center}
 .wheel-position{display:block;padding:0}
 [data-enhanced] .file-list{height:calc(100% - 40px)}
+
+/* Quiet lowercase chrome; project code and prose retain their meaning. */
+h1,h2,h3,label,.plot-caption,.terminal-title,.project-kind,.scouter-title,.github-stat small,.workspace-status>span:first-child,.editor-status,.radar-tooltip,.radar-legend,.colophon{text-transform:lowercase}
+.radar-signal img{transition:filter .22s,scale .3s cubic-bezier(.22,1.35,.36,1)}
+.radar-signal:hover img,.radar-signal:focus-visible img{filter:drop-shadow(0 0 9px var(--accent));scale:1.12}
