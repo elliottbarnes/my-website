@@ -10,6 +10,9 @@ The animated entrance renders Elliott’s selected Memoji as moving source-code 
 | Pixel Language — typed graphics language | [Write a shader](https://elliottbarnes.github.io/pixel-language/) | [Repository](https://github.com/elliottbarnes/pixel-language) |
 | Automata Lab — regex compiler | [Explore automata](https://elliottbarnes.github.io/automata-lab/) | [Repository](https://github.com/elliottbarnes/automata-lab) |
 | Architecture Lab — three generations of Mac hardware | [Explore the machines](https://elliottbarnes.github.io/architecture-lab/) | [Repository](https://github.com/elliottbarnes/architecture-lab) |
+| ellmiott — language-model internals | [Inspect attention](https://elliottbarnes.github.io/ellmiott/) | [Repository](https://github.com/elliottbarnes/ellmiott) |
+| batchline — batching and backpressure | [Shape the traffic](https://elliottbarnes.github.io/batchline/) | [Repository](https://github.com/elliottbarnes/batchline) |
+| evaldeck — output contracts | [Inspect the checks](https://elliottbarnes.github.io/evaldeck/) | [Repository](https://github.com/elliottbarnes/evaldeck) |
 
 ## Interaction and accessibility
 
@@ -35,7 +38,7 @@ node scripts/verify-site.mjs dist --source .
 node server.mjs --dir dist
 ```
 
-Open `http://localhost:4173`. The explicit thirty-four-file publication list is in `scripts/public-files.mjs`. Build checks reject extra artifacts, symlinks, broken local links, stale asset hashes, and incorrect project destinations.
+Open `http://localhost:4173`. The explicit thirty-five-file publication list is in `scripts/public-files.mjs`. Build checks reject extra artifacts, symlinks, broken local links, stale asset hashes, and incorrect project destinations.
 
 Production still uses the existing GitHub Actions deployment to a private S3 origin and CloudFront, with version-based recovery. See [DEPLOYMENT.md](DEPLOYMENT.md).
 
@@ -58,5 +61,11 @@ The generated Dragon Balls and Memoji use lossless WebP display copies sized for
 ## Hidden training chamber
 
 The small seven-star ball in the footer opens a Dragon Ball-themed brick breaker. The secret command `kamehameha` (also `training` or `breaker`) opens it through the command menu. Drag the paddle on touch devices, or use arrows/a/d and Space. The game starts only after a launch, has three lives, pauses when hidden, and returns focus on close. Clearing all seven shield columns collects the balls; power passes 9000 on completion. No scores or inputs leave the browser.
+
+## Follow the signals
+
+Opening a project marks its Dragon Ball as explored. Visit all seven to reveal a small `summon` action in the radar: particles gather into a theme-colored wish dragon. It starts only when selected; `return` or Escape restores the signals. The hidden `wish` and `shenron` commands also work after all seven projects have been visited. Progress stays in session storage in the current tab and tolerates denied storage. Paused and reduced-motion visitors get a static reveal, while hidden panels and the training chamber suspend animation. The 124 KB dragon artwork loads on the first summon only; the source PNG stays outside the public artifact.
+
+The command menu also searches project names, descriptions, and a small factual vocabulary. Try `compiler`, `regex`, `mac`, `attention`, `batching`, or `checks`. Arrow keys select a result and Enter opens it; native buttons remain clickable and their Tab order follows ranking. Exact commands and theme names keep their previous behavior. Search runs entirely in the browser and does not execute or transmit input.
 
 Source effects now carry actual visible code characters into hash labels, connections, and token particles. Closing reverses the motion toward current code cells while typing continues, and preserves the source excerpt through the end of its typing cycle.

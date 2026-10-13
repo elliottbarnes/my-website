@@ -18,6 +18,121 @@
   let navigationRevision = 0;
   let dialogOpener;
   let restoreDialogFocus = true;
+  const aliases = { whoami: "about", links: "connect", projects: "glassbox", pixel: "pixel-language", architecture: "architecture-lab", automata: "automata-lab" };
+  const searchAliases = {
+    about: "whoami about elliott profile developer",
+    glassbox: "compiler compilers webassembly wasm typed language",
+    "pixel-language": "pixel graphics shader shaders glsl language compiler",
+    "architecture-lab": "architecture mac macintosh hardware computer memory",
+    "automata-lab": "automata regex regular expression pattern dfa nfa matching compiler",
+    ellmiott: "attention gpt model tokens prediction transformer ai",
+    batchline: "batch batching queue backpressure inference scheduling",
+    evaldeck: "evaluation eval contracts checks regressions baseline answers ai",
+    connect: "links github linkedin contact",
+    theme: "theme themes colour color colours colors palette",
+    motion: "motion animation pause resume",
+    help: "help commands shortcuts keyboard",
+  };
+  const normalizeCommand = value => String(value).trim().toLowerCase().replace(/^[:/]\s*/, "").replace(/\s+/g, " ");
+  const searchWords = value => normalizeCommand(value).replace(/[^a-z0-9]+/g, " ").trim();
+  const commandButtons = Array.from(document.querySelectorAll("[data-command]"));
+  const commandResults = dialog?.querySelector(".command-options");
+  const commandRecords = commandButtons.map((button, index) => {
+    const command = button.dataset.command;
+    const panel = panels.get(command);
+    const label = ({ "pixel-language": "pixel", "architecture-lab": "architecture", "automata-lab": "automata" })[command]
+      || button.textContent.trim().toLowerCase();
+    const title = panel?.querySelector("h2")?.textContent.replace(/_$/, "").trim() || label;
+    const kind = panel?.querySelector(".project-kind")?.textContent.replace(/^\d+\s*\/\s*/, "").trim().toLowerCase() || "";
+    const description = panel?.querySelector(".project-description, .about-text")?.textContent || "";
+    button.textContent = label;
+    button.dataset.commandLabel = label;
+    if (kind) {
+      const detail = document.createElement("span");
+      detail.className = "command-meta";
+      detail.textContent = kind;
+      button.append(detail);
+      button.setAttribute("aria-label", `${label}, ${kind}`);
+    }
+    return { button, command, label, kind, index, title: searchWords(title),
+      names: searchWords(`${command} ${label} ${searchAliases[command] || ""}`),
+      details: searchWords(`${kind} ${description}`) };
+  });
+  let searchResults = commandRecords, activeResult = -1, composingCommand = false;
+
+  if (commandResults && commandInput) {
+    commandResults.id ||= "command-results";
+    commandResults.setAttribute("role", "group");
+    commandResults.setAttribute("aria-label", "project and command results");
+    commandInput.setAttribute("aria-controls", commandResults.id);
+    commandInput.setAttribute("aria-describedby", "command-feedback");
+  }
+
+  function themeCommands() {
+    return ["theme", "light", "dark", "theme light", "theme dark",
+      ...[...themes, ...(window.PortfolioThemes?.names || []), ...(window.PortfolioThemes?.labels || [])].map(name => `theme ${name}`)];
+  }
+
+  function exactCommand(command) {
+    return routes.includes(aliases[command] || command) || themeCommands().includes(command)
+      || ["home", "exit", "motion", "help", "?", "kamehameha", "training", "breaker", "wish", "shenron"].includes(command);
+  }
+
+  function rankCommand(record, query) {
+    if (searchWords(record.command) === query || record.label === query) return 200;
+    const words = query.split(" ").filter(Boolean);
+    if (!words.length) return 0;
+    let score = 0;
+    for (const word of words) {
+      if (record.names.split(" ").includes(word)) score += 60;
+      else if (record.names.split(" ").some(name => name.startsWith(word))) score += 40;
+      else if (record.title.includes(word)) score += 25;
+      else if (record.details.includes(word)) score += 15;
+      else return 0;
+    }
+    return score;
+  }
+
+  function announceResult() {
+    const record = searchResults[activeResult];
+    if (!record) return;
+    say(`${record.label}${record.kind ? `, ${record.kind}` : ""}. ${activeResult + 1} of ${searchResults.length}. enter to ${routes.includes(record.command) ? "open" : "run"}.`);
+  }
+
+  function paintResults() {
+    const query = normalizeCommand(commandInput?.value || "");
+    if (commandResults) commandResults.dataset.searching = String(Boolean(query));
+    commandRecords.forEach(record => {
+      const index = searchResults.indexOf(record);
+      record.button.hidden = index < 0;
+      record.button.style.order = "";
+    });
+    // Move the existing native buttons so Tab follows the same ranked order
+    // visitors see; CSS ordering alone would leave keyboard focus out of sync.
+    if (commandResults) [...searchResults, ...commandRecords.filter(record => !searchResults.includes(record))]
+      .forEach(record => commandResults.append(record.button));
+    paintActiveResult();
+  }
+
+  function paintActiveResult() {
+    const active = searchResults[activeResult];
+    commandRecords.forEach(record => { record.button.dataset.searchActive = String(record === active); });
+  }
+
+  function searchCommands(announce = true) {
+    const raw = normalizeCommand(commandInput?.value || "");
+    const query = searchWords(raw);
+    searchResults = !raw ? [...commandRecords] : query ? commandRecords.map(record => ({ record, score: rankCommand(record, query) }))
+      .filter(result => result.score > 0).sort((a, b) => b.score - a.score || a.record.index - b.record.index)
+      .map(result => result.record) : [];
+    activeResult = query && searchResults.length ? 0 : -1;
+    paintResults();
+    if (!announce) return;
+    if (!raw) say("search projects or type a command.");
+    else if (exactCommand(raw)) say(`press enter to run “${raw}”.`);
+    else if (!searchResults.length) say("no matching projects or commands. try compiler, mac, regex, attention, or batching.");
+    else announceResult();
+  }
 
   // Denied storage must not prevent navigation from starting.
   function readPreference(name) {
@@ -170,7 +285,8 @@
     if (typeof dialog.showModal === "function") dialog.showModal();
     else dialog.setAttribute("open", "");
     commandInput.value = "";
-    say("Type a command, or choose one below.");
+    composingCommand = false;
+    searchCommands();
     commandInput.focus();
   }
 
@@ -185,13 +301,24 @@
   }
 
   function runCommand(raw) {
-    const command = raw.trim().toLowerCase().replace(/^[:/]\s*/, "").replace(/\s+/g, " ");
+    const command = normalizeCommand(raw);
+    if (["wish", "shenron"].includes(command)) {
+      if (!window.PortfolioRadar?.unlocked) {
+        say("follow all seven project signals first.");
+        commandInput?.focus();
+        return;
+      }
+      closeCommands(false);
+      navigate("about");
+      window.PortfolioRadar.summon();
+      document.querySelector("[data-radar-summon]")?.focus({ preventScroll: true });
+      return;
+    }
     if (["kamehameha", "training", "breaker"].includes(command)) {
       closeCommands(false);
       window.PortfolioTraining?.open();
       return;
     }
-    const aliases = { whoami: "about", links: "connect", projects: "glassbox", pixel: "pixel-language", architecture: "architecture-lab", automata: "automata-lab" };
     const route = Object.hasOwn(aliases, command) ? aliases[command] : command;
     if (routes.includes(route)) {
       closeCommands(false);
@@ -205,7 +332,7 @@
       navigate(null);
       entrance?.querySelector("[data-enter]")?.focus({ preventScroll: true });
       return;
-    } else if (["theme", "light", "dark", "theme light", "theme dark", ...[...themes, ...(window.PortfolioThemes?.labels || [])].map((name) => `theme ${name}`)].includes(command)) {
+    } else if (themeCommands().includes(command)) {
       const requested = command.replace(/^theme\s*/, "");
       if (!requested && window.PortfolioThemes) {
         closeCommands(false);
@@ -226,6 +353,7 @@
     }
     if (commandInput) {
       commandInput.value = "";
+      searchCommands(false);
       commandInput.focus();
     }
   }
@@ -235,10 +363,43 @@
   document.querySelectorAll("[data-motion-toggle]").forEach((button) => button.addEventListener("click", toggleMotion));
   document.querySelectorAll("[data-command-open]").forEach((button) => button.addEventListener("click", openCommands));
   document.querySelectorAll("[data-command-close]").forEach((button) => button.addEventListener("click", () => closeCommands()));
-  document.querySelectorAll("[data-command]").forEach((button) => button.addEventListener("click", () => runCommand(button.dataset.command)));
+  commandButtons.forEach((button) => {
+    button.addEventListener("click", () => runCommand(button.dataset.command));
+    button.addEventListener("focus", () => {
+      if (!dialog?.open) return;
+      const index = searchResults.findIndex(record => record.button === button);
+      if (index < 0) return;
+      activeResult = index;
+      // Update selection without moving the focused native button in the DOM.
+      paintActiveResult(); announceResult();
+    });
+  });
+  commandInput?.addEventListener("compositionstart", () => { composingCommand = true; });
+  commandInput?.addEventListener("compositionend", () => { composingCommand = false; searchCommands(); });
+  commandInput?.addEventListener("input", event => {
+    if (!composingCommand && !event.isComposing) searchCommands();
+  });
+  commandInput?.addEventListener("keydown", event => {
+    if (event.defaultPrevented) return;
+    if (event.isComposing || composingCommand || event.keyCode === 229 || event.ctrlKey || event.metaKey || event.altKey) {
+      if (event.key === "Enter") event.preventDefault();
+      return;
+    }
+    if (!["ArrowDown", "ArrowUp"].includes(event.key) || !searchResults.length) return;
+    event.preventDefault();
+    activeResult = activeResult < 0 ? (event.key === "ArrowDown" ? 0 : searchResults.length - 1)
+      : (activeResult + (event.key === "ArrowDown" ? 1 : -1) + searchResults.length) % searchResults.length;
+    paintResults(); announceResult();
+    searchResults[activeResult].button.scrollIntoView?.({ block: "nearest", inline: "nearest", behavior: "instant" });
+  });
   document.getElementById("command-form")?.addEventListener("submit", (event) => {
     event.preventDefault();
-    runCommand(commandInput?.value || "");
+    if (composingCommand || event.isComposing || event.ctrlKey || event.metaKey || event.altKey) return;
+    const raw = normalizeCommand(commandInput?.value || "");
+    if (exactCommand(raw)) runCommand(raw);
+    else if (searchResults.length && (raw || activeResult >= 0)) runCommand(searchResults[Math.max(0, activeResult)].command);
+    else if (!raw) runCommand(raw);
+    else say("no matching projects or commands. try compiler, mac, regex, attention, or batching.");
   });
   dialog?.addEventListener("close", () => {
     if (restoreDialogFocus && dialogOpener?.isConnected) dialogOpener.focus({ preventScroll: true });
