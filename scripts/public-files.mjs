@@ -6,10 +6,10 @@ import { extname, join } from "node:path";
 export const PUBLIC_FILES = Object.freeze([
   "index.html", "404.html", "styles.css", "script.js", "robots.txt",
   "sitemap.xml", "site.webmanifest", "assets/favicon.svg", "assets/social-card.svg",
-  "assets/dragon-ball.png", "assets/dragon-ball-1.png", "assets/dragon-ball-2.png", "assets/dragon-ball-3.png", "assets/dragon-ball-4.png", "assets/dragon-ball-5.png", "assets/dragon-ball-6.png", "assets/dragon-ball-7.png",
+  "assets/dragon-ball.png", "assets/dragon-ball-1.webp", "assets/dragon-ball-2.webp", "assets/dragon-ball-3.webp", "assets/dragon-ball-4.webp", "assets/dragon-ball-5.webp", "assets/dragon-ball-6.webp", "assets/dragon-ball-7.webp",
   "assets/themes.css", "assets/themes.js", "assets/workspace.js",
   "assets/projects/glassbox.jpg", "assets/projects/pixel-language.jpg", "assets/projects/architecture-lab.jpg", "assets/projects/automata-lab.jpg", "assets/projects/ellmiott.jpg", "assets/projects/batchline.jpg", "assets/projects/evaldeck.jpg",
-  "assets/animation.js", "assets/entrance-effects.js", "assets/brick-breaker.js", "assets/training-chamber.js", "assets/memoji-saiyan.png", "assets/fonts/IBMPlexMono-Regular.ttf", "assets/fonts/OFL.txt",
+  "assets/animation.js", "assets/entrance-effects.js", "assets/brick-breaker.js", "assets/training-chamber.js", "assets/memoji-saiyan.webp", "assets/fonts/IBMPlexMono-Regular.ttf", "assets/fonts/OFL.txt",
 ]);
 
 export const VERSIONED_FILES = Object.freeze(PUBLIC_FILES.filter((file) => /\.(?:css|js)$/.test(file)));

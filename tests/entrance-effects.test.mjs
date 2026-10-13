@@ -164,3 +164,33 @@ test("source glyphs travel into effect text and return toward their original cel
   assert.ok(Math.hypot(returning.calls.text[0].x - 45, returning.calls.text[0].y - 24) < .01);
   assert.ok(Math.hypot(settled.calls.text[0].x - 45, settled.calls.text[0].y - 24) > 20);
 });
+
+test("a commit can be picked where it is drawn, including after pulling the graph", () => {
+  const history = [{ sha: sha.left, parents: [sha.root], message: "later source" },
+    { sha: sha.root, parents: [], message: "initial source" }];
+  for (const width of [320, 800]) {
+    for (const pull of [{ x: 0, y: 0 }, { x: 40, y: -30 }, { x: -40, y: 30 }]) {
+      const args = { width, height: 360, amount: 1, anchor: { x: .5, y: .5 }, history, pull };
+      const { calls } = draw("history", args);
+      for (const label of calls.text.filter(entry => /^[0-9a-f]{7}$/i.test(entry.value))) {
+        const picked = effects.pick("history", args, label.x + 10, label.y + 20);
+        assert.equal(picked.sha.slice(0, 7), label.value, "the padded 44px target follows the visible node");
+      }
+      assert.equal(effects.pick("history", args, 0, 0), null);
+      assert.equal(effects.pick("history", { ...args, amount: .1 }, 100, 100), null,
+        "moving glyphs are not yet settled targets");
+    }
+  }
+  assert.equal(effects.pick("tokens", {}, 10, 10), null);
+});
+
+test("selecting an earlier commit shows its own subject without changing the real ancestry", () => {
+  const history = [{ sha: sha.left, parents: [sha.root], message: "later source" },
+    { sha: sha.root, parents: [], message: "initial source" }];
+  const selected = draw("history", { history, selectedCommit: sha.root });
+  assert.ok(selected.calls.text.some(entry => entry.value === "initial source"));
+  assert.equal(selected.calls.text.some(entry => entry.value === "later source"), false);
+  assert.equal(selected.calls.curves.length, 1);
+  const fallback = draw("history", { history, selectedCommit: "unknown" });
+  assert.ok(fallback.calls.text.some(entry => entry.value === "later source"));
+});

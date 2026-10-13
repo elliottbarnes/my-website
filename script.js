@@ -220,7 +220,7 @@
       say(`Animation ${motion === "paused" ? "paused" : "running"}.`);
     } else if (command === "help" || command === "?") {
       if (help) help.hidden = !help.hidden;
-      say("Commands: about, projects, glassbox, pixel, architecture, automata, connect, home, theme, light, dark, motion, help. Use arrow keys on the wheel or j/k to browse sections; Home/End select its first/last item. Escape returns home.");
+      say("Commands: about, projects, glassbox, pixel, architecture, automata, ellmiott, batchline, evaldeck, connect, home, theme, light, dark, motion, help. Use arrow keys on the wheel or j/k to browse sections; Home/End select its first/last item. Escape returns home.");
     } else {
       say(command ? "Unknown command. Type help to see the available commands." : "Enter a command, such as about or theme.");
     }

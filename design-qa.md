@@ -114,3 +114,10 @@ Added a hidden footer trigger and secret command for the local brick-breaker gam
 Source morphing now lifts actual visible characters, blends them into effect labels and connection particles, and reverses toward their current code positions. Individual character paths have a curved flight and stagger, rather than scaling the entire diagram. Typing remains continuous and only taps/clicks trigger effects.
 
 Local validation: physics tests cover collisions, tunneling, aiming, win/loss, all-seven collection, and restart; renderer tests cover real source glyphs and return positions. Mobile-width browser checks cover drag, launch/hit, pause, Escape, secret command, keyboard input, and source morphing. Physical iPhone frame profiling was not performed.
+
+
+## Source interaction and loading refinement — 13 October 2026
+
+Fresh reference research and before/after captures are recorded in `.design/refinement-research.md`. Extended source-letter transport to the portrait and procedural fields, added bounded graphic pull and real-commit selection, and made the code surface keyboard accessible. Static previews work while paused/reduced; resuming restores a finite animated hold. Underlying code fades only beneath diagram labels, without a painted frame. Continuous typing and tap-only activation remain unchanged.
+
+Lossless, pixel-identical WebP encodings reduce generated artwork 40.2%; hidden workspace images are lazy and game sprites load on first opening. Phone-width browser checks verify filename focus, commit keys/taps, Escape, pause/preview/resume, graphic dragging, Enter, all seven decoded radar assets, one-card wheel navigation, and explicit game launch/closure. 147 Node tests and 34-file publication checks pass. Physical iPhone frame profiling and full assistive-technology testing remain unperformed.

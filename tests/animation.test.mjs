@@ -97,13 +97,17 @@ function animation({ reduced = false, paused = false, hidden = false, view = "en
   field.parentElement.parentElement = scene;
   root.dataset = { view, ...(paused ? { motion: "paused" } : {}) };
   const nodes = new Map([["#entrance", entrance], ["#code-field", field], ["#scene", scene], ["[data-pointer-readout]", readout]]);
-  for (const selector of ["#code-wall", "[data-scene-file]", "[data-scene-path]", "#typed-command", "#entrance .mode", "#entrance .status-position"]) nodes.set(selector, node());
+  for (const selector of ["#code-wall", "[data-scene-file]", "[data-scene-path]", "#typed-command", "#entrance .mode", "#entrance .status-position", "#scene-feedback"]) nodes.set(selector, node());
   const document = Object.assign(surface(), {
     documentElement: root, hidden,
     querySelector: (selector) => selector === "dialog[open]" ? (document.openDialog || null) : nodes.get(selector) || null,
     getElementById: (id) => nodes.get(`#${id}`) || null,
     createElement: (tag) => tag === "canvas" ? canvas() : node(),
   });
+  field.parentElement.focus = () => {
+    document.activeElement = field.parentElement;
+    field.parentElement.dispatch("focus");
+  };
   const motion = Object.assign(surface(), { matches: reduced });
   const requestAnimationFrame = (callback) => { const id = nextId++; frames.set(id, callback); return id; };
   const cancelAnimationFrame = (id) => frames.delete(id);
@@ -143,7 +147,7 @@ function animation({ reduced = false, paused = false, hidden = false, view = "en
 test("the entrance portrait uses the published Memoji asset", () => {
   const controls = animation();
   assert.equal(controls.images.length, 1);
-  assert.equal(controls.images[0].src, "/assets/memoji-saiyan.png");
+  assert.equal(controls.images[0].src, "/assets/memoji-saiyan.webp");
   assert.ok(PUBLIC_FILES.includes(controls.images[0].src.slice(1)), "the requested image must be in the deployment artifact");
   assert.doesNotThrow(() => controls.images[0].onload());
 });
@@ -442,4 +446,109 @@ test("the filename opens history and a second filename click retracts it", () =>
   filename.dispatch("click");
   for (let i = 0; i < 25; i++) controls.frame(40);
   assert.equal(controls.scene.dataset.phase, "editing");
+});
+
+test("avatar and source fields carry real visible code letters", () => {
+  const controls = animation();
+  tap(controls, { clientX: 80, clientY: 20 });
+  controls.frame(40);
+  assert.equal(controls.api.state.effect, "avatar");
+  assert.ok(controls.api.state.glyphCount > 0);
+  tap(controls, { clientX: 30, clientY: 600 });
+  displayFor(controls, 600);
+  displayFor(controls, 4900);
+  tap(controls, { clientX: 80, clientY: 20 });
+  controls.frame(40);
+  assert.equal(controls.api.state.effect, "object");
+  assert.ok(controls.api.state.glyphCount > 0);
+});
+
+test("the filename provides static history with paused or reduced motion", () => {
+  for (const options of [{ paused: true }, { reduced: true }]) {
+    const controls = animation(options);
+    const filename = controls.document.querySelector("[data-scene-file]");
+    filename.dispatch("click");
+    assert.equal(controls.api.state.effect, "history");
+    assert.equal(controls.api.state.static, true);
+    assert.equal(controls.scene.dataset.phase, "interactive");
+    assert.equal(controls.frames.size, 0, "explicit exploration must not restart motion");
+    filename.dispatch("click");
+    assert.equal(controls.api.state.effect, null);
+    assert.equal(controls.scene.dataset.phase, "still");
+  }
+});
+
+test("keyboard row selection, explicit activation, and Escape work without animation", () => {
+  const controls = animation({ reduced: true });
+  const surface = controls.field.parentElement;
+  surface.dispatch("focus");
+  const before = controls.api.state.selectedLine;
+  const arrow = surface.dispatch("keydown", { key: "ArrowDown" });
+  assert.equal(arrow.defaultPrevented, true);
+  assert.ok(controls.api.state.selectedLine > before);
+  const space = surface.dispatch("keydown", { key: " " });
+  assert.equal(space.defaultPrevented, true);
+  assert.equal(controls.api.state.effect, "tokens");
+  assert.equal(controls.api.state.static, true);
+  assert.equal(controls.frames.size, 0);
+  const escape = controls.entrance.dispatch("keydown", { key: "Escape" });
+  assert.equal(escape.defaultPrevented, true);
+  assert.equal(controls.api.state.effect, null);
+});
+
+test("keyboard history selection retains genuine commits and does not navigate", () => {
+  const controls = animation({ paused: true });
+  controls.document.querySelector("[data-scene-file]").dispatch("click");
+  const surface = controls.field.parentElement;
+  assert.equal(controls.document.activeElement, surface, "opening history focuses the announced keyboard controls");
+  surface.dispatch("keydown", { key: "ArrowLeft" });
+  assert.equal(controls.api.state.selectedCommit, "5789eec04c64bea45b2f5b9bce3adc6387128d81");
+  surface.dispatch("keydown", { key: "ArrowRight" });
+  assert.equal(controls.api.state.selectedCommit, "c7ae7bd3eb374580b0c28e0b554108b5504a1c00");
+  assert.equal(controls.api.state.effect, "history");
+  assert.equal(controls.frames.size, 0);
+  assert.equal(controls.root.dataset.view, "entrance");
+});
+
+test("resuming motion gives an explicitly opened static preview an ordinary finite hold", () => {
+  const controls = animation({ paused: true });
+  controls.document.querySelector("[data-scene-file]").dispatch("click");
+  assert.equal(controls.api.state.static, true);
+  controls.root.dataset.motion = "running";
+  controls.window.dispatch("portfolio:preferences");
+  assert.equal(controls.api.state.static, false);
+  assert.equal(controls.api.state.effect, "history");
+  displayFor(controls, 8500);
+  assert.equal(controls.api.state.effect, "history", "resuming retains the preview briefly");
+  displayFor(controls, 1200);
+  assert.equal(controls.api.state.effect, null, "the preview returns to code after its normal hold");
+  assert.equal(controls.scene.dataset.phase, "editing");
+});
+
+test("hash hit testing matches the visible glyph layout while history is opening", () => {
+  const controls = animation();
+  const renderer = controls.window.PortfolioEntranceEffects;
+  let drawn;
+  controls.window.PortfolioEntranceEffects = {
+    ...renderer,
+    draw(kind, args) {
+      const bounds = renderer.draw(kind, args);
+      if (kind === "history") drawn = { amount: args.amount, bounds };
+      return bounds;
+    },
+  };
+  controls.document.querySelector("[data-scene-file]").dispatch("click");
+  displayFor(controls, 300);
+  assert.ok(drawn.amount > .65 && drawn.amount < .95);
+  tap(controls, { clientX: drawn.bounds.right - 14, clientY: drawn.bounds.top + 50 });
+  assert.equal(controls.api.state.effect, "history");
+  assert.equal(controls.api.state.selectedCommit, "c7ae7bd3eb374580b0c28e0b554108b5504a1c00");
+});
+
+test("Escape announces that an explicit preview has returned to code", () => {
+  const controls = animation({ paused: true });
+  controls.document.querySelector("[data-scene-file]").dispatch("click");
+  controls.entrance.dispatch("keydown", { key: "Escape" });
+  assert.equal(controls.document.querySelector("#scene-feedback").textContent, "returned to source code.");
+  assert.equal(controls.api.state.effect, null);
 });

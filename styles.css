@@ -297,6 +297,12 @@ h1,h2,h3,label,.plot-caption,.terminal-title,.project-kind,.scouter-title,.githu
 .scene-heading{align-items:center}
 .scene-heading [data-scene-file]{min-height:24px;padding:0;font:inherit;color:inherit;text-align:left;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .scene-heading [data-scene-file]:hover{color:var(--accent);text-decoration:underline;text-underline-offset:3px}
+.scene-body{cursor:crosshair}
+.scene-body:focus-visible{outline:1px solid var(--accent);outline-offset:6px}
+.scene[data-effect]:not([data-effect=""]) .scene-body{cursor:grab}
+.scene[data-dragging=true] .scene-body{cursor:grabbing;touch-action:none}
+.scene[data-phase=interactive] #code-field{touch-action:none}
+.scene-heading [data-scene-file]{min-height:44px}
 
 /* A hidden training room, entered only by the visitor. */
 .colophon{position:relative;align-items:center}
