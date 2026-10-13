@@ -46,6 +46,8 @@ const snippets = [{"repo": "glassbox", "title": "source → WebAssembly", "path"
   const command = document.querySelector("#typed-command");
   const modeLabel = document.querySelector("#entrance .mode");
   const positionLabel = document.querySelector("#entrance .status-position");
+  const codeSurface = document.querySelector("#scene .scene-body") || canvas.parentElement;
+  const sceneFeedback = document.querySelector("#scene-feedback");
   // Public commit snapshot; no browser API requests or fabricated history.
   const commitHistory = {"glassbox":[{"sha":"c7ae7bd3eb374580b0c28e0b554108b5504a1c00","parents":["5789eec04c64bea45b2f5b9bce3adc6387128d81"],"message":"docs: make the README a concise project entry point (#2)"},{"sha":"5789eec04c64bea45b2f5b9bce3adc6387128d81","parents":["6baf3aacc2b86458bd42dfb4d3f511721005bcef"],"message":"docs: expand project guide and protect local files (#1)"},{"sha":"6baf3aacc2b86458bd42dfb4d3f511721005bcef","parents":[],"message":"Build an inspectable typed compiler with a WebAssembly backend"}],"pixel-language":[{"sha":"bf7abf01bd02a9a3f40216a81f6a6b8809009ea2","parents":["cd06ed6f5e2d42fb484af4d330905266417d9098"],"message":"docs: make the README a concise project entry point (#2)"},{"sha":"cd06ed6f5e2d42fb484af4d330905266417d9098","parents":["fe0af8647aedf8d711789868bf717e4663081889"],"message":"docs: expand project guide and protect local files (#1)"},{"sha":"fe0af8647aedf8d711789868bf717e4663081889","parents":["62ab5f3b97880c16763dc0e78163a8d536542735"],"message":"Use the repository owner handle for copyright attribution"},{"sha":"62ab5f3b97880c16763dc0e78163a8d536542735","parents":[],"message":"Build a typed graphics language and live WebGL compiler playground"}],"architecture-lab":[{"sha":"c452bb8ff75c68809035e3efa569e49473932cb2","parents":["19e468a1cb4fe2eee032afc94079da63a6dc9d52"],"message":"Version published assets to prevent stale mixed releases"},{"sha":"19e468a1cb4fe2eee032afc94079da63a6dc9d52","parents":["db570f2adea137f8a362ee171ca4230f5f7b76fc"],"message":"Explore three generations of Macintosh hardware in interactive 3D"},{"sha":"db570f2adea137f8a362ee171ca4230f5f7b76fc","parents":["81349c74afb61f8444e664c154ab56a882d27b7c"],"message":"Refine Macintosh lab with rainbow styling and integrated experiments"},{"sha":"81349c74afb61f8444e664c154ab56a882d27b7c","parents":[],"message":"Build an interactive Macintosh 128K architecture exhibit"}],"automata-lab":[{"sha":"5f6754580cfb0ffcf393d9e3d944ce1753cc1554","parents":["e0faf5ceae6eeb2c8a0cb00b51496976dad9655d"],"message":"Document regex resource limits with a bounded research harness (#2)"},{"sha":"e0faf5ceae6eeb2c8a0cb00b51496976dad9655d","parents":["4747efde9b7da4a791ea51809697a5bcbe2cdf96"],"message":"docs: expand project guide and protect local files (#1)"},{"sha":"4747efde9b7da4a791ea51809697a5bcbe2cdf96","parents":["ccd219aeaba07d3c214fcf216f623fb9d2a577af"],"message":"Link the lab back to the portfolio"},{"sha":"ccd219aeaba07d3c214fcf216f623fb9d2a577af","parents":[],"message":"Build an inspectable regex compiler and automata playground"}]};
   const motion = window.matchMedia("(prefers-reduced-motion: reduce)");
@@ -68,15 +70,24 @@ const snippets = [{"repo": "glassbox", "title": "source → WebAssembly", "path"
   let lastInput = -Infinity, pointerRect = null;
   let gesture = null, interaction = null, resumedSnippet = null, resumeUntil = 0;
   let releaseAt = Infinity;
-  let sourceRows = [], renderedSnippet = snippets[0], displayedGraphic = null;
+  let sourceRows = [], renderedSnippet = snippets[0], displayedGraphic = null, sourceDimming = null;
   let pointerX = 0, pointerY = 0, targetX = 0, targetY = 0, lastReadout = 0;
   let palette = {}, leaving = null, entryPromise = null, finishEntry = null, entryTimer = 0, entryLayout = null;
   let currentFile = "", currentMode = "", currentCommand = "", currentPosition = "";
+  let selectedSource = "", keyboardFocus = false;
   const clamp = (number, low = 0, high = 1) => Math.max(low, Math.min(high, number));
   const ease = number => { const t = clamp(number); return t * t * (3 - 2 * t); };
   const visible = () => !document.hidden && root.dataset.view !== "workspace";
   const still = () => root.dataset.motion === "paused" || (root.dataset.motion !== "running" && motion.matches);
   const running = () => visible() && !document.querySelector("#training-dialog[open]") && (!still() || Boolean(leaving));
+
+  function announceScene(message) {
+    if (sceneFeedback && sceneFeedback.textContent !== message) sceneFeedback.textContent = message;
+  }
+
+  const sourceKey = row => `${row.line}:${row.column}`;
+  const selectedRow = () => sourceRows.find(row => sourceKey(row) === selectedSource) || sourceRows[0];
+  const holdDuration = type => type === "touch" || type === "pen" ? 6000 : 9000;
 
   function colors() {
     const style = getComputedStyle(root);
@@ -141,8 +152,12 @@ const snippets = [{"repo": "glassbox", "title": "source → WebAssembly", "path"
       if (intensity < .045 && contrast < .065) continue;
       const edge = pixels[i + 3] / 255;
       portrait.push({ x: (x - 60) / 120, y: (y - 60) / 120, z: (luminance - .5) * .13,
-        brightness: Math.max(.10, intensity) * edge, glyph: glyphs[(x * 7 + y * 19) % glyphs.length], phase: x * .7 + y * .3 });
+        brightness: Math.max(.10, intensity) * edge, phase: x * .7 + y * .3,
+        order: (x * 73 + y * 131) % 997 });
     }
+    // Spread the first carried letters over the whole silhouette, rather than
+    // filling its top rows before the rest of the face appears.
+    portrait.sort((a, b) => a.order - b.order);
   }
 
   // Display data only: the excerpt text is never evaluated or executed.
@@ -180,7 +195,11 @@ const snippets = [{"repo": "glassbox", "title": "source → WebAssembly", "path"
         const tokenAlpha = context.globalAlpha;
         for (let i = 0; i < shownToken.length; i++) {
           const carried = interaction.glyphKeys.has(`${sourceLine}:${sourceColumn + consumed + i}`);
-          context.globalAlpha = tokenAlpha * (carried ? 1 - clamp(interaction.amount) : 1);
+          const px = x + i * cell;
+          const edge = sourceDimming ? Math.min(px - sourceDimming.left, sourceDimming.right - px,
+            y - sourceDimming.top, sourceDimming.bottom - y) : -100;
+          const separation = 1 - .90 * ease((edge + 16) / 32) * clamp(interaction.amount);
+          context.globalAlpha = tokenAlpha * separation * (carried ? 1 - clamp(interaction.amount) : 1);
           context.fillText(shownToken[i], x + i * cell, y);
         }
       } else context.fillText(shownToken, x, y);
@@ -228,6 +247,11 @@ const snippets = [{"repo": "glassbox", "title": "source → WebAssembly", "path"
         text: row.text.slice(0, amount), line: row.line, column: row.column, x: gutter, y,
         right: Math.min(width, gutter + amount * cell), bottom: y + lineHeight,
       });
+      if (keyboardFocus && !interaction && sourceKey(row) === selectedSource) {
+        context.globalAlpha = alpha * .14;
+        context.fillStyle = palette.accent;
+        context.fillRect(0, y - 1, width, lineHeight);
+      }
       context.globalAlpha = alpha * .37;
       context.fillStyle = palette.muted;
       context.fillText(row.continuation ? "  ·" : String(row.line).padStart(3, " "), 3, y);
@@ -241,7 +265,42 @@ const snippets = [{"repo": "glassbox", "title": "source → WebAssembly", "path"
       context.fillRect(x, y, editing ? 1.4 : cell, fontSize + 2);
     }
     context.globalAlpha = 1;
+    if (keyboardFocus && sourceRows.length && !sourceRows.some(row => sourceKey(row) === selectedSource)) selectedSource = sourceKey(sourceRows[0]);
+    scene.dataset.selectedLine = keyboardFocus ? String(selectedRow()?.line || "") : "";
     return { row: rows[cursorRow].line, column: cursorColumn + 1 };
+  }
+
+
+  function transportedGlyphs() {
+    return (interaction?.glyphs || []).map(point => {
+      const row = sourceRows.find(row => row.line === point.line && point.column >= row.column && point.column < row.column + row.text.length);
+      return row ? { ...point, x: row.x + (point.column - row.column) * cell, y: row.y + fontSize / 2 } : point;
+    });
+  }
+
+  function carryGlyph(points, index, destination, amount, color, brightness, size, replacement) {
+    if (!points.length) return;
+    const point = points[index % points.length];
+    const primary = index < points.length;
+    const lag = (index % 11) * .012;
+    const progress = ease((amount - lag) / (1 - lag));
+    const extra = primary ? 1 : ease((amount - .32) / .68);
+    const bend = Math.sin(progress * Math.PI) * (6 + index % 7 * 2);
+    const x = point.x + (destination.x - point.x) * progress;
+    const y = point.y + (destination.y - point.y) * progress - bend;
+    const glyphSize = point.size + (size - point.size) * progress;
+    const blend = replacement ? ease((progress - .30) / .40) : 0;
+    context.font = `${glyphSize}px "Plex Mono", monospace`;
+    context.fillStyle = color;
+    context.globalAlpha = clamp(amount * extra * (1 + (brightness - 1) * progress));
+    if (blend < .995) {
+      context.globalAlpha *= 1 - blend;
+      context.fillText(point.glyph, x, y);
+    }
+    if (blend > .005) {
+      context.globalAlpha = clamp(amount * extra * brightness * blend);
+      context.fillText(replacement, x, y);
+    }
   }
 
 
@@ -252,19 +311,19 @@ const snippets = [{"repo": "glassbox", "title": "source → WebAssembly", "path"
     const yaw = quiet ? 0 : pointerX * .31 + Math.sin(t * .25) * .035;
     const pitch = quiet ? 0 : pointerY * .20;
     const cosine = Math.cos(yaw), sine = Math.sin(yaw);
-    const cx = width * .5, cy = height * .49;
+    const cx = width * .5 + (interaction?.pull?.x || 0), cy = height * .49 + (interaction?.pull?.y || 0);
     displayedGraphic = { kind: "avatar", snippet: renderedSnippet, amount,
       bounds: { left: cx - size / 2, right: cx + size / 2, top: cy - size / 2, bottom: cy + size / 2 } };
-    context.font = `${Math.max(3.5, size / (width < 600 ? 40 : 54))}px "Plex Mono", monospace`;
-    context.textAlign = "center";
+    const points = transportedGlyphs();
+    const glyphSize = Math.max(3.5, size / (width < 600 ? 40 : 54));
+    context.textAlign = "left";
     context.textBaseline = "middle";
     context.fillStyle = palette.ink;
-    for (const point of portrait) {
-      const orbit = (1 - ease(amount)) * Math.sin(point.phase) * size * .18;
+    for (const [index, point] of portrait.entries()) {
       const x = (point.x * cosine + point.z * sine) * size;
       const y = (point.y - point.z * pitch) * size;
-      context.globalAlpha = clamp((.09 + point.brightness * 1.02) * amount);
-      context.fillText(point.glyph, cx + x + orbit, cy + y + Math.sin(t * .8 + point.phase) * .22);
+      carryGlyph(points, index, { x: cx + x - glyphSize * .3, y: cy + y + Math.sin(t * .8 + point.phase) * .22 },
+        amount, point.y < -.12 ? palette.accent : palette.ink, .09 + point.brightness * 1.02, glyphSize);
     }
     context.globalAlpha = 1;
     context.textAlign = "left";
@@ -282,17 +341,21 @@ const snippets = [{"repo": "glassbox", "title": "source → WebAssembly", "path"
     const rows = Math.min(21, Math.max(12, Math.floor(height / 13)));
     const spacingX = Math.min(8.5, (width - 30) / columns);
     const spacingY = Math.min(11, (height - 60) / rows);
-    const cx = width * (anchor?.x ?? .5), cy = height * (anchor?.y ?? .49);
+    const cx = width * (anchor?.x ?? .5) + (interaction?.pull?.x || 0), cy = height * (anchor?.y ?? .49) + (interaction?.pull?.y || 0);
     const growth = .1 + .9 * ease(amount);
     displayedGraphic = { kind: "object", snippet, amount, anchor,
       bounds: { left: cx - columns * spacingX / 2, right: cx + columns * spacingX / 2,
         top: cy - rows * spacingY / 2, bottom: cy + rows * spacingY / 2 } };
     const architecture = snippet.repo === "architecture-lab";
     const marks = " .:;+=*#%@";
-    context.textAlign = "center";
+    const points = transportedGlyphs();
+    context.textAlign = "left";
     context.textBaseline = "middle";
     context.font = `${Math.max(6, spacingX)}px "Plex Mono", monospace`;
-    for (let y = 0; y < rows; y++) for (let x = 0; x < columns; x++) {
+    const total = rows * columns;
+    const stride = total % 31 === 0 ? 37 : 31;
+    for (let index = 0; index < total; index++) {
+      const slot = index * stride % total, x = slot % columns, y = Math.floor(slot / columns);
       const px = (x - columns / 2) / columns, py = (y - rows / 2) / rows;
       const distance = Math.hypot(px - pointerX * .34, py - pointerY * .28);
       const value = architecture
@@ -306,9 +369,8 @@ const snippets = [{"repo": "glassbox", "title": "source → WebAssembly", "path"
         : marks[Math.min(marks.length - 1, Math.floor(brightness * marks.length))];
       const destX = cx + (x - columns / 2) * spacingX * growth;
       const destY = cy + (y - rows / 2) * spacingY * growth;
-      const originX = anchor ? anchor.sourceX * width + ((y * columns + x) % anchor.text.length) * cell : destX;
-      const originY = anchor ? anchor.sourceY * height : destY;
-      context.fillText(glyph, originX + (destX - originX) * ease(amount), originY + (destY - originY) * ease(amount));
+      carryGlyph(points, index, { x: destX, y: destY }, amount,
+        brightness > .64 ? palette.accent : palette.ink, edge * (.16 + brightness * .79), Math.max(6, spacingX), glyph);
     }
     context.globalAlpha = amount * .78;
     context.textAlign = "left";
@@ -415,28 +477,31 @@ const snippets = [{"repo": "glassbox", "title": "source → WebAssembly", "path"
       sourceX: row.x / width, sourceY: row.y / height, text: row.text || "code" };
   }
 
-  function sourceGlyphs(row) {
+  function sourceGlyphs(row, limit = 180) {
     const sorted = [...sourceRows].sort((a, b) => Math.abs(a.y - row.y) - Math.abs(b.y - row.y));
     const points = [];
     for (const source of sorted) for (let i = 0; i < source.text.length; i++) {
       if (!source.text[i].trim()) continue;
       points.push({ key: `${source.line}:${source.column + i}`, glyph: source.text[i], x: source.x + i * cell, y: source.y + fontSize / 2, size: fontSize, line: source.line, column: source.column + i });
-      if (points.length >= 180) return points;
+      if (points.length >= limit) return points;
     }
     return points;
   }
 
   function openGraphic(row, pointerType, requestedKind) {
-    if (!row || !visible() || still() || leaving || document.querySelector("dialog[open]")) return;
+    if (!row || !visible() || leaving || document.querySelector("dialog[open]")) return;
+    const staticEffect = still();
+    if (staticEffect && !["keyboard", "button"].includes(pointerType)) return;
     const now = performance.now();
     const kind = requestedKind || (row.gutter ? "history" : ["tokens", "tokenize", "ast", "ir", "wasm", "emitWasm", "compile", "lower", "optimize", "output", "byteLocation", "match"].includes(row.token) ? "tokens" : renderedSnippet.repo === "glassbox" ? "avatar" : "object");
     const next = { kind, snippet: renderedSnippet, anchor: makeAnchor(row),
-      amount: 0, velocity: 0, target: 1, expires: now + (pointerType === "touch" || pointerType === "pen" ? 6000 : 9000) };
-    if (["history", "tokens"].includes(kind)) {
-      next.glyphs = sourceGlyphs(row);
-      next.glyphKeys = new Set(next.glyphs.map(point => point.key));
-    }
-    if (interaction && interaction.kind === next.kind && interaction.kind !== "avatar" && interaction.snippet === next.snippet) {
+      amount: staticEffect ? 1 : 0, velocity: 0, target: 1, static: staticEffect,
+      pointerType, pull: { x: 0, y: 0 }, pullTarget: { x: 0, y: 0 },
+      expires: staticEffect ? Infinity : now + holdDuration(pointerType) };
+    next.glyphs = sourceGlyphs(row, ["history", "tokens"].includes(kind) ? 180 : 720);
+    next.glyphKeys = new Set(next.glyphs.map(point => point.key));
+    if (staticEffect) interaction = next;
+    else if (interaction && interaction.kind === next.kind && interaction.snippet === next.snippet) {
       // Retarget an existing spring rather than snapping a repeated tap back to zero.
       interaction.destination = next.anchor;
       interaction.target = 1;
@@ -449,19 +514,34 @@ const snippets = [{"repo": "glassbox", "title": "source → WebAssembly", "path"
     } else interaction = next;
 
     lastInput = now;
+    announceScene(`${({ history: "git history", tokens: "compile sketch", avatar: "source portrait", object: "source field" })[kind]} for ${next.snippet.repo}. ${kind === "history" ? "left and right select commits. " : ""}escape returns to code.`);
+    if (staticEffect) drawScene(elapsed);
     schedule();
   }
 
   function closeGraphic() {
     if (!interaction && displayedGraphic) interaction = { ...displayedGraphic, velocity: 0 };
-    if (interaction) { interaction.target = 0; interaction.next = null; }
-
+    if (interaction) {
+      interaction.target = 0; interaction.next = null;
+      if (interaction.static || still()) {
+        resumedSnippet = interaction.snippet;
+        resumeUntil = elapsed + cycleLength - elapsed % cycleLength;
+        interaction = null;
+        drawScene(elapsed);
+      }
+      announceScene("returned to source code.");
+    }
   }
 
   function updateInteraction(now, delta) {
     if (!interaction) return;
+    if (interaction.static) return;
     if (now >= interaction.expires) { interaction.target = 0; }
     const dt = Math.min(delta || 16.67, 48) / 1000;
+    if (interaction.pull) {
+      const follow = 1 - Math.exp(-dt / .07);
+      for (const axis of ["x", "y"]) interaction.pull[axis] += ((interaction.pullTarget?.[axis] || 0) - interaction.pull[axis]) * follow;
+    }
     const frequency = ["history", "tokens"].includes(interaction.kind) ? (interaction.target ? 9 : 11) : interaction.target ? 14 : 20;
     const offset = interaction.amount - interaction.target;
     const impulse = (interaction.velocity + frequency * offset) * dt;
@@ -485,29 +565,41 @@ const snippets = [{"repo": "glassbox", "title": "source → WebAssembly", "path"
 
   function drawInteraction(time) {
     const { snippet, amount, kind, anchor } = interaction;
+    const quiet = still() || interaction.static;
+    if (quiet) time = 0;
     scene.dataset.phase = "interactive";
-    editor(snippet, (time % cycleLength) / cycleLength, 1 - amount * (["history", "tokens"].includes(kind) ? .88 : .70), time, true, true);
+    // Keep the live code outside the graphic clear; fade the cells beneath its
+    // labels without painting a panel or hiding the continuous typing.
+    sourceDimming = window.PortfolioEntranceEffects?.bounds?.(kind, {
+      width, height, amount, anchor, glyphs: interaction.glyphs, pull: interaction.pull,
+    }) || null;
+    editor(snippet, quiet ? 1 : (time % cycleLength) / cycleLength, 1 - amount * .58, time, !quiet, !quiet);
     scene.dataset.effect = kind;
+    scene.dataset.selectedCommit = kind === "history" ? interaction.selectedCommit || commitHistory[snippet.repo]?.[0]?.sha || "" : "";
     if (["history", "tokens"].includes(kind) && window.PortfolioEntranceEffects) {
       const bounds = window.PortfolioEntranceEffects.draw(kind, { context, width, height, amount, time, anchor, snippet,
-        history: commitHistory[snippet.repo] || [], glyphs: interaction.glyphs?.map(point => {
-          const row = sourceRows.find(row => row.line === point.line && point.column >= row.column && point.column < row.column + row.text.length);
-          return row ? { ...point, x: row.x + (point.column - row.column) * cell, y: row.y + fontSize / 2 } : point;
-        }), ...palette });
+        history: commitHistory[snippet.repo] || [], selectedCommit: interaction.selectedCommit,
+        pull: interaction.pull, glyphs: transportedGlyphs(), ...palette });
       displayedGraphic = { kind, snippet, amount, anchor, bounds, glyphs: interaction.glyphs, glyphKeys: interaction.glyphKeys };
     } else if (kind === "avatar") avatar(amount, time);
     else liveObject(snippet, amount, time, anchor);
+    if (displayedGraphic) Object.assign(displayedGraphic, { glyphs: interaction.glyphs,
+      glyphKeys: interaction.glyphKeys, static: interaction.static, pull: interaction.pull,
+      pullTarget: interaction.pullTarget, pointerType: interaction.pointerType, selectedCommit: interaction.selectedCommit });
     status(snippet, "NORMAL", kind === "history" ? "git log --graph --oneline" : kind === "tokens" ? "./source --inspect" : kind === "avatar" ? "!./avatar --track" : `!./${snippet.repo} --live`);
     drawInputHud(time);
   }
 
   function drawScene(time) {
     context.clearRect(0, 0, width, height);
+    sourceDimming = null;
     displayedGraphic = null;
     scene.dataset.effect = interaction?.kind || "";
+    if (!interaction) scene.dataset.selectedCommit = "";
     if (!width || !height) return;
     const clock = time % cycleLength;
     const snippet = resumedSnippet && time < resumeUntil ? resumedSnippet : snippets[Math.floor(time / cycleLength) % snippets.length];
+    if (interaction && (interaction.static || !still())) { drawInteraction(time); return; }
     if (still()) {
       editor(snippet, 1, 1, 0, false, false);
       status(snippet, "NORMAL", "");
@@ -515,7 +607,6 @@ const snippets = [{"repo": "glassbox", "title": "source → WebAssembly", "path"
       drawInputHud(time);
       return;
     }
-    if (interaction) { drawInteraction(time); return; }
     scene.dataset.phase = "editing";
     const position = editor(snippet, clock / cycleLength, 1, time, true, true);
     status(snippet, "INSERT", "", position.row, position.column);
@@ -642,8 +733,15 @@ const snippets = [{"repo": "glassbox", "title": "source → WebAssembly", "path"
     colors();
     if (frame) cancelAnimationFrame(frame);
     frame = 0; lastFrame = 0;
+    if (visible() && !still() && interaction?.static) {
+      interaction.static = false;
+      interaction.expires = performance.now() + holdDuration(interaction.pointerType);
+    }
     if (!visible() || still()) {
-      gesture = null; interaction = null; displayedGraphic = null;
+      gesture = null;
+      scene.dataset.dragging = "false";
+      if (!visible() || !interaction?.static) interaction = null;
+      displayedGraphic = null;
       releaseAt = Infinity;
       targetX = 0; targetY = 0;
     }
@@ -674,13 +772,39 @@ const snippets = [{"repo": "glassbox", "title": "source → WebAssembly", "path"
   function trackGesture(event) {
     if (!gesture || event.pointerId !== gesture.id) return;
     gesture.distance = Math.max(gesture.distance, Math.hypot(event.clientX - gesture.x, event.clientY - gesture.y));
+    if (gesture.effect && gesture.effect === interaction && gesture.distance > 6) {
+      interaction.pullTarget = { x: clamp((event.clientX - gesture.x) * .55, -40, 40),
+        y: clamp((event.clientY - gesture.y) * .55, -40, 40) };
+      interaction.expires = performance.now() + holdDuration(event.pointerType);
+      lastInput = performance.now();
+      schedule();
+    }
+  }
+  function graphicContains(x, y) {
+    const bounds = displayedGraphic?.bounds;
+    return displayedGraphic?.amount > .35 && bounds && x >= bounds.left && x <= bounds.right && y >= bounds.top && y <= bounds.bottom;
+  }
+  function chooseCommit(record) {
+    if (!interaction || !record) return;
+    interaction.selectedCommit = record.sha;
+    interaction.expires = interaction.static ? Infinity : performance.now() + holdDuration(interaction.pointerType);
+    scene.dataset.selectedCommit = record.sha;
+    announceScene(`${record.sha.slice(0, 7)}: ${record.message}.`);
+    if (still()) drawScene(elapsed);
+    schedule();
   }
   const inputSurface = entrance || canvas;
   inputSurface.addEventListener("pointerdown", event => {
-    if (event.isPrimary === false) { gesture = null; return; }
+    if (event.isPrimary === false) { gesture = null; scene.dataset.dragging = "false"; return; }
     if (ignoresInput(event) || (event.button !== undefined && event.button !== 0)) return;
     pointerRect = canvas.getBoundingClientRect();
-    gesture = { id: event.pointerId, x: event.clientX, y: event.clientY, started: performance.now(), distance: 0 };
+    const inside = graphicContains(event.clientX - pointerRect.left, event.clientY - pointerRect.top);
+    gesture = { id: event.pointerId, x: event.clientX, y: event.clientY, started: performance.now(), distance: 0,
+      effect: inside ? interaction : null };
+    if (inside) {
+      scene.dataset.dragging = "true";
+      try { codeSurface?.setPointerCapture?.(event.pointerId); } catch { /* The pointer may already be released. */ }
+    }
     releaseAt = Infinity;
 
     trackPointer(event);
@@ -692,15 +816,22 @@ const snippets = [{"repo": "glassbox", "title": "source → WebAssembly", "path"
     if (!gesture || event.pointerId !== gesture.id) return;
     trackGesture(event);
     const tap = gesture.distance < 25 && performance.now() - gesture.started < 500;
+    const pulled = gesture.effect && gesture.distance > 6;
+    scene.dataset.dragging = "false";
+    if (gesture.effect === interaction && interaction) interaction.pullTarget = { x: 0, y: 0 };
     gesture = null;
     if (ignoresInput(event)) return;
-    if (tap) {
+    if (tap && !pulled) {
       const rect = canvas.getBoundingClientRect();
       const x = event.clientX - rect.left, y = event.clientY - rect.top;
-      const bounds = displayedGraphic?.bounds;
-      const insideGraphic = displayedGraphic?.amount > .35 && bounds && x >= bounds.left && x <= bounds.right && y >= bounds.top && y <= bounds.bottom;
+      const insideGraphic = graphicContains(x, y);
       const row = sourceHit(x, y);
-      if (insideGraphic || !row) closeGraphic();
+      const commit = insideGraphic && interaction?.kind === "history" ? window.PortfolioEntranceEffects?.pick?.("history", {
+        width, height, amount: interaction.amount, anchor: interaction.anchor, snippet: interaction.snippet,
+        pull: interaction.pull, glyphs: transportedGlyphs(), history: commitHistory[interaction.snippet.repo] || [],
+      }, x, y) : null;
+      if (commit) chooseCommit(commit);
+      else if (insideGraphic || !row) closeGraphic();
       else openGraphic(row, event.pointerType);
     }
     // The spring keeps the tap alive after release; do not zero it before its first frame.
@@ -710,6 +841,8 @@ const snippets = [{"repo": "glassbox", "title": "source → WebAssembly", "path"
   }, { passive: true });
   window.addEventListener("pointercancel", event => {
     if (gesture?.id !== event.pointerId) return;
+    scene.dataset.dragging = "false";
+    if (gesture.effect === interaction && interaction) interaction.pullTarget = { x: 0, y: 0 };
     gesture = null; releasePointer();
   }, { passive: true });
   window.addEventListener("scroll", () => { pointerRect = null; }, { passive: true });
@@ -719,19 +852,68 @@ const snippets = [{"repo": "glassbox", "title": "source → WebAssembly", "path"
   document.addEventListener("visibilitychange", refresh);
   motion.addEventListener("change", refresh);
   window.addEventListener("resize", resize, { passive: true });
+  codeSurface?.addEventListener("focus", () => {
+    keyboardFocus = true;
+    const row = selectedRow();
+    if (row) selectedSource = sourceKey(row);
+    drawScene(elapsed);
+  });
+  codeSurface?.addEventListener("blur", () => { keyboardFocus = false; if (visible()) drawScene(elapsed); });
+  codeSurface?.addEventListener("keydown", event => {
+    if (event.defaultPrevented || event.isComposing || event.ctrlKey || event.metaKey || event.altKey
+      || !visible() || leaving || document.querySelector("dialog[open]")) return;
+    if (interaction?.kind === "history" && ["ArrowLeft", "ArrowRight"].includes(event.key)) {
+      const records = (commitHistory[interaction.snippet.repo] || []).slice(0, 4).reverse();
+      const current = Math.max(0, records.findIndex(record => record.sha === (interaction.selectedCommit || records.at(-1)?.sha)));
+      const index = clamp(current + (event.key === "ArrowLeft" ? -1 : 1), 0, records.length - 1);
+      chooseCommit(records[index]);
+    } else if (["ArrowUp", "ArrowDown"].includes(event.key)) {
+      if (!sourceRows.length) return;
+      const current = Math.max(0, sourceRows.findIndex(row => sourceKey(row) === selectedSource));
+      const row = sourceRows[clamp(current + (event.key === "ArrowUp" ? -1 : 1), 0, sourceRows.length - 1)];
+      selectedSource = sourceKey(row);
+      keyboardFocus = true;
+      announceScene(`line ${row.line}: ${row.text.trim()}`);
+      drawScene(elapsed);
+    } else if (event.key === " " || event.key === "Spacebar") {
+      if (event.repeat) { event.preventDefault(); return; }
+      if (interaction?.target) closeGraphic();
+      else {
+        const row = selectedRow();
+        if (!row) return;
+        const token = row.text.match(/\b(?:compile|tokens|tokenize|ast|wasm|lower|optimize|output|byteLocation|match)\b/)?.[0];
+        openGraphic({ ...row, token }, "keyboard");
+      }
+    } else return;
+    event.preventDefault();
+    event.stopPropagation?.();
+    schedule();
+  });
+  inputSurface.addEventListener("keydown", event => {
+    if (event.key !== "Escape" || event.defaultPrevented || event.isComposing || !interaction || !visible()
+      || document.querySelector("dialog[open]")) return;
+    event.preventDefault(); event.stopPropagation?.();
+    closeGraphic(); schedule();
+  });
   fileLabel?.addEventListener("click", () => {
     const row = sourceRows[0];
     if (!row) return;
     if (interaction?.kind === "history" && interaction.target) closeGraphic();
-    else openGraphic(row, "mouse", "history");
+    else {
+      openGraphic(row, "button", "history");
+      if (interaction?.kind === "history" && interaction.target) codeSurface?.focus?.({ preventScroll: true });
+    }
     lastInput = performance.now();
     schedule();
   });
-  window.PortfolioAnimation = Object.freeze({ enter, cancel: completeEntry });
+  window.PortfolioAnimation = Object.freeze({ enter, cancel: completeEntry,
+    get state() { return Object.freeze({ effect: interaction?.kind || null, glyphCount: interaction?.glyphs?.length || 0,
+      static: Boolean(interaction?.static), selectedCommit: interaction?.selectedCommit || null,
+      selectedLine: selectedRow()?.line || null }); } });
   const image = new Image();
   image.onload = () => { sourceImage = image; buildPortrait(); refresh(); };
   image.onerror = () => { buildPortrait(); refresh(); };
-  image.src = "/assets/memoji-saiyan.png";
+  image.src = "/assets/memoji-saiyan.webp";
   if (document.fonts?.ready) document.fonts.ready.then(() => { buildPortrait(); resize(); refresh(); });
   colors();
   buildPortrait();

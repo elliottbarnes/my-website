@@ -51,6 +51,10 @@ The seven-ball radar includes ellmiott (language-model internals), batchline (ba
 
 Tap the entrance filename or line-number gutter to unfold real public commit history and its source path. Tap compiler identifiers such as `tokens`, `wasm`, or `compile` for a source-to-token sketch; remaining code taps retain the portrait and procedural effects. All effects are user-triggered and typing continues. The history is a dated embedded public snapshot, not a live API query; token outputs are an explicitly labeled compile sketch, not a compiler execution.
 
+Visible source letters now carry into every effect and return to their live code cells. Drag an open graphic to pull it, then release to let it settle; swipes on idle code do not launch effects. Select a history hash to read that commit’s subject. The code surface supports Up/Down to select a line, Space to open or close its graphic, Left/Right to select history commits, and Escape to return to code. The filename opens history and focuses these controls. Paused and reduced motion offer a static preview with no animation loop.
+
+The generated Dragon Balls and Memoji use pixel-identical lossless WebP encoding, saving 40.2% compared with their PNG sources. Hidden workspace images load lazily, and the training game initializes its sprite images only when opened. Gameplay can begin with fallback balls while those images decode.
+
 ## Hidden training chamber
 
 The small seven-star ball in the footer opens a Dragon Ball-themed brick breaker. The secret command `kamehameha` (also `training` or `breaker`) opens it through the command menu. Drag the paddle on touch devices, or use arrows/a/d and Space. The game starts only after a launch, has three lives, pauses when hidden, and returns focus on close. Clearing all seven shield columns collects the balls; power passes 9000 on completion. No scores or inputs leave the browser.

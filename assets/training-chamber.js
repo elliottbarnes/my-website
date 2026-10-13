@@ -17,12 +17,7 @@
   const reducedMotion = window.matchMedia("(prefers-reduced-motion: reduce)");
   const game = engine.create();
   const keys = new Set();
-  const sprites = Array.from({ length: 7 }, (_, index) => {
-    const image = new Image();
-    image.onload = () => { if (dialog.open) draw(); };
-    image.src = `/assets/dragon-ball-${index + 1}.png`;
-    return image;
-  });
+  const sprites = [];
   let opener = null;
   let paused = false;
   let frame = 0;
@@ -40,6 +35,17 @@
   const active = () => dialog.open && !document.hidden && !paused;
   const terminal = () => game.phase === "won" || game.phase === "lost";
   const direction = () => Number(keys.has("ArrowRight") || keys.has("d")) - Number(keys.has("ArrowLeft") || keys.has("a"));
+
+  function loadSprites() {
+    if (sprites.length) return;
+    for (let star = 1; star <= 7; star++) {
+      const image = new Image();
+      image.decoding = "async";
+      image.onload = () => { if (dialog.open) draw(); };
+      sprites.push(image);
+      image.src = `/assets/dragon-ball-${star}.webp`;
+    }
+  }
 
   function colors() {
     const style = getComputedStyle(root);
@@ -275,6 +281,7 @@
     reset(); colors();
     root.dataset.training = "open";
     dialog.showModal();
+    loadSprites();
     window.dispatchEvent(new CustomEvent("portfolio:training", { detail: { open: true } }));
     resize(); updateUI(); canvas.focus({ preventScroll: true });
   }

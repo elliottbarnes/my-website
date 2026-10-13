@@ -18,8 +18,8 @@
     const scale = morphing ? 1 : .06 + .94 * reveal;
     const originX = clamp((anchor?.sourceX ?? .5) * width, 12, width - 12);
     const originY = clamp((anchor?.sourceY ?? .4) * height, 12, height - 12);
-    const destinationX = clamp((anchor?.x ?? .5) * width, w / 2 + 12, width - w / 2 - 12);
-    const destinationY = clamp((anchor?.y ?? .5) * height, h / 2 + 14, height - h / 2 - 16);
+    const destinationX = clamp((anchor?.x ?? .5) * width + (args.pull?.x || 0), w / 2 + 12, width - w / 2 - 12);
+    const destinationY = clamp((anchor?.y ?? .5) * height + (args.pull?.y || 0), h / 2 + 14, height - h / 2 - 16);
     const cx = morphing ? destinationX : originX + (destinationX - originX) * reveal;
     const cy = morphing ? destinationY : originY + (destinationY - originY) * reveal;
     const left = cx - w * scale / 2, top = cy - h * scale / 2;
@@ -100,19 +100,42 @@
     ctx.fill();
   }
 
+  function historyLayout(args, box) {
+    const records = (Array.isArray(args.history) ? args.history : [])
+      .filter(record => /^[0-9a-f]{7,40}$/i.test(record?.sha || "")).slice(0, 4).reverse();
+    const hashWidth = box.w < 390 ? 60 : 68;
+    const step = records.length > 1 ? (box.w - hashWidth - 16) / (records.length - 1) : 0;
+    const nodes = records.map((record, index) => {
+      const flex = Math.sin((index + 1) / (records.length + 1) * Math.PI);
+      const baseX = records.length === 1 ? (box.w - hashWidth) / 2 : 8 + index * step;
+      return { record, x: clamp(baseX + (args.pull?.x || 0) * .20 * flex, 8, box.w - hashWidth - 8),
+        y: 50 + (index % 2) * 21 + (args.pull?.y || 0) * .12 * flex };
+    });
+    return { records, hashWidth, nodes };
+  }
+
+  function subjectLines(value, columns) {
+    const words = String(value).toLowerCase().split(/\s+/);
+    const lines = [""];
+    for (const word of words) {
+      let line = lines[lines.length - 1];
+      if (line && line.length + word.length + 1 > columns) {
+        if (lines.length === 2) { lines[1] = shorten(`${line} ${word} …`, columns); break; }
+        lines.push(""); line = "";
+      }
+      lines[lines.length - 1] = shorten(line ? `${line} ${word}` : word, columns);
+    }
+    return lines;
+  }
+
   function history(args) {
     const { context, amount, time, snippet, ink = "#cbcbb6", muted = ink, accent = ink, highlight = accent } = args;
     const box = layout(args, 206);
     const ctx = begin(args, box);
-    const records = (Array.isArray(args.history) ? args.history : [])
-      .filter(record => /^[0-9a-f]{7,40}$/i.test(record?.sha || "")).slice(0, 4).reverse();
+    const { records, hashWidth, nodes } = historyLayout(args, box);
     const count = records.length;
     const compact = box.w < 390;
-    const hashWidth = compact ? 60 : 68;
-    const startX = 8, endX = box.w - hashWidth - 8;
-    const step = count > 1 ? (endX - startX) / (count - 1) : 0;
-    const nodes = records.map((record, index) => ({ record, x: count === 1 ? (box.w - hashWidth) / 2 : startX + index * step,
-      y: 50 + (index % 2) * 21 }));
+    const selected = records.find(record => record.sha === args.selectedCommit) || records[count - 1];
     const bySha = new Map(nodes.map(node => [node.record.sha, node]));
     text(ctx, "git log --oneline", 8, 15, muted, amount * .8);
     text(ctx, "head", box.w - 32, 15, accent, amount * .8, 8);
@@ -142,11 +165,12 @@
           dot(ctx, x, y, highlight, amount * reveal * .9, 1.8);
         }
       }
-      ctx.globalAlpha = amount * reveal * (index === count - 1 ? .75 : .35);
-      ctx.strokeStyle = index === count - 1 ? accent : muted;
+      const active = node.record === selected;
+      ctx.globalAlpha = amount * reveal * (active ? .85 : .35);
+      ctx.strokeStyle = active ? accent : muted;
       ctx.strokeRect(node.x, node.y - 11, hashWidth, 22);
       trace(ctx, node.x, node.y - 11, node.x + hashWidth, node.y - 11, muted, amount * reveal * .4);
-      text(ctx, node.record.sha.slice(0, 7), node.x + 6, node.y, index === count - 1 ? accent : ink, amount * reveal, compact ? 10 : 9);
+      text(ctx, node.record.sha.slice(0, 7), node.x + 6, node.y, active ? accent : ink, amount * reveal, compact ? 10 : 9);
     }
 
     const path = String(snippet?.path || "source").split("/");
@@ -158,9 +182,11 @@
       text(ctx, `└─ ${shorten(path.slice(0, -1).join("/"), columns - 3)}/`, 8, treeY + 17, muted, amount * .7);
       text(ctx, `   └─ ${shorten(path[path.length - 1], columns - 6)}`, 8, treeY + 34, ink, amount * .85);
     } else text(ctx, `└─ ${shorten(path[0], columns - 3)}`, 8, treeY + 17, ink, amount * .85);
-    const latest = records[records.length - 1];
-    const subject = latest ? String(latest.message || "").split("\n")[0] : "commit-pinned source";
-    text(ctx, shorten(subject.toLowerCase(), columns), 8, box.h - 14, muted, amount * .65, 8);
+    const subject = selected ? String(selected.message || "").split("\n")[0] : "commit-pinned source";
+    const subjectColumns = Math.max(12, Math.floor((box.w - 20) / 5.4));
+    subjectLines(subject, subjectColumns).forEach((line, index) => {
+      text(ctx, line, 8, box.h - 26 + index * 14, muted, amount * .8, 9);
+    });
     context.restore();
     return { left: box.left, top: box.top, right: box.right, bottom: box.bottom };
   }
@@ -210,6 +236,19 @@
   }
 
   window.PortfolioEntranceEffects = Object.freeze({
+    bounds(kind, args) {
+      if (!["history", "tokens"].includes(kind) || !(args?.width > 0) || !(args.height > 0)) return null;
+      return layout(args, kind === "history" ? 206 : 220);
+    },
+    pick(kind, args, x, y) {
+      if (kind !== "history" || !(args?.width > 0) || !(args.height > 0) || args.amount < .65) return null;
+      const box = layout(args, 206);
+      const { nodes, hashWidth } = historyLayout(args, box);
+      const node = nodes.find(node => x >= box.left + node.x * box.scale
+        && x <= box.left + (node.x + hashWidth) * box.scale
+        && Math.abs(y - (box.top + node.y * box.scale)) <= 22);
+      return node ? { sha: node.record.sha, message: String(node.record.message || "").split("\n")[0] } : null;
+    },
     draw(kind, args) {
       if (!args?.context || !(args.width > 0) || !(args.height > 0)) return null;
       flow = null;
