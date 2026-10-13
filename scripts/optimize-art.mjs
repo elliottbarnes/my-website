@@ -25,15 +25,21 @@ if (!sharp) throw new Error("Sharp is unavailable. Use an existing installation 
 const art = [
   ...Array.from({ length: 7 }, (_, index) => ({ name: `dragon-ball-${index + 1}`, size: 128 })),
   { name: "memoji-saiyan", size: 512 },
+  { name: "shenron", size: 512, padding: 51 },
 ];
 const outputs = [];
-for (const { name, size } of art) {
+for (const { name, size, padding = 0 } of art) {
   const input = await readFile(join(root, `assets/${name}.png`));
   const metadata = await sharp(input).metadata();
   if (!metadata.hasAlpha || metadata.width !== metadata.height || metadata.width < size) {
     throw new Error(`${name}: expected a square transparent master larger than its display copy`);
   }
-  const resized = () => sharp(input).resize({ width: size, kernel: "lanczos3" }).ensureAlpha();
+  const resized = () => {
+    let image = sharp(input).resize({ width: size - padding * 2, kernel: "lanczos3" }).ensureAlpha();
+    if (padding) image = image.extend({ top: padding, bottom: padding, left: padding, right: padding,
+      background: { r: 0, g: 0, b: 0, alpha: 0 } });
+    return image;
+  };
   const reference = await resized().raw().toBuffer({ resolveWithObject: true });
   const output = await resized().webp({ lossless: true, exact: true, effort: 6 }).toBuffer();
   const decoded = await sharp(output).ensureAlpha().raw().toBuffer({ resolveWithObject: true });

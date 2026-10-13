@@ -330,6 +330,27 @@ h1,h2,h3,label,.plot-caption,.terminal-title,.project-kind,.scouter-title,.githu
 
 html[data-training=open]{overflow:hidden}
 
+/* A quiet trace of exploration; the reward remains an explicit action. */
+.radar-signal[data-discovered=true] img{filter:drop-shadow(0 0 4px var(--accent))}
+.radar-signal[data-discovered=true]::after{content:"";position:absolute;inset:5px;border:1px solid var(--accent);border-radius:50%;opacity:.45;pointer-events:none}
+.dragon-radar[data-unlocked=true]{grid-template-rows:44px minmax(0,1fr)}
+.plot-caption [data-radar-summon]{position:relative;margin-left:auto;padding:0 6px;min-width:48px;min-height:44px;font:inherit;color:var(--accent);text-transform:lowercase;letter-spacing:0}
+.plot-caption [data-radar-summon]:focus-visible{outline-offset:-3px}
+.plot-caption:has([data-radar-summon]:not([hidden])){min-height:44px;padding-block:0}
+.plot-caption:has([data-radar-summon]:not([hidden]))>span{display:none}
+.dragon-radar[data-summoned=true] .radar-signal img,.dragon-radar[data-summoned=true] .radar-signal::after{opacity:0}
+.dragon-radar[data-summoned=true] .radar-legend{visibility:hidden}
+.dragon-radar[data-summoned=true] .radar-signal:hover img,.dragon-radar[data-summoned=true] .radar-signal:focus-visible img{opacity:1}
+
+/* Search reuses the terminal's native commands and reveals just enough context. */
+#command-dialog{max-height:calc(100dvh - 32px);overflow:auto}
+.command-meta{display:none}
+.command-options[data-searching=true]{display:flex;flex-direction:column;gap:0;max-height:min(280px,max(88px,calc(100dvh - 260px)));overflow-y:auto;overscroll-behavior:contain}
+.command-options[data-searching=true] button{flex-shrink:0;display:flex;flex-direction:column;align-items:flex-start;gap:4px;padding:10px 12px;min-height:48px;text-align:left;border-bottom:1px solid var(--line)}
+.command-options[data-searching=true] .command-meta{display:block;font-size:9px;color:var(--muted);line-height:1.5}
+.command-options button[data-search-active=true]{color:var(--accent);background:var(--panel);box-shadow:inset 2px 0 var(--accent)}
+.command-options button:focus-visible{outline-offset:-2px}
+
 /* Keep the whole entrance usable when a phone rotates or a window is short. */
 @media(max-height:620px){
  [data-view=entrance] .entrance{min-height:320px}
