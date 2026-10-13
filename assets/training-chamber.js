@@ -253,6 +253,8 @@
   }
 
   function setPaused(next) {
+    // Completed rounds retain their result when the visitor changes tabs.
+    if (terminal()) return;
     paused = next;
     keys.clear();
     stop();

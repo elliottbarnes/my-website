@@ -71,6 +71,7 @@ const snippets = [{"repo": "glassbox", "title": "source → WebAssembly", "path"
   let gesture = null, interaction = null, resumedSnippet = null, resumeUntil = 0;
   let releaseAt = Infinity;
   let sourceRows = [], renderedSnippet = snippets[0], displayedGraphic = null, sourceDimming = null;
+  const sourceLineRows = new Map();
   let pointerX = 0, pointerY = 0, targetX = 0, targetY = 0, lastReadout = 0;
   let palette = {}, leaving = null, entryPromise = null, finishEntry = null, entryTimer = 0, entryLayout = null;
   let currentFile = "", currentMode = "", currentCommand = "", currentPosition = "";
@@ -80,6 +81,7 @@ const snippets = [{"repo": "glassbox", "title": "source → WebAssembly", "path"
   const visible = () => !document.hidden && root.dataset.view !== "workspace";
   const still = () => root.dataset.motion === "paused" || (root.dataset.motion !== "running" && motion.matches);
   const running = () => visible() && !document.querySelector("#training-dialog[open]") && (!still() || Boolean(leaving));
+  let quietPreviously = still(), frozenTime = null;
 
   function announceScene(message) {
     if (sceneFeedback && sceneFeedback.textContent !== message) sceneFeedback.textContent = message;
@@ -212,6 +214,7 @@ const snippets = [{"repo": "glassbox", "title": "source → WebAssembly", "path"
 
   function editor(snippet, progress, alpha = 1, time = 0, active = true, editing = true) {
     sourceRows = [];
+    sourceLineRows.clear();
     renderedSnippet = snippet;
     const rows = rowsFor(snippet);
     const capacity = Math.max(3, Math.floor((height - 24) / lineHeight));
@@ -243,10 +246,13 @@ const snippets = [{"repo": "glassbox", "title": "source → WebAssembly", "path"
       const amount = editing ? clamp(shown - offset, 0, row.text.length) : row.text.length;
       offset += row.text.length + 1;
       if (y < 0 || y > height - lineHeight || (editing && index > cursorRow)) return;
-      if (amount > 0 && row.text.trim()) sourceRows.push({
-        text: row.text.slice(0, amount), line: row.line, column: row.column, x: gutter, y,
-        right: Math.min(width, gutter + amount * cell), bottom: y + lineHeight,
-      });
+      if (amount > 0 && row.text.trim()) {
+        const source = { text: row.text.slice(0, amount), line: row.line, column: row.column, x: gutter, y,
+          right: Math.min(width, gutter + amount * cell), bottom: y + lineHeight };
+        sourceRows.push(source);
+        if (!sourceLineRows.has(row.line)) sourceLineRows.set(row.line, []);
+        sourceLineRows.get(row.line).push(source);
+      }
       if (keyboardFocus && !interaction && sourceKey(row) === selectedSource) {
         context.globalAlpha = alpha * .14;
         context.fillStyle = palette.accent;
@@ -257,7 +263,7 @@ const snippets = [{"repo": "glassbox", "title": "source → WebAssembly", "path"
       context.fillText(row.continuation ? "  ·" : String(row.line).padStart(3, " "), 3, y);
       syntaxLine(row.text, gutter, y, alpha * .88, amount, row.line, row.column);
     });
-    if (active && (still() || Math.floor(time / 560) % 2 === 0)) {
+    if (active && ((still() && frozenTime === null) || Math.floor(time / 560) % 2 === 0)) {
       const x = gutter + cursorColumn * cell;
       const y = 10 + (cursorRow - scroll) * lineHeight;
       context.globalAlpha = alpha * .76;
@@ -273,7 +279,7 @@ const snippets = [{"repo": "glassbox", "title": "source → WebAssembly", "path"
 
   function transportedGlyphs() {
     return (interaction?.glyphs || []).map(point => {
-      const row = sourceRows.find(row => row.line === point.line && point.column >= row.column && point.column < row.column + row.text.length);
+      const row = sourceLineRows.get(point.line)?.find(row => point.column >= row.column && point.column < row.column + row.text.length);
       return row ? { ...point, x: row.x + (point.column - row.column) * cell, y: row.y + fontSize / 2 } : point;
     });
   }
@@ -306,7 +312,7 @@ const snippets = [{"repo": "glassbox", "title": "source → WebAssembly", "path"
 
   function avatar(amount, time) {
     const size = Math.min(width * .82, height * .87, 300) * (.55 + .45 * ease(amount));
-    const quiet = still();
+    const quiet = interaction?.static;
     const t = quiet ? 0 : time / 1000;
     const yaw = quiet ? 0 : pointerX * .31 + Math.sin(t * .25) * .035;
     const pitch = quiet ? 0 : pointerY * .20;
@@ -336,7 +342,7 @@ const snippets = [{"repo": "glassbox", "title": "source → WebAssembly", "path"
   }
 
   function liveObject(snippet, amount, time, anchor = null) {
-    const t = still() ? 0 : time / 1000;
+    const t = interaction?.static ? 0 : time / 1000;
     const columns = Math.min(68, Math.max(26, Math.floor(width / 10)));
     const rows = Math.min(21, Math.max(12, Math.floor(height / 13)));
     const spacingX = Math.min(8.5, (width - 30) / columns);
@@ -383,7 +389,7 @@ const snippets = [{"repo": "glassbox", "title": "source → WebAssembly", "path"
   function drawInputHud(time) {
     if (!hudContext) return;
     const phase = scene.dataset.phase;
-    const allowed = visible() && !still() && !entryLayout && !leaving
+    const allowed = visible() && (!still() || frozenTime !== null) && !entryLayout && !leaving
       && window.innerHeight >= (window.innerWidth < 600 ? 700 : 680) && phase !== "boot";
     inputHud.hidden = !allowed;
     if (!allowed) return;
@@ -396,7 +402,7 @@ const snippets = [{"repo": "glassbox", "title": "source → WebAssembly", "path"
       hudContext.setTransform(scale, 0, 0, scale, 0, 0);
     }
     const opacity = phase === "avatar" ? .73 : phase === "editing" ? .38 : .30;
-    const typing = phase === "editing" && currentMode === "INSERT";
+    const typing = (phase === "editing" || (phase === "still" && frozenTime !== null)) && currentMode === "INSERT";
     const activeKey = typing ? glyphs[Math.floor(time / 115) % glyphs.length].toLowerCase() : "";
     hudContext.clearRect(0, 0, 310, 140);
     hudContext.font = '7px "Plex Mono", monospace';
@@ -491,7 +497,6 @@ const snippets = [{"repo": "glassbox", "title": "source → WebAssembly", "path"
   function openGraphic(row, pointerType, requestedKind) {
     if (!row || !visible() || leaving || document.querySelector("dialog[open]")) return;
     const staticEffect = still();
-    if (staticEffect && !["keyboard", "button"].includes(pointerType)) return;
     const now = performance.now();
     const kind = requestedKind || (row.gutter ? "history" : ["tokens", "tokenize", "ast", "ir", "wasm", "emitWasm", "compile", "lower", "optimize", "output", "byteLocation", "match"].includes(row.token) ? "tokens" : renderedSnippet.repo === "glassbox" ? "avatar" : "object");
     const next = { kind, snippet: renderedSnippet, anchor: makeAnchor(row),
@@ -558,6 +563,7 @@ const snippets = [{"repo": "glassbox", "title": "source → WebAssembly", "path"
       if (!next) {
         resumedSnippet = interaction.snippet;
         resumeUntil = elapsed + cycleLength - elapsed % cycleLength;
+        announceScene("returned to source code.");
       }
       interaction = next || null;
     }
@@ -565,7 +571,7 @@ const snippets = [{"repo": "glassbox", "title": "source → WebAssembly", "path"
 
   function drawInteraction(time) {
     const { snippet, amount, kind, anchor } = interaction;
-    const quiet = still() || interaction.static;
+    const quiet = interaction.static;
     if (quiet) time = 0;
     scene.dataset.phase = "interactive";
     // Keep the live code outside the graphic clear; fade the cells beneath its
@@ -599,12 +605,14 @@ const snippets = [{"repo": "glassbox", "title": "source → WebAssembly", "path"
     if (!width || !height) return;
     const clock = time % cycleLength;
     const snippet = resumedSnippet && time < resumeUntil ? resumedSnippet : snippets[Math.floor(time / cycleLength) % snippets.length];
-    if (interaction && (interaction.static || !still())) { drawInteraction(time); return; }
+    if (interaction && (interaction.static || interaction.frozen || !still())) { drawInteraction(time); return; }
     if (still()) {
-      editor(snippet, 1, 1, 0, false, false);
-      status(snippet, "NORMAL", "");
+      const frozen = frozenTime !== null;
+      const position = editor(snippet, frozen ? (frozenTime % cycleLength) / cycleLength : 1,
+        1, frozen ? frozenTime : 0, frozen, frozen);
+      status(snippet, frozen ? "INSERT" : "NORMAL", "", position.row, position.column);
       scene.dataset.phase = "still";
-      drawInputHud(time);
+      drawInputHud(frozen ? frozenTime : 0);
       return;
     }
     scene.dataset.phase = "editing";
@@ -733,18 +741,31 @@ const snippets = [{"repo": "glassbox", "title": "source → WebAssembly", "path"
     colors();
     if (frame) cancelAnimationFrame(frame);
     frame = 0; lastFrame = 0;
-    if (visible() && !still() && interaction?.static) {
-      interaction.static = false;
-      interaction.expires = performance.now() + holdDuration(interaction.pointerType);
-    }
-    if (!visible() || still()) {
-      gesture = null;
-      scene.dataset.dragging = "false";
-      if (!visible() || !interaction?.static) interaction = null;
+    const quiet = still();
+    if (!visible()) {
+      cancelGesture();
+      interaction = null;
       displayedGraphic = null;
+      frozenTime = null;
       releaseAt = Infinity;
       targetX = 0; targetY = 0;
+    } else if (quiet) {
+      cancelGesture();
+      if (!quietPreviously) frozenTime = elapsed;
+      if (interaction && !interaction.static && !interaction.frozen) {
+        interaction.remainingHold = Math.max(0, interaction.expires - performance.now());
+        interaction.expires = Infinity;
+        interaction.frozen = true;
+      }
+    } else {
+      frozenTime = null;
+      if (interaction?.static || interaction?.frozen) {
+        interaction.expires = performance.now() + (interaction.static ? holdDuration(interaction.pointerType) : interaction.remainingHold || 0);
+        interaction.static = false;
+        interaction.frozen = false;
+      }
     }
+    quietPreviously = quiet;
     if (leaving && (!visible() || still() || motion.matches)) completeEntry();
     if (visible()) leaving ? drawDive(performance.now()) : drawScene(elapsed);
     schedule();
@@ -752,11 +773,11 @@ const snippets = [{"repo": "glassbox", "title": "source → WebAssembly", "path"
 
   const controlsSelector = "a, button, input, textarea, select, summary, [role=button], [contenteditable]";
   function ignoresInput(event) {
-    return !visible() || still() || leaving || event.isPrimary === false
+    return !visible() || leaving || event.isPrimary === false
       || Boolean(event.target?.closest?.(controlsSelector)) || Boolean(document.querySelector("dialog[open]"));
   }
   function trackPointer(event) {
-    if (ignoresInput(event)) { return; }
+    if (ignoresInput(event) || still()) { return; }
     const rect = pointerRect || canvas.getBoundingClientRect();
     if (!rect.width || !rect.height) return;
     targetX = clamp((event.clientX - rect.left) / rect.width) - .5;
@@ -769,10 +790,13 @@ const snippets = [{"repo": "glassbox", "title": "source → WebAssembly", "path"
     schedule();
   }
   function releasePointer() { targetX = 0; targetY = 0; lastInput = performance.now(); schedule(); }
-  function trackGesture(event) {
+  function trackGesture(event, checkButtons = false) {
     if (!gesture || event.pointerId !== gesture.id) return;
+    if (checkButtons && ["mouse", "pen"].includes(event.pointerType) && event.buttons !== undefined && (event.buttons & 1) === 0) {
+      cancelGesture(); releasePointer(); return;
+    }
     gesture.distance = Math.max(gesture.distance, Math.hypot(event.clientX - gesture.x, event.clientY - gesture.y));
-    if (gesture.effect && gesture.effect === interaction && gesture.distance > 6) {
+    if (!still() && gesture.effect && gesture.effect === interaction && gesture.distance > 6) {
       interaction.pullTarget = { x: clamp((event.clientX - gesture.x) * .55, -40, 40),
         y: clamp((event.clientY - gesture.y) * .55, -40, 40) };
       interaction.expires = performance.now() + holdDuration(event.pointerType);
@@ -787,18 +811,29 @@ const snippets = [{"repo": "glassbox", "title": "source → WebAssembly", "path"
   function chooseCommit(record) {
     if (!interaction || !record) return;
     interaction.selectedCommit = record.sha;
-    interaction.expires = interaction.static ? Infinity : performance.now() + holdDuration(interaction.pointerType);
+    const hold = holdDuration(interaction.pointerType);
+    interaction.remainingHold = hold;
+    interaction.expires = still() || interaction.static ? Infinity : performance.now() + hold;
     scene.dataset.selectedCommit = record.sha;
     announceScene(`${record.sha.slice(0, 7)}: ${record.message}.`);
     if (still()) drawScene(elapsed);
     schedule();
   }
+  function cancelGesture() {
+    const id = gesture?.id;
+    if (gesture?.effect && gesture.effect === interaction) interaction.pullTarget = { x: 0, y: 0 };
+    gesture = null;
+    scene.dataset.dragging = "false";
+    try {
+      if (id !== undefined && codeSurface?.hasPointerCapture?.(id)) codeSurface.releasePointerCapture(id);
+    } catch { /* Capture may already have ended. */ }
+  }
   const inputSurface = entrance || canvas;
   inputSurface.addEventListener("pointerdown", event => {
-    if (event.isPrimary === false) { gesture = null; scene.dataset.dragging = "false"; return; }
+    if (event.isPrimary === false) { cancelGesture(); releasePointer(); return; }
     if (ignoresInput(event) || (event.button !== undefined && event.button !== 0)) return;
     pointerRect = canvas.getBoundingClientRect();
-    const inside = graphicContains(event.clientX - pointerRect.left, event.clientY - pointerRect.top);
+    const inside = !still() && graphicContains(event.clientX - pointerRect.left, event.clientY - pointerRect.top);
     gesture = { id: event.pointerId, x: event.clientX, y: event.clientY, started: performance.now(), distance: 0,
       effect: inside ? interaction : null };
     if (inside) {
@@ -809,9 +844,9 @@ const snippets = [{"repo": "glassbox", "title": "source → WebAssembly", "path"
 
     trackPointer(event);
   }, { passive: true });
-  inputSurface.addEventListener("pointermove", event => { trackGesture(event); trackPointer(event); }, { passive: true });
+  inputSurface.addEventListener("pointermove", event => { trackGesture(event, true); trackPointer(event); }, { passive: true });
   inputSurface.addEventListener("pointerleave", () => { if (!gesture) releasePointer(); });
-  window.addEventListener("pointermove", trackGesture, { passive: true });
+  window.addEventListener("pointermove", event => trackGesture(event, true), { passive: true });
   window.addEventListener("pointerup", event => {
     if (!gesture || event.pointerId !== gesture.id) return;
     trackGesture(event);
@@ -841,10 +876,11 @@ const snippets = [{"repo": "glassbox", "title": "source → WebAssembly", "path"
   }, { passive: true });
   window.addEventListener("pointercancel", event => {
     if (gesture?.id !== event.pointerId) return;
-    scene.dataset.dragging = "false";
-    if (gesture.effect === interaction && interaction) interaction.pullTarget = { x: 0, y: 0 };
-    gesture = null; releasePointer();
+    cancelGesture(); releasePointer();
   }, { passive: true });
+  codeSurface?.addEventListener("lostpointercapture", event => {
+    if (event.target === codeSurface && gesture?.id === event.pointerId) { cancelGesture(); releasePointer(); }
+  });
   window.addEventListener("scroll", () => { pointerRect = null; }, { passive: true });
   window.addEventListener("portfolio:preferences", refresh);
   window.addEventListener("portfolio:training", refresh);
@@ -908,7 +944,8 @@ const snippets = [{"repo": "glassbox", "title": "source → WebAssembly", "path"
   });
   window.PortfolioAnimation = Object.freeze({ enter, cancel: completeEntry,
     get state() { return Object.freeze({ effect: interaction?.kind || null, glyphCount: interaction?.glyphs?.length || 0,
-      static: Boolean(interaction?.static), selectedCommit: interaction?.selectedCommit || null,
+      static: Boolean(interaction?.static), frozen: Boolean(interaction?.frozen), amount: interaction?.amount || 0,
+      pull: Object.freeze({ x: interaction?.pull?.x || 0, y: interaction?.pull?.y || 0 }), selectedCommit: interaction?.selectedCommit || null,
       selectedLine: selectedRow()?.line || null }); } });
   const image = new Image();
   image.onload = () => { sourceImage = image; buildPortrait(); refresh(); };

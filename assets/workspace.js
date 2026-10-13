@@ -221,12 +221,7 @@
     const ratio = Math.min(window.devicePixelRatio || 1, 2);
     canvas.width = Math.round(width * ratio); canvas.height = Math.round(height * ratio);
     context.setTransform(ratio, 0, 0, ratio, 0, 0);
-    radar.addEventListener?.("click", event => {
-    if (!active() || quiet() || event.target.closest?.("a,button")) return;
-    pulseAt = elapsed;
-    draw();
-  });
-  signals.forEach((signal, index) => {
+    signals.forEach((signal, index) => {
       signal.style.left = `${centerX + locations[index][0] * radius}px`;
       signal.style.top = `${centerY + locations[index][1] * radius}px`;
     });

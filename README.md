@@ -45,15 +45,15 @@ The former handheld design is recoverable in Git history. Existing experimental 
 
 The unmodified Dragon Ball favicon is by [Musett.com](https://www.iconarchive.com/show/dragon-ballz-icons-by-musett/Dragon-Ball-icon.html), under [CC BY-NC-ND 4.0](https://creativecommons.org/licenses/by-nc-nd/4.0/). Attribution appears in the footer. See [ASSET_SOURCES.md](ASSET_SOURCES.md) for retained artwork provenance.
 
-The terminal uses capsule-tech framing, scouter labels, and a Saiyan colour scheme (navy, orange, blue, and green). The former Terminal palette keeps its saved internal ID and now uses Saiyan colours; other saved palettes remain available. The styling adapts to their colours too.
+The frameless entrance and reading pane use scouter labels and a Saiyan colour scheme (navy, orange, blue, and green). The former Terminal palette keeps its saved internal ID and now uses Saiyan colours; other saved palettes remain available. The styling adapts to their colours too.
 
 The seven-ball radar includes ellmiott (language-model internals), batchline (batching/backpressure), and evaldeck (replay contract checks), each with its public browser demo and repository.
 
 Tap the entrance filename or line-number gutter to unfold real public commit history and its source path. Tap compiler identifiers such as `tokens`, `wasm`, or `compile` for a source-to-token sketch; remaining code taps retain the portrait and procedural effects. All effects are user-triggered and typing continues. The history is a dated embedded public snapshot, not a live API query; token outputs are an explicitly labeled compile sketch, not a compiler execution.
 
-Visible source letters now carry into every effect and return to their live code cells. Drag an open graphic to pull it, then release to let it settle; swipes on idle code do not launch effects. Select a history hash to read that commit’s subject. The code surface supports Up/Down to select a line, Space to open or close its graphic, Left/Right to select history commits, and Escape to return to code. The filename opens history and focuses these controls. Paused and reduced motion offer a static preview with no animation loop.
+Visible source letters now carry into every effect and return to their live code cells. Drag an open graphic to pull it, then release to let it settle; swipes on idle code do not launch effects. Select a history hash to read that commit’s subject. The code surface supports Up/Down to select a line, Space to open or close its graphic, Left/Right to select history commits, and Escape to return to code. The filename opens history and focuses these controls. Pausing preserves the current typing position and active effect; resuming continues from there. Paused and reduced-motion visitors can also tap or use the keyboard to explore static previews without an animation loop.
 
-The generated Dragon Balls and Memoji use pixel-identical lossless WebP encoding, saving 40.2% compared with their PNG sources. Hidden workspace images load lazily, and the training game initializes its sprite images only when opened. Gameplay can begin with fallback balls while those images decode.
+The generated Dragon Balls and Memoji use lossless WebP display copies sized for their rendered dimensions at high pixel density. Together they are 237 KB, saving 95.3% against the previous full-resolution WebPs; original PNG masters remain in source. Recreate them with the optional `scripts/optimize-art.mjs` authoring tool described in ASSET_SOURCES.md. Hidden workspace images load lazily, and the training game initializes its sprite images only when opened. Gameplay can begin with fallback balls while those images decode.
 
 ## Hidden training chamber
 

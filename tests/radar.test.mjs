@@ -9,18 +9,18 @@ function radar() {
     const handlers = new Map();
     return {
       addEventListener(type, handler) { handlers.set(type, [...(handlers.get(type) || []), handler]); },
-      emit(type) { for (const handler of handlers.get(type) || []) handler(); },
+      emit(type, event) { for (const handler of handlers.get(type) || []) handler(event); },
     };
   };
   const root = {dataset: {view: 'workspace', motion: 'running'}};
   const frames = new Map();
-  let id = 0, geometry = [];
+  let id = 0, geometry = [], drawings = 0;
   const context = new Proxy({
-    clearRect() { geometry = []; },
+    clearRect() { geometry = []; drawings++; },
     arc(...args) { geometry.push(['arc', ...args]); },
     lineTo(...args) { geometry.push(['line', ...args]); },
   }, {get: (target, key) => target[key] ?? (() => {})});
-  const plot = {dataset: {}, querySelectorAll: () => []};
+  const plot = {...surface(), dataset: {}, querySelectorAll: () => []};
   const canvas = {getContext: () => context, closest: () => plot,
     getBoundingClientRect: () => ({width: 400, height: 220})};
   const about = {hidden: false};
@@ -34,7 +34,8 @@ function radar() {
     getComputedStyle: () => ({getPropertyValue: () => ''}),
     requestAnimationFrame: callback => { frames.set(++id, callback); return id; },
     cancelAnimationFrame: id => frames.delete(id)});
-  return {root, window, document, motion, frames,
+  return {root, window, document, motion, frames, plot,
+    get drawings() { return drawings; },
     drawing: () => JSON.stringify(geometry),
     frame(now) { const pending = [...frames.values()]; frames.clear(); pending.forEach(callback => callback(now)); }};
 }
@@ -71,4 +72,15 @@ test('hidden tabs and reduced motion retain the radar phase', () => {
   page.motion.matches = true; page.motion.emit('change');
   assert.equal(page.drawing(), frozen);
   assert.equal(page.frames.size, 0);
+});
+
+test('radar resizing and preference changes preserve a single tap response', () => {
+  const page = radar();
+  for (let index = 0; index < 10; index++) {
+    page.window.emit('resize');
+    page.window.emit('portfolio:preferences');
+  }
+  const before = page.drawings;
+  page.plot.emit('click', {target: {closest: () => null}});
+  assert.equal(page.drawings, before + 1, 'one tap must redraw once after repeated resizing');
 });

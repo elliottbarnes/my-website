@@ -105,22 +105,24 @@
       .filter(record => /^[0-9a-f]{7,40}$/i.test(record?.sha || "")).slice(0, 4).reverse();
     const hashWidth = box.w < 390 ? 60 : 68;
     const step = records.length > 1 ? (box.w - hashWidth - 16) / (records.length - 1) : 0;
+    const short = box.h < 176;
+    const rowY = box.h < 120 ? 32 : 42;
     const nodes = records.map((record, index) => {
       const flex = Math.sin((index + 1) / (records.length + 1) * Math.PI);
       const baseX = records.length === 1 ? (box.w - hashWidth) / 2 : 8 + index * step;
       return { record, x: clamp(baseX + (args.pull?.x || 0) * .20 * flex, 8, box.w - hashWidth - 8),
-        y: 50 + (index % 2) * 21 + (args.pull?.y || 0) * .12 * flex };
+        y: short ? rowY : 50 + (index % 2) * 21 + (args.pull?.y || 0) * .12 * flex };
     });
     return { records, hashWidth, nodes };
   }
 
-  function subjectLines(value, columns) {
+  function subjectLines(value, columns, limit = 2) {
     const words = String(value).toLowerCase().split(/\s+/);
     const lines = [""];
     for (const word of words) {
       let line = lines[lines.length - 1];
       if (line && line.length + word.length + 1 > columns) {
-        if (lines.length === 2) { lines[1] = shorten(`${line} ${word} …`, columns); break; }
+        if (lines.length === limit) { lines[lines.length - 1] = shorten(`${line} ${word} …`, columns); break; }
         lines.push(""); line = "";
       }
       lines[lines.length - 1] = shorten(line ? `${line} ${word}` : word, columns);
@@ -135,10 +137,11 @@
     const { records, hashWidth, nodes } = historyLayout(args, box);
     const count = records.length;
     const compact = box.w < 390;
+    const short = box.h < 176;
     const selected = records.find(record => record.sha === args.selectedCommit) || records[count - 1];
     const bySha = new Map(nodes.map(node => [node.record.sha, node]));
     text(ctx, "git log --oneline", 8, 15, muted, amount * .8);
-    text(ctx, "head", box.w - 32, 15, accent, amount * .8, 8);
+    text(ctx, "head", box.w - 32, 15, accent, amount * .8, short ? 9 : 8);
 
     for (const [index, node] of nodes.entries()) {
       const reveal = smooth(amount * 1.6 - index * .12);
@@ -176,16 +179,21 @@
     const path = String(snippet?.path || "source").split("/");
     const repo = String(snippet?.repo || "repository");
     const columns = Math.max(12, Math.floor((box.w - 20) / 5.4));
-    const treeY = 111;
-    text(ctx, `${repo}/`, 8, treeY, accent, amount * .9);
-    if (path.length > 1) {
-      text(ctx, `└─ ${shorten(path.slice(0, -1).join("/"), columns - 3)}/`, 8, treeY + 17, muted, amount * .7);
-      text(ctx, `   └─ ${shorten(path[path.length - 1], columns - 6)}`, 8, treeY + 34, ink, amount * .85);
-    } else text(ctx, `└─ ${shorten(path[0], columns - 3)}`, 8, treeY + 17, ink, amount * .85);
+    if (short) {
+      text(ctx, shorten(`${repo}/${path.join("/")}`, columns), 8, box.h < 120 ? 54 : 72, accent, amount * .9);
+    } else {
+      const treeY = 111;
+      text(ctx, `${repo}/`, 8, treeY, accent, amount * .9);
+      if (path.length > 1) {
+        text(ctx, `└─ ${shorten(path.slice(0, -1).join("/"), columns - 3)}/`, 8, treeY + 17, muted, amount * .7);
+        text(ctx, `   └─ ${shorten(path[path.length - 1], columns - 6)}`, 8, treeY + 34, ink, amount * .85);
+      } else text(ctx, `└─ ${shorten(path[0], columns - 3)}`, 8, treeY + 17, ink, amount * .85);
+    }
     const subject = selected ? String(selected.message || "").split("\n")[0] : "commit-pinned source";
     const subjectColumns = Math.max(12, Math.floor((box.w - 20) / 5.4));
-    subjectLines(subject, subjectColumns).forEach((line, index) => {
-      text(ctx, line, 8, box.h - 26 + index * 14, muted, amount * .8, 9);
+    const subjectLimit = box.h < 120 || (!short && box.h < 188) ? 1 : 2;
+    subjectLines(subject, subjectColumns, subjectLimit).forEach((line, index) => {
+      text(ctx, line, 8, box.h - (subjectLimit === 1 ? 12 : 26) + index * 14, muted, amount * .8, 9);
     });
     context.restore();
     return { left: box.left, top: box.top, right: box.right, bottom: box.bottom };
@@ -202,11 +210,13 @@
     const centers = [cellWidth / 2 + 6, box.w / 2, box.w - cellWidth / 2 - 6];
     const labels = ["source", "tokens", outputs[snippet?.repo] || "output"];
     const top = 55, spacing = 20;
-    const rows = Math.min(sample.length, Math.max(3, Math.floor((box.h - 80) / spacing)));
+    const short = box.h < 176;
+    const textSize = short ? 9 : 8;
+    const rows = Math.min(sample.length, Math.max(1, Math.floor((box.h - 80) / spacing)));
     text(ctx, "compile sketch", 6, 13, muted, amount * .8);
-    text(ctx, shorten(String(snippet?.path || "source"), Math.floor((box.w - 12) / 5.4)), 6, box.h - 10, muted, amount * .65, 8);
+    text(ctx, shorten(String(snippet?.path || "source"), Math.floor((box.w - 12) / 5.4)), 6, box.h - 10, muted, amount * .65, textSize);
     for (let column = 0; column < 3; column++) {
-      text(ctx, labels[column], centers[column] - cellWidth / 2, 34, column === 1 ? accent : muted, amount * .9, 8);
+      text(ctx, labels[column], centers[column] - cellWidth / 2, 34, column === 1 ? accent : muted, amount * .9, textSize);
     }
 
     for (let row = 0; row < rows; row++) {
@@ -223,8 +233,8 @@
         ctx.globalAlpha = amount * reveal * (column === 1 ? .50 : .25);
         ctx.strokeStyle = column === 1 ? accent : muted;
         ctx.strokeRect(x, y - 8, cellWidth, 16);
-        const maxCharacters = Math.max(3, Math.floor((cellWidth - 8) / 4.8));
-        text(ctx, shorten(pieces[column], maxCharacters), x + 4, y, column === 1 ? accent : ink, amount * reveal * .88, 8);
+        const maxCharacters = Math.max(3, Math.floor((cellWidth - 8) / (textSize * .6)));
+        text(ctx, shorten(pieces[column], maxCharacters), x + 4, y, column === 1 ? accent : ink, amount * reveal * .88, textSize);
         if (column < 2) segment(ctx, x + cellWidth, y, centers[column + 1] - cellWidth / 2, y, muted, amount * reveal * .25);
       }
       const flow = ((time / 2400 + row * .14) % 1 + 1) % 1;
