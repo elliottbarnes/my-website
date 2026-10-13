@@ -19,7 +19,7 @@ function surface() {
     restore() { transform = saved.pop(); },
     translate(x, y) { transform.x += x * transform.scale; transform.y += y * transform.scale; },
     scale(x, y) { assert.equal(x, y); transform.scale *= x; },
-    fillText(value, x, y) { calls.text.push({ value, ...point(x, y) }); },
+    fillText(value, x, y) { calls.text.push({ value, size: parseFloat(this.font) * transform.scale, ...point(x, y) }); },
     strokeRect(x, y, width, height) {
       calls.boxes.push({ ...point(x, y), width: width * transform.scale, height: height * transform.scale });
     },
@@ -193,4 +193,54 @@ test("selecting an earlier commit shows its own subject without changing the rea
   assert.equal(selected.calls.curves.length, 1);
   const fallback = draw("history", { history, selectedCommit: "unknown" });
   assert.ok(fallback.calls.text.some(entry => entry.value === "later source"));
+});
+
+test("short history keeps hashes, source path, and selected subject in distinct readable bands", () => {
+  const history = [
+    { sha: sha.merge, parents: [sha.right], message: "selected commit introduces a longer public source explanation for the project history and its inspectable implementation" },
+    { sha: sha.right, parents: [sha.left], message: "right branch" },
+    { sha: sha.left, parents: [sha.root], message: "left branch" },
+    { sha: sha.root, parents: [], message: "initial source" },
+  ];
+  for (const height of [110, 166]) {
+    for (const width of [320, 800]) {
+      for (const pull of [{ x: 0, y: 0 }, { x: 40, y: -40 }]) {
+        const args = { width, height, amount: 1, anchor: { x: .5, y: .5 }, history, pull };
+        const { calls, bounds } = draw("history", args);
+        const hashes = calls.text.filter(entry => /^[0-9a-f]{7}$/i.test(entry.value));
+        const sourcePath = calls.text.find(entry => entry.value.startsWith("glassbox/"));
+        const subjects = calls.text.filter(entry => !hashes.includes(entry) && !["git log --oneline", "head"].includes(entry.value) && entry !== sourcePath);
+        assert.equal(hashes.length, 4);
+        assert.equal(new Set(hashes.map(entry => entry.y)).size, 1, "short history uses a single hash row");
+        assert.ok(calls.boxes.every(box => box.y + box.height < sourcePath.y - sourcePath.size / 2), "the path must remain below the hash row");
+        assert.ok(subjects.every(entry => entry.y - entry.size / 2 > sourcePath.y + sourcePath.size / 2), "subjects must remain below the path");
+        assert.equal(subjects.length, height === 110 ? 1 : 2);
+        for (const label of calls.text) {
+          assert.ok(label.size >= 9, "compact layouts keep a readable font size");
+          assert.ok(label.y - label.size / 2 >= bounds.top && label.y + label.size / 2 <= bounds.bottom, "settled text fits the visible canvas");
+        }
+        for (const label of hashes) {
+          assert.equal(effects.pick("history", args, label.x + 10, label.y)?.sha.slice(0, 7), label.value, "compact hashes retain their visible hit targets");
+        }
+      }
+    }
+  }
+});
+
+test("short compile sketches show only rows that fit between labels and the source footer", () => {
+  for (const height of [110, 166]) {
+    const { calls, bounds } = draw("tokens", { height });
+    const footer = calls.text.find(entry => entry.value === "docs/core.js");
+    const headers = calls.text.filter(entry => ["source", "tokens", "wasm"].includes(entry.value));
+    assert.equal(headers.length, 3);
+    assert.equal(calls.boxes.length, height === 110 ? 3 : 6, "the canvas contains one or two complete token rows");
+    for (const box of calls.boxes) {
+      assert.ok(box.y > headers[0].y + headers[0].size / 2);
+      assert.ok(box.y + box.height < footer.y - footer.size / 2, "token boxes cannot collide with the footer");
+    }
+    for (const label of calls.text) {
+      assert.ok(label.size >= 9);
+      assert.ok(label.y - label.size / 2 >= bounds.top && label.y + label.size / 2 <= bounds.bottom);
+    }
+  }
 });

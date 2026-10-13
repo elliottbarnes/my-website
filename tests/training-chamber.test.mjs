@@ -25,10 +25,11 @@ function chamber() {
   dialog.close = () => { dialog.open = false; dialog.dispatch("close"); };
   dialog.querySelectorAll = () => [];
   let renders = 0;
-  const drawnImages = [];
+  const drawnImages = [], drawnText = [];
   const context = new Proxy({
     clearRect() { renders++; },
     drawImage(image) { drawnImages.push(image); },
+    fillText(text) { drawnText.push(text); },
     createRadialGradient: () => ({ addColorStop() {} }),
   }, { get: (target, name) => target[name] ?? (() => {}) });
   canvas.getContext = () => context;
@@ -65,7 +66,7 @@ function chamber() {
     cancelAnimationFrame(id) { frames.delete(id); },
   });
   return {
-    api: window.PortfolioTraining, action, dialog, images, requests, frames, drawnImages,
+    api: window.PortfolioTraining, action, pause, status, window, document, dialog, images, requests, frames, drawnImages, drawnText,
     get state() { return state; }, get renders() { return renders; },
   };
 }
@@ -97,4 +98,23 @@ test("the game starts with fallback balls while sprites load, and late loads res
   controls.images[1].load();
   assert.equal(controls.renders, before, "a late load must not redraw a closed game");
   assert.equal(controls.frames.size, 0);
+});
+
+test("completed training results survive blur and hidden-tab changes", () => {
+  for (const phase of ["won", "lost"]) {
+    const controls = chamber();
+    controls.api.open();
+    controls.state.phase = phase;
+    // A sprite redraw exercises the actual completion overlay before blur.
+    controls.images[0].load();
+    const title = phase === "won" ? "wish granted" : "another round?";
+    assert.equal(controls.drawnText.at(-2), title);
+    controls.window.dispatch("blur");
+    controls.document.hidden = true;
+    controls.document.dispatch("visibilitychange");
+    controls.images[1].load();
+    assert.equal(controls.drawnText.at(-2), title, 'completion must not become a paused overlay');
+    assert.notEqual(controls.status.textContent, "training paused");
+    assert.equal(controls.frames.size, 0);
+  }
 });

@@ -121,3 +121,15 @@ Local validation: physics tests cover collisions, tunneling, aiming, win/loss, a
 Fresh reference research and before/after captures are recorded in `.design/refinement-research.md`. Extended source-letter transport to the portrait and procedural fields, added bounded graphic pull and real-commit selection, and made the code surface keyboard accessible. Static previews work while paused/reduced; resuming restores a finite animated hold. Underlying code fades only beneath diagram labels, without a painted frame. Continuous typing and tap-only activation remain unchanged.
 
 Lossless, pixel-identical WebP encodings reduce generated artwork 40.2%; hidden workspace images are lazy and game sprites load on first opening. Phone-width browser checks verify filename focus, commit keys/taps, Escape, pause/preview/resume, graphic dragging, Enter, all seven decoded radar assets, one-card wheel navigation, and explicit game launch/closure. 147 Node tests and 34-file publication checks pass. Physical iPhone frame profiling and full assistive-technology testing remain unperformed.
+
+## Mobile fit and interaction continuity — 13 October 2026
+
+A fresh live audit reproduced entrance controls below the viewport at 844×390. A compact-height layout now fits the masthead, code, command, pause, theme and Enter controls at that size and at 320×568 without horizontal scrolling. Keyboard focus outlines no longer overlap the command area. Portrait layout remains unchanged at 390×844.
+
+Pausing freezes the current code and effect position, including a partial reveal, and resuming preserves the remaining hold. Paused/reduced-motion visitors can use ordinary code taps and history selection for static previews. Gesture cancellation releases a pulled graphic, including a second pointer and lost capture. The renderer indexes source rows once per draw to avoid repeating a full scan for each transported glyph.
+
+Removed radar listeners that accumulated on resize. Completed training results survive blur/visibility events. The theme picker supports Home/End with an empty filter while preserving text-caret behavior in typed filters.
+
+Production artwork is now 237,408 bytes, 95.3% smaller than the previous full-resolution WebPs, with retained PNG masters and reproducible, transparent display copies. Intrinsic image sizes reserve layout space, project images decode asynchronously, and the local typeface is preloaded.
+
+Browser checks cover 320×568, 390×844, 844×390, 568×320 and 1280×800; entry/home, static preview, pause/resume, theme boundary selection/Escape, seven-ball radar, one-card wheel drag, and game launch/pause/close. Compact history and token layouts keep hashes, source paths and subjects in separate readable bands. All 157 Node tests and 43 Python tests pass; build and source-aware verification pass for 34 public files. Physical iPhone profiling and full screen-reader testing remain unperformed.

@@ -92,7 +92,7 @@
   });
   const list = element("div", { id: "theme-picker-options", class: "theme-picker-options", role: "listbox", "aria-label": "Colorschemes" });
   const counter = element("span", { class: "theme-picker-counter", "aria-hidden": "true" });
-  const instructions = element("p", { id: "theme-picker-help", class: "theme-picker-sr" }, "Type to filter. Arrow keys preview a theme. Enter or click to keep it. Escape restores your previous theme.");
+  const instructions = element("p", { id: "theme-picker-help", class: "theme-picker-sr" }, "Type to filter. Arrow keys preview a theme. With an empty filter, Home and End jump to the first and last theme. Enter or click to keep it. Escape restores your previous theme.");
   const announcement = element("span", { class: "theme-picker-sr", role: "status", "aria-live": "polite" });
   searchRow.append(prompt, input);
   dialog.append(title, cancelButton, searchRow, list, counter, instructions, announcement);
@@ -204,6 +204,11 @@
       if (event.target === cancelButton) return;
       event.preventDefault();
       close(true);
+    } else if (["Home", "End"].includes(event.key) && !input.value) {
+      event.preventDefault();
+      if (!options.length) return;
+      selected = event.key === "Home" ? 0 : options.length - 1;
+      preview();
     } else if (["ArrowDown", "ArrowUp"].includes(event.key) || (event.key === "Tab" && !touchLayout?.matches)) {
       event.preventDefault();
       if (!options.length) return;

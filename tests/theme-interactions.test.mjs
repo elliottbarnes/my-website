@@ -135,6 +135,23 @@ test("keyboard previews stay transient, reveal offscreen options, and Escape res
   assert.equal(page.document.activeElement, page.button);
 });
 
+test("Home and End preview the list boundaries without hijacking filter editing", () => {
+  const page = setup({ saved: "blackmoney" });
+  page.api.open();
+  assert.equal(page.key("End").defaultPrevented, true);
+  assert.equal(page.api.current, "whitegold");
+  assert.ok(page.list.scrollTop > 0, "the last theme is revealed");
+  assert.equal(page.storage.theme, "blackmoney", "jumping remains a transient preview");
+  assert.equal(page.key("Home").defaultPrevented, true);
+  assert.equal(page.api.current, "banish");
+  assert.equal(page.list.scrollTop, 0);
+  page.search("blue");
+  assert.equal(page.key("Home").defaultPrevented, undefined, "a typed filter retains native caret navigation");
+  assert.equal(page.key("End").defaultPrevented, undefined);
+  page.key("Escape");
+  assert.equal(page.api.current, "blackmoney");
+});
+
 test("search previews and explicit selection commits without evaluating query text", () => {
   const page = setup({ saved: "blackmoney" });
   page.api.open();

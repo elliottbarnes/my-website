@@ -75,9 +75,10 @@ function animation({ reduced = false, paused = false, hidden = false, view = "en
   }
   function canvas() {
     const element = node();
-    const calls = { clears: 0, images: [] };
+    const calls = { clears: 0, images: [], text: [] };
     const context = new Proxy({
-      clearRect() { calls.clears += 1; },
+      clearRect() { calls.clears += 1; calls.text = []; },
+      fillText(text, x, y) { calls.text.push({ text, x, y, alpha: this.globalAlpha, font: this.font }); },
       measureText: () => ({ width: 7.2 }),
       drawImage(...arguments_) { calls.images.push(arguments_); },
       getImageData: () => ({ data: new Uint8ClampedArray(120 * 120 * 4) }),
@@ -350,7 +351,7 @@ test("scrolling, long presses, cancellation, and secondary pointers do not count
   }
 });
 
-test("motion and view changes discard active graphics and pending gestures", () => {
+test("view changes discard active graphics while quiet motion freezes effects and cancels pending taps", () => {
   for (const state of ["paused", "reduced", "workspace", "hidden"]) {
     for (const pending of [false, true]) {
       const controls = animation();
@@ -377,19 +378,26 @@ test("motion and view changes discard active graphics and pending gestures", () 
       change(false);
       if (pending) controls.window.dispatch("pointerup", event);
       controls.frame();
-      assert.notEqual(controls.scene.dataset.phase, "interactive", `${state}, pending=${pending}`);
+      if (!pending && ["paused", "reduced"].includes(state)) {
+        assert.equal(controls.scene.dataset.phase, "interactive", `${state} resumes the explicitly opened effect`);
+      } else assert.notEqual(controls.scene.dataset.phase, "interactive", `${state}, pending=${pending}`);
       assert.equal(controls.frames.size, 1, `${state} resumes one frame loop`);
     }
   }
 });
 
-test("paused or reduced motion never launches a tap reaction", () => {
+test("paused or reduced motion permits static code discovery without starting animation", () => {
   for (const options of [{ paused: true }, { reduced: true }]) {
-    const controls = animation(options);
-    tap(controls);
-    controls.frame();
-    assert.notEqual(controls.scene.dataset.phase, "interactive");
-    assert.equal(controls.frames.size, 0);
+    for (const [clientX, expected] of [[10, "history"], [163, "tokens"], [80, "avatar"]]) {
+      const controls = animation(options);
+      tap(controls, { clientX });
+      controls.frame();
+      assert.equal(controls.api.state.effect, expected);
+      assert.equal(controls.api.state.static, true);
+      assert.equal(controls.frames.size, 0);
+      tap(controls, { clientX: 30, clientY: 600 });
+      assert.equal(controls.api.state.effect, null, "a blank tap dismisses a static preview");
+    }
   }
 });
 
@@ -551,4 +559,100 @@ test("Escape announces that an explicit preview has returned to code", () => {
   controls.entrance.dispatch("keydown", { key: "Escape" });
   assert.equal(controls.document.querySelector("#scene-feedback").textContent, "returned to source code.");
   assert.equal(controls.api.state.effect, null);
+});
+
+test("pausing a partial effect preserves its code, geometry, and remaining hold through theme refreshes", () => {
+  const controls = animation();
+  const renderer = controls.window.PortfolioEntranceEffects;
+  let drawn;
+  controls.window.PortfolioEntranceEffects = {
+    ...renderer,
+    draw(kind, args) {
+      drawn = { time: args.time, amount: args.amount, bounds: renderer.draw(kind, args), pull: { ...args.pull } };
+      return drawn.bounds;
+    },
+  };
+  controls.document.querySelector("[data-scene-file]").dispatch("click");
+  displayFor(controls, 200);
+  const snapshot = { ...drawn };
+  const sourceSnapshot = [...controls.field.calls.text];
+  assert.ok(snapshot.amount > 0 && snapshot.amount < .95);
+  controls.root.dataset.motion = "paused";
+  controls.window.dispatch("portfolio:preferences");
+  assert.equal(controls.api.state.frozen, true);
+  assert.deepEqual(drawn, snapshot, "pausing cannot jump to another animation time or shape");
+  assert.deepEqual(controls.field.calls.text, sourceSnapshot, "pausing preserves the exact source characters and cursor position");
+  controls.advance(30000);
+  controls.window.dispatch("portfolio:preferences");
+  assert.deepEqual(drawn, snapshot, "theme refreshes preserve the paused frame");
+  assert.deepEqual(controls.field.calls.text, sourceSnapshot, "a refresh cannot restart the source typing clock");
+  assert.equal(controls.frames.size, 0);
+  controls.root.dataset.motion = "running";
+  controls.window.dispatch("portfolio:preferences");
+  assert.equal(controls.api.state.frozen, false);
+  displayFor(controls, 8000);
+  assert.equal(controls.api.state.effect, "history", "paused time must not consume the remaining hold");
+  displayFor(controls, 1500);
+  assert.equal(controls.api.state.effect, null);
+});
+
+test("pausing idle typing preserves the visible cursor and source position", () => {
+  const controls = animation();
+  displayFor(controls, 1800);
+  const label = controls.document.querySelector("#entrance .status-position");
+  const position = label.textContent;
+  controls.root.dataset.motion = "paused";
+  controls.window.dispatch("portfolio:preferences");
+  assert.equal(label.textContent, position);
+  controls.advance(10000);
+  controls.window.dispatch("portfolio:preferences");
+  assert.equal(label.textContent, position);
+  assert.equal(controls.frames.size, 0);
+});
+
+test("a cancelled effect drag settles its pull after a second finger, capture loss, or missed release", () => {
+  for (const ending of ["second-finger", "capture-loss", "released-buttons"]) {
+    const controls = animation();
+    controls.document.querySelector("[data-scene-file]").dispatch("click");
+    displayFor(controls, 700);
+    const event = { pointerType: ending === "released-buttons" ? "mouse" : "touch", buttons: 1,
+      clientX: 320, clientY: 130, target: controls.field };
+    controls.entrance.dispatch("pointerdown", event);
+    controls.window.dispatch("pointermove", { ...event, clientX: 380 });
+    displayFor(controls, 180);
+    assert.ok(controls.api.state.pull.x > 20);
+    if (ending === "second-finger") controls.entrance.dispatch("pointerdown", { ...event, pointerId: 2, isPrimary: false });
+    else if (ending === "capture-loss") controls.field.parentElement.dispatch("lostpointercapture", { pointerId: 1 });
+    else controls.window.dispatch("pointermove", { ...event, buttons: 0 });
+    assert.equal(controls.scene.dataset.dragging, "false");
+    displayFor(controls, 600);
+    assert.ok(Math.abs(controls.api.state.pull.x) < .1, ending);
+    assert.equal(controls.api.state.effect, "history");
+  }
+});
+
+test("normal mouse and pen releases with no buttons held still activate the tapped code", () => {
+  for (const pointerType of ["mouse", "pen"]) {
+    const controls = animation();
+    const event = { pointerType, clientX: 80, clientY: 20, target: controls.field };
+    controls.entrance.dispatch("pointerdown", { ...event, buttons: 1 });
+    assert.doesNotThrow(() => controls.window.dispatch("pointerup", { ...event, buttons: 0 }));
+    controls.frame(40);
+    assert.equal(controls.api.state.effect, "avatar", pointerType);
+  }
+});
+
+test("touch visitors can select real hashes in a static history preview", () => {
+  const controls = animation({ reduced: true });
+  const renderer = controls.window.PortfolioEntranceEffects;
+  let bounds;
+  controls.window.PortfolioEntranceEffects = { ...renderer,
+    draw(kind, args) { bounds = renderer.draw(kind, args); return bounds; },
+  };
+  tap(controls, { clientX: 10, clientY: 20 });
+  assert.equal(controls.api.state.effect, "history");
+  tap(controls, { clientX: bounds.left + 30, clientY: bounds.top + 50 });
+  assert.equal(controls.api.state.selectedCommit, "6baf3aacc2b86458bd42dfb4d3f511721005bcef");
+  assert.equal(controls.api.state.static, true);
+  assert.equal(controls.frames.size, 0);
 });
