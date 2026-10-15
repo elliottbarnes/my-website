@@ -91,8 +91,71 @@ test("paddle impact position aims the projectile while keeping a steep upward re
       vx: 0, vy: state.ball.speed });
     engine.step(state, .015);
     assert.ok(state.ball.vy < -state.ball.speed * .55, "edge returns must not become nearly horizontal");
-    assert.equal(Math.sign(state.ball.vx), Math.sign(offset));
+    assert.equal(Math.sign(state.ball.vx), Math.sign(offset) || 1);
     close(Math.hypot(state.ball.vx, state.ball.vy), state.ball.speed);
+  }
+});
+
+test("center catches preserve incoming direction and escape an emptied vertical column", () => {
+  for (const incoming of [-80, 0, 80]) {
+    const state = engine.create();
+    state.phase = "playing";
+    Object.assign(state.ball, { x: state.paddle.x, y: state.paddle.y - state.ball.radius - 1,
+      vx: incoming, vy: Math.sqrt(state.ball.speed ** 2 - incoming ** 2) });
+    engine.step(state, .015);
+    assert.equal(Math.sign(state.ball.vx), Math.sign(incoming) || 1);
+    assert.ok(Math.abs(state.ball.vx) >= state.ball.speed * .13, "a center catch retains useful lateral travel");
+    assert.ok(state.ball.vy < -state.ball.speed * .55);
+    close(Math.hypot(state.ball.vx, state.ball.vy), state.ball.speed);
+  }
+  const state = engine.create();
+  state.phase = "playing";
+  for (const brick of state.bricks) if (brick.star === 4) brick.active = false;
+  Object.assign(state.ball, { x: 180, y: 436, vx: 0, vy: state.ball.speed });
+  for (let frame = 0; frame < 180 && state.score === 0; frame++) engine.step(state, 1 / 60);
+  assert.ok(state.score > 0, "a cleared center column cannot lock the ball in a zero-progress orbit");
+});
+
+test("paddle corner catches require an approaching top-facing contact", () => {
+  const speed = 260;
+  for (const side of [-1, 1]) {
+    const trueCatch = engine.create();
+    trueCatch.phase = "playing";
+    Object.assign(trueCatch.ball, { x: trueCatch.paddle.x + side * (trueCatch.paddle.width / 2 + 2),
+      y: trueCatch.paddle.y - 3, vx: 0, vy: speed });
+    engine.step(trueCatch, .001);
+    assert.ok(trueCatch.ball.vy < -speed * .55, "a descending top corner remains catchable");
+    assert.equal(Math.sign(trueCatch.ball.vx), side);
+    close(Math.hypot(trueCatch.ball.vx, trueCatch.ball.vy), speed);
+
+    for (const kind of ["outward", "below-top"]) {
+      const miss = engine.create();
+      miss.phase = "playing";
+      const vx = side * (kind === "outward" ? 230 : -230);
+      const vy = Math.sqrt(speed ** 2 - vx ** 2);
+      Object.assign(miss.ball, { x: miss.paddle.x + side * (miss.paddle.width / 2 + 2),
+        y: miss.paddle.y + (kind === "outward" ? -2 : 2), vx, vy });
+      engine.step(miss, .001);
+      close(miss.ball.vx, vx);
+      close(miss.ball.vy, vy);
+      assert.equal(miss.score, 0);
+    }
+  }
+});
+
+test("all paddle impact positions keep their return speed bounded and safely upward", () => {
+  for (const speed of [260, 330, 400]) for (let offset = -38; offset <= 38; offset += 2) {
+    const state = engine.create();
+    state.phase = "playing";
+    Object.assign(state.ball, { x: state.paddle.x + offset, y: state.paddle.y - 3,
+      vx: 0, vy: speed, speed });
+    engine.step(state, .001);
+    if (state.ball.vy < 0) {
+      assert.ok(-state.ball.vy >= speed * .55);
+      assert.ok(Math.abs(state.ball.vx) >= speed * .13);
+    }
+    close(Math.hypot(state.ball.vx, state.ball.vy), speed);
+    assert.ok(state.ball.speed <= 400);
   }
 });
 
@@ -136,6 +199,40 @@ test("round brick corners reflect along their diagonal normal without leaving in
   assert.ok(state.ball.vx < 0 && state.ball.vy < 0);
   close(Math.hypot(state.ball.vx, state.ball.vy), state.ball.speed);
   assert.ok(Number.isFinite(state.ball.x) && Number.isFinite(state.ball.y));
+});
+
+test("symmetric brick-seam impacts resolve without an array-order aiming bias", () => {
+  const outcomes = [];
+  for (const reverse of [false, true]) {
+    const state = engine.create();
+    state.phase = "playing";
+    for (const brick of state.bricks) brick.active = [14, 15].includes(brick.id);
+    if (reverse) state.bricks.reverse();
+    Object.assign(state.ball, { x: 62.5, y: 109.5, vx: 0, vy: state.ball.speed });
+    engine.step(state, .01);
+    close(state.ball.vx, 0);
+    assert.ok(state.ball.vy < 0);
+    close(Math.hypot(state.ball.vx, state.ball.vy), state.ball.speed);
+    assert.equal(state.score, 20);
+    assert.ok(state.bricks.filter(brick => [14, 15].includes(brick.id)).every(brick => brick.health === 1));
+    outcomes.push({ball: snapshot(state.ball), score: state.score});
+    engine.step(state, .05);
+    assert.equal(state.score, 20, "separation cannot damage the seam twice");
+  }
+  assert.deepEqual(outcomes[0], outcomes[1]);
+});
+
+test("an outward brick overlap separates without damage or extra energy", () => {
+  const state = engine.create(), brick = state.bricks[14];
+  alone(state, brick);
+  state.phase = "playing";
+  Object.assign(state.ball, { x: brick.x - 3, y: brick.y - 3,
+    vx: -state.ball.speed / Math.SQRT2, vy: -state.ball.speed / Math.SQRT2 });
+  const before = Math.hypot(state.ball.vx, state.ball.vy);
+  engine.step(state, .001);
+  assert.equal(brick.health, 2);
+  assert.equal(state.score, 0);
+  close(Math.hypot(state.ball.vx, state.ball.vy), before);
 });
 
 test("a Dragon Ball is collected only when its entire column has been cleared", () => {
@@ -222,4 +319,22 @@ test("extended deterministic play keeps coordinates and velocities finite", () =
     assert.ok(state.bricks.every(brick => brick.health >= 0));
     assert.ok(state.lives >= 0 && state.lives <= 3);
   }
+});
+
+test("replaying the same paddle inputs keeps collision outcomes and progression deterministic", () => {
+  const states = [engine.create(), engine.create()];
+  for (let frame = 0; frame < 2400; frame++) {
+    const paddle = 180 + Math.sin(frame * .013) * 130;
+    const seconds = [1 / 30, 1 / 60, 1 / 120][frame % 3];
+    for (const state of states) {
+      engine.movePaddle(state, paddle);
+      if (state.phase === "ready") engine.launch(state);
+      engine.step(state, seconds);
+      assert.ok(state.lives >= 0 && state.lives <= 3);
+      assert.ok(state.score >= 0 && state.score <= 665);
+      assert.ok(state.ball.speed <= 400);
+      if (state.phase === "playing") close(Math.hypot(state.ball.vx, state.ball.vy), state.ball.speed);
+    }
+  }
+  assert.deepEqual(snapshot(states[0]), snapshot(states[1]));
 });

@@ -22,6 +22,9 @@
   let paused = false;
   let frame = 0;
   let lastTime = null;
+  let accumulator = 0;
+  const fixedStep = 1 / 120;
+  let layoutBounds;
   let pointer = null;
   let trail = [];
   let sparks = [];
@@ -71,7 +74,7 @@
     text(lives, String(game.lives));
     if (action) {
       text(action, terminal() ? "again ↵" : game.phase === "ready" ? "release ki ↵" : "ki in flight");
-      action.disabled = game.phase === "playing";
+      action.disabled = paused || game.phase === "playing";
     }
     if (pause) {
       text(pause, paused ? ":resume" : ":pause");
@@ -83,7 +86,7 @@
     if (paused) announce("training paused");
     else if (game.phase === "won") announce("power over 9000. seven dragon balls collected. wish granted — train again?");
     else if (game.phase === "lost") announce("training complete. try again to collect all seven dragon balls.");
-    else if (game.phase === "ready") announce(`move your paddle, then tap or press space to release ki. ${game.lives} ${game.lives === 1 ? "life" : "lives"} remaining.`);
+    else if (game.phase === "ready") announce(`${game.lives < 3 ? "ki lost. " : ""}${game.lives} ${game.lives === 1 ? "life" : "lives"} remaining. drag anywhere to aim, then tap or press space to release ki.`);
     else if (game.collected.length !== lastCollected) announce(`${game.collected.length} of seven dragon balls collected.`);
     else if (game.phase !== previousPhase || lastAnnouncement === "training paused") announce("ki released. clear the shields to collect all seven dragon balls.");
     previousPhase = game.phase;
@@ -125,16 +128,26 @@
 
     for (const brick of game.bricks) {
       if (!brick.active) continue;
-      const intensity = brick.health / brick.maxHealth;
       context.save();
-      context.globalAlpha = .5 + intensity * .5;
       context.fillStyle = palette.panel; context.strokeStyle = palette.blue;
       roundRect(brick.x, brick.y, brick.width, brick.height, 4); context.fill(); context.stroke();
-      context.globalAlpha = .35 + intensity * .45;
+      // Countable shield segments distinguish one-hit and two-hit targets even
+      // without motion or colour discrimination; an empty segment stays visible.
       context.fillStyle = palette.blue;
-      context.fillRect(brick.x + 5, brick.y + brick.height - 4, (brick.width - 10) * intensity, 1);
+      const segmentWidth = 8, gap = 3, total = brick.maxHealth * segmentWidth + (brick.maxHealth - 1) * gap;
+      for (let segment = 0; segment < brick.maxHealth; segment++) {
+        const x = brick.x + (brick.width - total) / 2 + segment * (segmentWidth + gap);
+        context.globalAlpha = segment < brick.health ? .95 : .3;
+        if (segment < brick.health) context.fillRect(x, brick.y + brick.height - 4, segmentWidth, 2);
+        else context.strokeRect(x, brick.y + brick.height - 4, segmentWidth, 2);
+      }
       context.restore();
-      orb(brick.star, brick.x + brick.width / 2, brick.y + brick.height / 2 - 1, 15);
+      orb(brick.star, brick.x + brick.width / 2, brick.y + brick.height / 2 - 2, 13);
+      if (decorative() && game.lastHit?.id === brick.id && game.time - game.lastHit.time < .12) {
+        context.save(); context.globalAlpha = .75 * (1 - (game.time - game.lastHit.time) / .12);
+        context.strokeStyle = palette.white; context.lineWidth = 2;
+        roundRect(brick.x, brick.y, brick.width, brick.height, 4); context.stroke(); context.restore();
+      }
     }
 
     if (decorative()) {
@@ -172,10 +185,10 @@
 
     context.font = '11px "Plex Mono", monospace'; context.textAlign = "center";
     context.fillStyle = palette.muted;
-    context.fillText("hyperbolic time chamber", width / 2, height - 12);
+    context.fillText("drag anywhere to guide", width / 2, height - 12);
     if (paused || game.phase !== "playing") {
-      const title = paused ? "time stands still" : game.phase === "won" ? "wish granted" : game.phase === "lost" ? "another round?" : "gather the seven";
-      const subtitle = paused ? "resume when you’re ready" : game.phase === "won" ? "seven stars. one little secret." : game.phase === "lost" ? "even saiyans need practice" : "tap / space to release ki";
+      const title = paused ? "time stands still" : game.phase === "won" ? "wish granted" : game.phase === "lost" ? "another round?" : game.lives < 3 ? "ki scattered" : "gather the seven";
+      const subtitle = paused ? "resume when you’re ready" : game.phase === "won" ? "seven stars. one little secret." : game.phase === "lost" ? "even saiyans need practice" : game.lives < 3 ? `${game.lives} ${game.lives === 1 ? "life" : "lives"} left · tap / space to release` : "tap / space to release ki";
       context.fillStyle = palette.paper;
       context.globalAlpha = .92;
       context.fillRect(34, height * .49 - 33, width - 68, 72);
@@ -190,6 +203,8 @@
   function resize() {
     if (!dialog.open) return;
     const bounds = canvas.getBoundingClientRect();
+    if (pointer && layoutBounds && ["width", "height", "left", "top"].some(key => bounds[key] !== layoutBounds[key])) releasePointer();
+    layoutBounds = { width: bounds.width, height: bounds.height, left: bounds.left, top: bounds.top };
     const ratio = Math.min(3, window.devicePixelRatio || 1);
     const width = Math.max(1, Math.round(bounds.width * ratio));
     const height = Math.max(1, Math.round(bounds.height * ratio));
@@ -202,40 +217,72 @@
     if (frame) cancelAnimationFrame(frame);
     frame = 0;
     lastTime = null;
+    accumulator = 0;
   }
 
-  function schedule() {
-    if (!frame && active() && (game.phase === "playing" || (!terminal() && direction()))) frame = requestAnimationFrame(tick);
+  function inputTime(event) {
+    const now = performance.now(), timestamp = Number(event?.timeStamp);
+    // DOM events normally share performance.now()'s time origin. Reject stale
+    // or legacy epoch timestamps rather than importing another clock domain.
+    return Number.isFinite(timestamp) && timestamp >= now - 1000 && timestamp <= now + 1 ? timestamp : now;
   }
 
-  function tick(time) {
-    frame = 0;
-    if (!active()) { lastTime = null; return; }
-    const seconds = lastTime === null ? 0 : Math.min(.032, Math.max(0, (time - lastTime) / 1000));
-    lastTime = time;
-    if (!terminal() && direction()) engine.movePaddle(game, game.paddle.x + direction() * 330 * seconds);
+  function schedule(time = performance.now()) {
+    if (!frame && active() && (game.phase === "playing" || (!terminal() && direction()))) {
+      if (lastTime === null) lastTime = time;
+      frame = requestAnimationFrame(tick);
+    }
+  }
+
+  function advanceClock(time) {
+    if (!active()) return;
+    // Consume elapsed foreground time in fixed steps. A bounded catch-up budget
+    // covers ordinary frame stalls without a runaway loop after a long suspension.
+    const seconds = lastTime === null ? 0 : Math.min(.25, Math.max(0, (time - lastTime) / 1000));
+    // An already queued rAF may be older than a just-flushed input event.
+    // Never rewind the clock or count that interval twice.
+    lastTime = Math.max(lastTime ?? time, time);
+    const phaseBefore = game.phase;
+    accumulator += seconds;
+    while (accumulator + 1e-10 >= fixedStep) {
+      if (!terminal() && direction()) engine.movePaddle(game, game.paddle.x + direction() * 330 * fixedStep);
+      if (game.phase === "playing") engine.step(game, fixedStep);
+      accumulator = Math.max(0, accumulator - fixedStep);
+    }
+    if (game.phase !== phaseBefore) { trail = []; sparks = []; }
     if (game.phase === "playing") {
-      engine.step(game, seconds);
       if (decorative()) {
-        trail.push({ x: game.ball.x, y: game.ball.y });
+        if (seconds > 0) trail.push({ x: game.ball.x, y: game.ball.y });
         if (trail.length > 9) trail.shift();
         for (const brick of game.bricks) {
           if ((previousHealth.get(brick.id) ?? brick.health) > brick.health) {
             for (let index = 0; index < 5; index++) sparks.push({ x: brick.x + brick.width / 2, y: brick.y + brick.height / 2, vx: (index - 2) * 35, vy: -45 + index * 16, life: .4, orange: !brick.active });
           }
-          previousHealth.set(brick.id, brick.health);
         }
         sparks = sparks.filter((spark) => { spark.life -= seconds; spark.x += spark.vx * seconds; spark.y += spark.vy * seconds; return spark.life > 0; });
       } else { trail = []; sparks = []; }
     }
+    // Hits hidden by reduced motion must not reappear as old sparks later.
+    for (const brick of game.bricks) previousHealth.set(brick.id, brick.health);
     updateUI();
+  }
+
+  function flushInput(event) {
+    if (lastTime !== null && active()) advanceClock(inputTime(event));
+  }
+
+  function tick(time) {
+    frame = 0;
+    if (!active()) { lastTime = null; return; }
+    advanceClock(time);
     draw();
     schedule();
-    if (!frame) lastTime = null;
+    if (!frame) { lastTime = null; accumulator = 0; }
   }
 
   function reset() {
     stop();
+    releasePointer();
     engine.reset(game);
     previousHealth = new Map(game.bricks.map((brick) => [brick.id, brick.health]));
     previousPhase = game.phase;
@@ -243,23 +290,31 @@
     keys.clear(); trail = []; sparks = []; paused = false;
   }
 
-  function release() {
-    if (!dialog.open || document.hidden) return;
+  function release(event) {
+    if (!dialog.open || document.hidden || paused) return;
+    const wasPlaying = game.phase === "playing";
+    flushInput(event);
+    // An input arriving at the end of a flight must leave the new result or
+    // ready serve visible; starting another round needs a fresh action.
+    if (wasPlaying) { draw(); return; }
     if (terminal()) reset();
     if (game.phase !== "ready") return;
     paused = false;
     engine.launch(game);
-    updateUI(); draw(); schedule();
+    updateUI(); draw(); schedule(inputTime(event));
   }
 
-  function setPaused(next) {
+  function setPaused(next, event) {
     // Completed rounds retain their result when the visitor changes tabs.
     if (terminal()) return;
+    if (next) flushInput(event);
+    if (terminal()) { keys.clear(); releasePointer(); stop(); draw(); return; }
     paused = next;
     keys.clear();
+    releasePointer();
     stop();
     updateUI(); draw();
-    if (!paused) schedule();
+    if (!paused) schedule(inputTime(event));
   }
 
   function releasePointer() {
@@ -290,18 +345,23 @@
 
   function move(event) {
     const bounds = canvas.getBoundingClientRect();
-    if (!bounds.width || paused || terminal()) return;
-    engine.movePaddle(game, (event.clientX - bounds.left) / bounds.width * game.width);
+    if (!pointer || !bounds.width || paused || terminal()) return;
+    flushInput(event);
+    if (terminal()) return;
+    const delta = (event.clientX - pointer.lastX) / bounds.width * game.width;
+    // Incremental drag preserves the grab point and reverses immediately at an
+    // edge. The finger can stay clear of the paddle and incoming ball.
+    pointer.lastX = event.clientX;
+    engine.movePaddle(game, game.paddle.x + delta);
     draw();
   }
 
   canvas.addEventListener("pointerdown", (event) => {
-    if (!dialog.open || !event.isPrimary || event.button !== 0) return;
+    if (!dialog.open || !event.isPrimary || event.button !== 0 || pointer || paused || terminal()) return;
     event.preventDefault();
     canvas.focus({ preventScroll: true });
-    pointer = { id: event.pointerId, x: event.clientX, y: event.clientY, moved: false };
+    pointer = { id: event.pointerId, x: event.clientX, y: event.clientY, lastX: event.clientX, moved: false, ready: game.phase === "ready" };
     canvas.setPointerCapture(event.pointerId);
-    move(event);
   });
   canvas.addEventListener("pointermove", (event) => {
     if (pointer?.id !== event.pointerId) return;
@@ -312,12 +372,15 @@
   canvas.addEventListener("pointerup", (event) => {
     if (pointer?.id !== event.pointerId) return;
     event.preventDefault();
-    const tapped = !pointer.moved;
+    if (Math.hypot(event.clientX - pointer.x, event.clientY - pointer.y) > 8) pointer.moved = true;
+    // The release can contain a final position with no delivered pointermove.
+    move(event);
+    const tapped = !pointer.moved && pointer.ready;
     releasePointer();
-    if (tapped && game.phase === "ready") release();
+    if (tapped && game.phase === "ready") release(event);
   });
-  canvas.addEventListener("pointercancel", releasePointer);
-  canvas.addEventListener("lostpointercapture", () => { pointer = null; });
+  canvas.addEventListener("pointercancel", event => { if (pointer?.id === event.pointerId) releasePointer(); });
+  canvas.addEventListener("lostpointercapture", event => { if (pointer?.id === event.pointerId) pointer = null; });
 
   // Capture only the game's keys while its modal is open, so the portfolio wheel stays put.
   document.addEventListener("keydown", (event) => {
@@ -328,21 +391,26 @@
     if (!["ArrowLeft", "ArrowRight", "a", "d", " ", "p"].includes(key)) return;
     if (key === " " && event.target instanceof Element && event.target.closest("button")) return;
     event.preventDefault(); event.stopImmediatePropagation();
-    if (key === " ") { if (!event.repeat) release(); return; }
-    if (key === "p") { if (!event.repeat && !terminal()) setPaused(!paused); return; }
+    if (key === " ") { if (!event.repeat) release(event); return; }
+    if (key === "p") { if (!event.repeat && !terminal()) setPaused(!paused, event); return; }
     if (paused || terminal()) return;
+    flushInput(event);
+    if (terminal()) return;
     keys.add(key);
     if (!event.repeat) engine.movePaddle(game, game.paddle.x + direction() * 12);
-    draw(); schedule();
+    draw(); schedule(inputTime(event));
   }, true);
   document.addEventListener("keyup", (event) => {
     const key = event.key.length === 1 ? event.key.toLowerCase() : event.key;
     if (!dialog.open || !keys.has(key)) return;
-    event.preventDefault(); event.stopImmediatePropagation(); keys.delete(key);
-    if (game.phase !== "playing") stop();
+    event.preventDefault(); event.stopImmediatePropagation();
+    flushInput(event);
+    keys.delete(key);
+    draw();
+    if (game.phase !== "playing") { stop(); schedule(inputTime(event)); }
   }, true);
-  action?.addEventListener("click", () => { release(); canvas.focus({ preventScroll: true }); });
-  pause?.addEventListener("click", () => setPaused(!paused));
+  action?.addEventListener("click", event => { release(event); canvas.focus({ preventScroll: true }); });
+  pause?.addEventListener("click", event => setPaused(!paused, event));
   dialog.querySelectorAll("[data-training-close]").forEach((button) => button.addEventListener("click", close));
   document.querySelectorAll("[data-training-open]").forEach((button) => button.addEventListener("click", () => open(button)));
   dialog.addEventListener("cancel", (event) => { event.stopPropagation(); });

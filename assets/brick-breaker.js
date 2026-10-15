@@ -4,6 +4,8 @@
   const clamp = (value, low, high) => Math.max(low, Math.min(high, value));
   const maximumSpeed = 400;
   const separation = .01;
+  const minimumReturnAngle = Math.PI / 24;
+  const maximumReturnAngle = Math.PI * .31;
 
   function dock(state) {
     state.ball.x = state.paddle.x;
@@ -133,27 +135,54 @@
 
     const paddle = state.paddle;
     const paddleHit = contact(ball, { ...paddle, x: paddle.x - paddle.width / 2 });
-    if (paddleHit && ball.vy > 0 && ball.y <= paddle.y + paddle.height / 2) {
+    if (paddleHit && ball.vy > 0 && ball.y <= paddle.y && paddleHit.ny < 0
+      && ball.vx * paddleHit.nx + ball.vy * paddleHit.ny < 0) {
       separate(ball, paddleHit);
       const offset = clamp((ball.x - paddle.x) / (paddle.width / 2), -1, 1);
-      const angle = offset * Math.PI * .31;
+      const aimedAngle = offset * maximumReturnAngle;
+      // Center catches retain the incoming direction, with a small deterministic
+      // lateral return so an empty column cannot become a permanent vertical orbit.
+      const incoming = Math.sign(ball.vx) || (ball.x <= state.width / 2 ? 1 : -1);
+      const direction = Math.abs(aimedAngle) < minimumReturnAngle ? incoming : Math.sign(aimedAngle);
+      const angle = direction * Math.max(minimumReturnAngle, Math.abs(aimedAngle));
       ball.vx = Math.sin(angle) * ball.speed;
       ball.vy = -Math.cos(angle) * ball.speed;
     }
 
-    // Resolve adjacent bricks as separate contacts, without damaging one twice.
+    // Near-simultaneous approaching contacts share one normal. In particular,
+    // a vertical hit on a symmetric brick seam must not depend on array order.
     const touched = new Set();
     for (let attempt = 0; attempt < 4 && state.phase === "playing"; attempt++) {
-      let collision = null;
+      let deepest = null;
+      const candidates = [];
       for (const brick of state.bricks) {
         if (!brick.active || touched.has(brick.id)) continue;
         const hit = contact(ball, brick);
-        if (hit && (!collision || hit.depth > collision.hit.depth)) collision = { brick, hit };
+        if (!hit) continue;
+        const collision = { brick, hit };
+        candidates.push(collision);
+        if (!deepest || hit.depth > deepest.hit.depth
+          || (hit.depth === deepest.hit.depth && brick.id < deepest.brick.id)) deepest = collision;
       }
-      if (!collision) break;
-      touched.add(collision.brick.id);
-      separate(ball, collision.hit);
-      if (reflect(ball, collision.hit)) damage(state, collision.brick);
+      if (!deepest) break;
+      let contacts = candidates.filter(({ hit }) => deepest.hit.depth - hit.depth <= separation * 5
+        && ball.vx * hit.nx + ball.vy * hit.ny < 0);
+      if (!contacts.length) contacts = [deepest];
+      contacts.sort((a, b) => a.brick.id - b.brick.id);
+      const nx = contacts.reduce((sum, { hit }) => sum + hit.nx, 0);
+      const ny = contacts.reduce((sum, { hit }) => sum + hit.ny, 0);
+      const length = Math.hypot(nx, ny);
+      let normal = length > .000001 ? { nx: nx / length, ny: ny / length } : null;
+      // Opposing surfaces cannot be separated along their average normal.
+      // Fall back to one bounded contact rather than dividing by a tiny projection.
+      if (!normal || contacts.some(({ hit }) => hit.nx * normal.nx + hit.ny * normal.ny <= .05)) {
+        contacts = [deepest];
+        normal = deepest.hit;
+      }
+      const depth = Math.max(...contacts.map(({ hit }) => hit.depth / (hit.nx * normal.nx + hit.ny * normal.ny)));
+      for (const { brick } of contacts) touched.add(brick.id);
+      separate(ball, { ...normal, depth });
+      if (reflect(ball, normal)) for (const { brick } of contacts) damage(state, brick);
     }
     if (state.phase === "playing" && ball.y > state.height + ball.radius) loseLife(state);
   }
