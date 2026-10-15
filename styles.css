@@ -325,6 +325,20 @@ h1,h2,h3,label,.plot-caption,.terminal-title,.project-kind,.scouter-title,.githu
 #training-action{color:var(--accent)}
 #training-instructions{font-size:9px;color:var(--muted);line-height:1.7;padding-top:10px}
 
+/* In a short landscape viewport, put the controls beside the full-height court. */
+@media(max-height:500px) and (min-width:480px){
+ #training-dialog[open]{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);grid-template-rows:auto auto 1fr auto auto;column-gap:16px;width:min(660px,calc(100% - 24px));padding:12px}
+ .training-stage{grid-column:1;grid-row:1 / 6;align-self:center;width:min(100%,calc((100svh - 50px) * .75))}
+ .training-heading{grid-column:2;grid-row:1;gap:8px}
+ .training-heading h2{font-size:12px}
+ #training-dialog .training-heading>img{width:24px;height:28px}
+ .training-hud{grid-column:2;grid-row:2;padding-bottom:4px}
+ #training-status{grid-column:2;grid-row:3;align-self:center;padding-block:8px}
+ .training-controls{grid-column:2;grid-row:4;gap:8px}
+ .training-controls button{padding-inline:10px}
+ #training-instructions{grid-column:2;grid-row:5}
+}
+
 .training-heading>img{width:30px;height:36px;object-fit:contain}
 .training-heading h2{margin-right:auto}
 
