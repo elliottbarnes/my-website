@@ -1,5 +1,9 @@
 # Asset sources
 
+## Celestial training arena
+
+`assets/training-arena.webp` is original scenery generated with the built-in Image Generation tool on 16 October 2026. The dark, open composition leaves room for the game's independently drawn shields and energy ball. It is 1086×1448 and 144,808 bytes, encoded as WebP at quality 80 without cropping or resizing. It loads only when the training chamber opens; it adds one file to the publication allowlist. Existing Dragon Ball artwork and credits are unchanged. [Exact prompt and preparation](assets/TRAINING_ARENA.md).
+
 ## Terminal redesign typography
 
 `assets/fonts/IBMPlexMono-Regular.ttf` is the unmodified IBM Plex Mono Regular font by IBM, downloaded on 2026-10-11 from the [official Google Fonts repository](https://github.com/google/fonts/tree/main/ofl/ibmplexmono) ([font source](https://raw.githubusercontent.com/google/fonts/main/ofl/ibmplexmono/IBMPlexMono-Regular.ttf)). Copyright © 2017 IBM Corp., with Reserved Font Name “Plex”. It is licensed under the SIL Open Font License 1.1; the complete notice is retained and published at [`assets/fonts/OFL.txt`](assets/fonts/OFL.txt). The font is served locally, without a runtime request to Google Fonts.

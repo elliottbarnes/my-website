@@ -13,6 +13,10 @@ const pointer = (page, type, pointerId = 1, clientX = 100, extra = {}) => page.c
 });
 const key = (page, type, value) => page.document.emit(type, { key: value, target: page.canvas });
 const frameText = page => page.drawing.filter(call => call.method === "fillText").map(call => call.args[0]);
+// Font state cannot affect geometry; retain it only on text when comparing a
+// fresh canvas with one that has already painted an earlier round.
+const frameDrawing = page => JSON.stringify(page.drawing.map(({ font, ...call }) =>
+  call.method === "fillText" ? { ...call, font } : call));
 
 function flight(page) {
   page.open();
@@ -23,16 +27,19 @@ function flight(page) {
   page.displayFrame(0);
 }
 
-test("training sprites wait for entry, then load only once across reopening", () => {
+test("training artwork waits for entry, then loads only once across reopening", () => {
   const page = chamber();
-  assert.equal(page.requests.length, 0, "a visitor who never opens the game does not request its sprites");
+  assert.equal(page.requests.length, 0, "a visitor who never opens the game does not request its artwork");
   assert.equal(page.images.length, 0);
   page.open();
-  assert.deepEqual(page.requests, Array.from({ length: 7 }, (_, index) => `/assets/dragon-ball-${index + 1}.webp`));
+  assert.deepEqual([...page.requests].sort(), [
+    ...Array.from({ length: 7 }, (_, index) => `/assets/dragon-ball-${index + 1}.webp`),
+    "/assets/training-arena.webp",
+  ].sort());
   assert.ok(page.images.every(image => image.decoding === "async"));
   page.api.close();
   page.open();
-  assert.equal(page.requests.length, 7, "reopening reuses the first set of sprites");
+  assert.equal(page.requests.length, 8, "reopening reuses the first set of artwork");
 });
 
 test("the game starts with fallback balls while sprites load, and late loads respect closure", () => {
@@ -43,13 +50,47 @@ test("the game starts with fallback balls while sprites load, and late loads res
   page.action.emit("click");
   assert.equal(page.state.phase, "playing", "sprite loading does not block launching the ball");
   assert.equal(page.pendingFrames, 1);
-  page.images[0].load();
-  assert.ok(page.drawing.some(call => call.method === "drawImage" && call.args[0] === page.images[0]));
+  const sprite = page.images.find(image => image.url === "/assets/dragon-ball-1.webp");
+  sprite.load();
+  assert.ok(page.drawing.some(call => call.method === "drawImage" && call.args[0] === sprite));
   page.api.close();
   const before = page.paints;
-  page.images[1].load();
-  assert.equal(page.paints, before, "a late load must not redraw a closed game");
+  for (const image of page.images.filter(image => image !== sprite)) image.load();
+  assert.equal(page.paints, before, "late sprite and arena loads must not redraw a closed game");
   assert.equal(page.pendingFrames, 0);
+});
+
+test("failed artwork leaves the board playable with a complete canvas fallback", () => {
+  const page = chamber();
+  page.open();
+  for (const image of page.images) image.fail();
+  page.window.emit("portfolio:preferences");
+  assert.ok(!page.drawing.some(call => call.method === "drawImage"), "failed images must not be drawn");
+  assert.ok(page.drawing.some(call => call.method === "roundRect"), "shield and paddle geometry remains visible");
+  assert.ok(frameText(page).includes("gather the seven"));
+  page.action.emit("click");
+  page.displayFrame(100);
+  assert.equal(page.state.phase, "playing");
+  assert.ok(page.state.time > 0, "artwork failures must not block the simulation");
+  assert.equal(page.pendingFrames, 1);
+});
+
+test("late arena artwork covers the board without resuming a paused game", () => {
+  const page = chamber();
+  page.open();
+  page.pause.emit("click");
+  const state = JSON.stringify(page.snapshot());
+  const arena = page.images.find(image => image.url === "/assets/training-arena.webp");
+  arena.load();
+  const image = page.drawing.find(call => call.method === "drawImage" && call.args[0] === arena);
+  assert.ok(image, "successful arena loading replaces the fallback backdrop");
+  const [, x, y, width, height] = image.args;
+  assert.ok([x, y, width, height].every(Number.isFinite));
+  assert.ok(x <= 0 && y <= 0 && x + width >= page.state.width && y + height >= page.state.height,
+    "the backdrop must cover the board at its different aspect ratio");
+  assert.equal(JSON.stringify(page.snapshot()), state);
+  assert.equal(page.pendingFrames, 0);
+  assert.equal(page.pause.getAttribute("aria-pressed"), "true");
 });
 
 test("completed training results survive blur and hidden-tab changes", () => {
@@ -269,8 +310,13 @@ test("releasing the final ready-state key paints its actual endpoint before idle
   key(page, "keyup", "ArrowRight");
   assert.equal(page.pendingFrames, 0);
   close(page.state.paddle.x, 197.5);
-  const paddle = page.drawing.find(call => call.method === "roundRect" && call.args[1] === page.state.paddle.y);
-  close(paddle.args[0] + paddle.args[2] / 2, page.state.paddle.x);
+  const paddle = page.state.paddle;
+  const edges = page.drawing.filter(call => ["moveTo", "lineTo"].includes(call.method)
+    && call.args[1] >= paddle.y && call.args[1] <= paddle.y + paddle.height
+    && Math.abs(call.args[0] - paddle.x) <= paddle.width / 2)
+    .map(call => call.args[0]);
+  assert.ok(edges.length > 0, "the stopped frame must include the paddle silhouette");
+  close((Math.min(...edges) + Math.max(...edges)) / 2, paddle.x);
 });
 
 test("a long display stall recovers at most 250 ms without carrying a catch-up backlog", () => {
@@ -304,6 +350,64 @@ test("pausing clears fractional simulation debt and excludes time spent in the b
   close(page.state.time - before, 1 / 120);
 });
 
+test("decorative motion preferences do not change the same launched flight", () => {
+  const pages = [chamber(), chamber(), chamber()];
+  pages[1].motion.matches = true;
+  pages[2].root.dataset.motion = "paused";
+  for (const page of pages) flight(page);
+  for (let frame = 1; frame <= 120; frame++) {
+    for (const page of pages) page.displayFrame(frame * 1000 / 60);
+    const expected = JSON.stringify(pages[0].snapshot());
+    for (const page of pages.slice(1)) assert.equal(JSON.stringify(page.snapshot()), expected);
+  }
+  assert.notEqual(JSON.stringify(pages[0].drawing), JSON.stringify(pages[1].drawing),
+    "the fixture must exercise a visibly different motion preference");
+});
+
+test("pausing freezes the decorated frame and reopening starts a clean board", () => {
+  const page = chamber();
+  flight(page);
+  for (const time of [16, 32, 48, 64]) page.displayFrame(time);
+  page.pause.emit("click");
+  const paused = JSON.stringify(page.snapshot());
+  const pixels = JSON.stringify(page.drawing);
+  const paints = page.paints;
+  page.displayFrame(5000);
+  assert.equal(page.pendingFrames, 0);
+  assert.equal(page.paints, paints, "a paused game must not keep rendering decorative frames");
+  assert.equal(JSON.stringify(page.snapshot()), paused);
+  page.window.emit("portfolio:preferences");
+  assert.equal(JSON.stringify(page.drawing), pixels, "repainting a paused frame cannot advance its decoration");
+  page.api.close();
+  page.open();
+  const clean = chamber();
+  clean.open();
+  assert.equal(frameDrawing(page), frameDrawing(clean),
+    "reopening must not retain trails, bursts, or impact highlights from the previous round");
+  assert.equal(page.pendingFrames, 0, "the reset board waits for an explicit launch");
+});
+
+test("sustained real shield impacts keep decorative drawing work bounded", () => {
+  const page = chamber();
+  flight(page);
+  const target = page.state.bricks[7];
+  page.state.bricks = [target];
+  // Reuse one long-lived shield to stress repeated impacts without finishing a
+  // round. The collision engine still decides whether each impact occurs.
+  target.health = 1000;
+  const warm = [], later = [];
+  for (let frame = 1; frame <= 300; frame++) {
+    Object.assign(page.state.ball, { x: target.x + target.width / 2,
+      y: target.y + target.height + page.state.ball.radius + 1, vx: 0, vy: -260, speed: 260 });
+    page.displayFrame(frame * 1000 / 60);
+    if (frame >= 60 && frame < 120) warm.push(page.drawing.length);
+    if (frame >= 240) later.push(page.drawing.length);
+  }
+  assert.ok(target.health < 800, "the fixture must create repeated collisions");
+  assert.ok(Math.max(...later) <= Math.max(...warm) + 10,
+    "older impacts must expire rather than accumulate drawing work throughout a round");
+});
+
 test("remaining shield hits have distinct visuals even with reduced motion", () => {
   const page = chamber();
   page.motion.matches = true;
@@ -320,21 +424,61 @@ test("remaining shield hits have distinct visuals even with reduced motion", () 
   assert.notEqual(armored, damaged, "damage must remain visible without decorative particles");
 });
 
-test("re-enabling decorative motion does not replay a collision hidden by reduced motion", () => {
-  const page = chamber();
-  page.motion.matches = true;
-  flight(page);
-  const target = page.state.bricks[7];
-  page.state.bricks = [target];
-  Object.assign(page.state.ball, { x: target.x + target.width / 2,
-    y: target.y + target.height + page.state.ball.radius + 1, vx: 0, vy: -260, speed: 260 });
-  page.displayFrame(40);
-  assert.equal(target.health, 1, "the fixture must really damage the two-hit shield");
-  page.motion.matches = false;
-  page.motion.emit("change");
-  page.displayFrame(60);
-  assert.ok(!page.drawing.some(call => call.method === "fillRect" && call.args[2] === 2 && call.args[3] === 2),
-    "an old hit must not emit fresh particles when motion returns");
+test("re-enabling decorative motion does not replay a hidden collision or collection", () => {
+  for (const collect of [false, true]) {
+    const page = chamber();
+    page.motion.matches = true;
+    flight(page);
+    const target = page.state.bricks[7], other = page.state.bricks[8];
+    page.state.bricks = [target, other];
+    if (collect) target.health = 1;
+    Object.assign(page.state.ball, { x: target.x + target.width / 2,
+      y: target.y + target.height + page.state.ball.radius + 1, vx: 0, vy: -260, speed: 260 });
+    page.displayFrame(40);
+    assert.equal(target.health, collect ? 0 : 1, "the fixture must really hit the shield");
+    assert.equal(page.state.collected.includes(target.star), collect);
+    page.motion.matches = false;
+    page.motion.emit("change");
+    page.displayFrame(60);
+    const clean = chamber();
+    clean.open();
+    Object.assign(clean.state, JSON.parse(JSON.stringify(page.state)));
+    clean.window.emit("portfolio:preferences");
+    assert.equal(frameDrawing(page), frameDrawing(clean),
+      "an old hit or collection must not emit a new burst when motion returns");
+  }
+});
+
+test("switching off motion clears an active impact before motion is enabled again", () => {
+  for (const preference of ["system", "site"]) {
+    const page = chamber();
+    flight(page);
+    const target = page.state.bricks[7];
+    page.state.bricks = [target];
+    Object.assign(page.state.ball, { x: target.x + target.width / 2,
+      y: target.y + target.height + page.state.ball.radius + 1, vx: 0, vy: -260, speed: 260 });
+    page.displayFrame(40);
+    assert.equal(target.health, 1);
+    const decorated = frameDrawing(page);
+    const setMotion = disabled => {
+      if (preference === "system") {
+        page.motion.matches = disabled;
+        page.motion.emit("change");
+      } else {
+        page.root.dataset.motion = disabled ? "paused" : "running";
+        page.window.emit("portfolio:preferences");
+      }
+    };
+    setMotion(true);
+    setMotion(false);
+    const clean = chamber();
+    clean.open();
+    Object.assign(clean.state, JSON.parse(JSON.stringify(page.state)));
+    clean.window.emit("portfolio:preferences");
+    assert.notEqual(decorated, frameDrawing(clean), "the fixture must first create a visible impact");
+    assert.equal(frameDrawing(page), frameDrawing(clean),
+      `${preference} preference must discard active effects rather than hide them until motion returns`);
+  }
 });
 
 test("an input that ends a flight leaves its result visible until a fresh launch action", () => {
