@@ -378,3 +378,20 @@ html[data-training=open]{overflow:hidden}
  [data-view=entrance] [data-motion-toggle]{position:static;opacity:1;min-height:44px}
  [data-view=entrance] [data-theme-toggle]{min-height:44px}
 }
+
+/* Explain the work before asking visitors to enter; reuse the About copy. */
+.entrance-intro{width:min(734px,100%);margin:24px auto 0;font-size:12px;line-height:1.5;color:var(--muted);flex-shrink:0}
+.entrance-intro .entrance-role{color:var(--ink);margin-bottom:6px}
+[data-view=entrance] .entrance-intro{width:min(734px,calc(100% - 72px));margin-top:100px}
+[data-view=entrance] .scene{margin-top:22px}
+[data-view=entrance] .scene-body{height:clamp(140px,calc(100svh - 475px),304px)}
+html.is-leaving .entrance-intro{opacity:0;transition:opacity .25s}
+@media(max-width:600px){
+ [data-view=entrance] .entrance-intro,[data-view=entrance] .entrance-footer{width:calc(100% - 42px)}
+}
+@media(max-height:620px){
+ [data-view=entrance] .entrance{min-height:375px}
+ [data-view=entrance] .entrance-intro{margin-top:78px}
+ [data-view=entrance] .scene{margin-top:14px}
+ [data-view=entrance] .scene-body{height:clamp(84px,calc(100svh - 310px),250px)}
+}
