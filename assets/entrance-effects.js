@@ -325,31 +325,45 @@
     text(ctx, title, 6, 13, accent, amount * .95, box.w < 330 ? 8 : 9);
     const bottom = box.h - 25, top = 40, usable = Math.max(20, bottom - top);
     if (kind === 'sort') {
-      const step = Math.floor(time / 280) % (sortFrames.length + 6), current = sortFrames[Math.min(step, sortFrames.length - 1)];
+      const clock = time / 460, step = Math.floor(clock) % (sortFrames.length + 6);
+      const current = sortFrames[Math.min(step, sortFrames.length - 1)];
+      const swap = current.pair >= 0 && current.values[current.pair] > current.values[current.pair + 1];
+      const travel = smooth(((clock % 1) - .24) / .62);
       const gap = (box.w - 24) / 10;
       current.values.forEach((value, i) => {
-        const x = 12 + i * gap, h = usable * value / 10, active = i === current.pair || i === current.pair + 1;
+        const active = current.pair >= 0 && (i === current.pair || i === current.pair + 1);
+        const shift = swap && active ? (i === current.pair ? travel : -travel) : 0;
+        const x = 12 + (i + shift) * gap, h = usable * value / 10;
         for (let y = bottom; y > bottom - h; y -= 8) text(ctx, active ? '▰' : '▪', x, y, active ? highlight : i > current.end ? accent : ink, amount * .85, 10);
         text(ctx, String(value), x, bottom + 12, muted, amount * .9, 8);
       });
     } else if (kind === 'automaton') {
       const cols = box.w < 330 ? 35 : 49, cell = Math.min((box.w - 16) / cols, usable / 22), left = (box.w - cols * cell) / 2;
-      const generation = Math.floor(time / 180) % 27;
+      const clock = time / 260, generation = Math.floor(clock) % 27, drift = smooth(clock % 1);
       for (let y = 0; y < 22; y++) for (let x = 0; x < cols; x++) {
         const alive = generations[y + generation][x + 49 - cols];
-        if (alive) carry(ctx, y === 21 ? '▰' : '▪', left + x * cell, top + y * cell, y === 21 ? highlight : accent, amount * (.25 + y / 30), cell);
+        const reveal = y === 21 ? smooth((clock % 1) * 1.6 - x / cols * .6) : y === 0 ? 1 - drift : 1;
+        if (alive) carry(ctx, y === 21 ? '▰' : '▪', left + x * cell, top + (y + 1 - drift) * cell, y === 21 ? highlight : accent, amount * (.25 + y / 30) * reveal, cell);
       }
     } else {
       const nodes = [[.1,.5],[.32,.17],[.32,.8],[.55,.12],[.55,.5],[.55,.88],[.83,.3],[.83,.72]];
       const edges = [[0,1],[0,2],[1,3],[1,4],[2,4],[2,5],[3,6],[4,6],[4,7],[5,7]], order = [0,1,2,3,4,5,6,7];
-      const visited = Math.floor(time / 650) % 11;
+      const clock = time / 650, visited = Math.floor(clock) % 11, travel = smooth(clock % 1);
       for (const [a,b] of edges) {
         const active = order.indexOf(a) < visited && order.indexOf(b) <= visited;
         segment(ctx, nodes[a][0] * box.w, top + nodes[a][1] * usable, nodes[b][0] * box.w, top + nodes[b][1] * usable, active ? accent : muted, amount * (active ? .7 : .22));
       }
+      if (visited > 0 && visited < nodes.length) {
+        const parents = [0, 0, 0, 1, 1, 2, 3, 4], from = nodes[parents[visited]], to = nodes[visited];
+        for (let tail = 2; tail >= 0; tail--) {
+          const f = clamp(travel - tail * .12);
+          carry(ctx, tail ? '·' : '◆', (from[0] + (to[0] - from[0]) * f) * box.w,
+            top + (from[1] + (to[1] - from[1]) * f) * usable, highlight, amount * (1 - tail * .25), tail ? 7 : 10);
+        }
+      }
       nodes.forEach(([x,y], i) => {
         const current = i === visited, done = i < visited;
-        dot(ctx, x * box.w, top + y * usable, current ? highlight : done ? accent : muted, amount * .6, current ? 9 : 5);
+        dot(ctx, x * box.w, top + y * usable, current ? highlight : done ? accent : muted, amount * .6, current ? 6 + 3 * Math.sin(travel * Math.PI) : 4);
         text(ctx, String.fromCharCode(65 + i), x * box.w - 3, top + y * usable - 14, current ? highlight : ink, amount, 9);
       });
     }

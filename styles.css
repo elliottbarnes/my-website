@@ -452,7 +452,4 @@ html.is-leaving .entrance-intro{opacity:0;transition:opacity .25s}
 .hunt-legend{display:flex;justify-content:space-between;gap:6px;flex-wrap:wrap;margin:10px 0}
 @media(max-width:360px){#arcade-dialog{padding:12px}#arcade-dialog #hunt-grid button{min-height:40px}.hunt-screen{padding:7px}#arcade-dialog .arcade-tabs button{padding:6px;font-size:10px}}
 @media(max-height:500px) and (min-width:480px){#arcade-dialog{width:640px}#ki-canvas{max-height:140px}.arcade-links{grid-column:2}#hunt-grid{max-width:310px;margin:auto}}
-.scene-experiments{display:flex;align-items:center;justify-content:flex-end;gap:12px;width:min(736px,calc(100% - 40px));margin:8px auto 0;font-size:9px;color:var(--muted)}
-.scene-experiments select{max-width:190px;min-height:44px;padding:8px;background:var(--paper);color:var(--ink);border:1px solid var(--line);border-radius:4px;font:inherit;cursor:pointer}
-.scene-experiments select:focus-visible{outline:2px solid var(--accent);outline-offset:3px}
 #hunt-grid img{display:block;width:32px;height:32px;margin:auto;filter:drop-shadow(0 0 5px #ffb85065)}

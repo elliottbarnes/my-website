@@ -98,7 +98,7 @@ function animation({ reduced = false, paused = false, hidden = false, view = "en
   field.parentElement.parentElement = scene;
   root.dataset = { view, ...(paused ? { motion: "paused" } : {}) };
   const nodes = new Map([["#entrance", entrance], ["#code-field", field], ["#scene", scene], ["[data-pointer-readout]", readout]]);
-  for (const selector of ["#scene-experiment", "#code-wall", "[data-scene-file]", "[data-scene-path]", "#typed-command", "#entrance .mode", "#entrance .status-position", "#scene-feedback"]) nodes.set(selector, node());
+  for (const selector of ["#code-wall", "[data-scene-file]", "[data-scene-path]", "#typed-command", "#entrance .mode", "#entrance .status-position", "#scene-feedback"]) nodes.set(selector, node());
   const document = Object.assign(surface(), {
     documentElement: root, hidden,
     querySelector: (selector) => selector === "dialog[open]" ? (document.openDialog || null) : nodes.get(selector) || null,
@@ -388,7 +388,7 @@ test("view changes discard active graphics while quiet motion freezes effects an
 
 test("paused or reduced motion permits static code discovery without starting animation", () => {
   for (const options of [{ paused: true }, { reduced: true }]) {
-    for (const [clientX, expected] of [[10, "history"], [163, "tokens"], [80, "avatar"]]) {
+    for (const [clientX, expected] of [[10, "history"], [163, "tokens"], [80, "tokens"]]) {
       const controls = animation(options);
       tap(controls, { clientX });
       controls.frame();
@@ -434,7 +434,7 @@ test("mobile code renders at native Retina density while large transitions stay 
 });
 
 test("line-number taps reveal genuine history while source keywords reveal tokens", () => {
-  for (const [x, expected] of [[10, "history"], [163, "tokens"], [80, "avatar"]]) {
+  for (const [x, expected] of [[10, "history"], [163, "tokens"], [80, "tokens"]]) {
     const controls = animation();
     controls.entrance.dispatch("pointerdown", { clientX: x, clientY: 20, target: controls.field });
     controls.window.dispatch("pointerup", { clientX: x, clientY: 20, target: controls.field });
@@ -456,18 +456,18 @@ test("the filename opens history and a second filename click retracts it", () =>
   assert.equal(controls.scene.dataset.phase, "editing");
 });
 
-test("avatar and source fields carry real visible code letters", () => {
+test("source experiments carry real visible code letters", () => {
   const controls = animation();
   tap(controls, { clientX: 80, clientY: 20 });
   controls.frame(40);
-  assert.equal(controls.api.state.effect, "avatar");
+  assert.equal(controls.api.state.effect, "tokens");
   assert.ok(controls.api.state.glyphCount > 0);
   tap(controls, { clientX: 30, clientY: 600 });
   displayFor(controls, 600);
   displayFor(controls, 4900);
   tap(controls, { clientX: 80, clientY: 20 });
   controls.frame(40);
-  assert.equal(controls.api.state.effect, "object");
+  assert.equal(controls.api.state.effect, "interference");
   assert.ok(controls.api.state.glyphCount > 0);
 });
 
@@ -638,7 +638,7 @@ test("normal mouse and pen releases with no buttons held still activate the tapp
     controls.entrance.dispatch("pointerdown", { ...event, buttons: 1 });
     assert.doesNotThrow(() => controls.window.dispatch("pointerup", { ...event, buttons: 0 }));
     controls.frame(40);
-    assert.equal(controls.api.state.effect, "avatar", pointerType);
+    assert.equal(controls.api.state.effect, "tokens", pointerType);
   }
 });
 
@@ -658,11 +658,13 @@ test("touch visitors can select real hashes in a static history preview", () => 
 });
 
 
-test("interference selector preserves static discovery and pauses without losing the surface", () => {
+test("code-discovered interference preserves static discovery without losing the surface", () => {
   for (const options of [{ paused: true }, { reduced: true }]) {
     const controls = animation(options);
-    const selector = controls.document.getElementById("scene-experiment");
-    selector.value = "interference"; selector.dispatch("change");
+    for (let i = 0; i < 4; i++) {
+      tap(controls);
+      if (i < 3) controls.entrance.dispatch("keydown", { key: "Escape" });
+    }
     assert.equal(controls.api.state.effect, "interference");
     assert.equal(controls.frames.size, 0);
     assert.ok(controls.field.calls.text.map(call => call.text).join("").includes("twosources"));
@@ -671,4 +673,30 @@ test("interference selector preserves static discovery and pauses without losing
     controls.frame(1000);
     assert.equal(JSON.stringify(controls.field.calls.text), before);
   }
+});
+
+
+test("ordinary code taps reveal five distinct experiments before the rare portrait", () => {
+  const controls = animation({paused:true}), kinds = [];
+  for (let i=0;i<18;i++) {
+    tap(controls); kinds.push(controls.api.state.effect);
+    assert.ok(controls.api.state.glyphCount > 0);
+    controls.entrance.dispatch("keydown", {key:"Escape"});
+  }
+  assert.deepEqual(kinds.slice(0,5), ["tokens","sort","graph","interference","automaton"]);
+  assert.equal(kinds.filter(kind=>kind==="avatar").length,2);
+  assert.equal(kinds[8],"avatar"); assert.equal(kinds[17],"avatar");
+  assert.ok(kinds.every((kind,index)=>!index || kind!==kinds[index-1]));
+  assert.equal(controls.frames.size,0);
+});
+test("history discovery does not advance the source-effect rotation", () => {
+  const controls = animation({paused:true});
+  tap(controls,{clientX:10}); assert.equal(controls.api.state.effect,"history");
+  controls.entrance.dispatch("keydown",{key:"Escape"});
+  tap(controls); assert.equal(controls.api.state.effect,"tokens");
+});
+test("the sketch selector is absent from the published entrance", async () => {
+  const html = await readFile(new URL("../index.html",import.meta.url),"utf8");
+  assert.equal(html.includes('scene-experiment'),false);
+  assert.equal(source.includes('scene-experiment'),false);
 });
