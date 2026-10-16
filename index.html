@@ -25,7 +25,7 @@
     <link rel="apple-touch-icon" href="/assets/dragon-ball.png" type="image/png" sizes="256x256">
     <link rel="manifest" href="/site.webmanifest">
     <link rel="preload" href="/assets/fonts/IBMPlexMono-Regular.ttf" as="font" type="font/ttf" crossorigin>
-    <link rel="stylesheet" href="/styles.css?v=a62f0245677d">
+    <link rel="stylesheet" href="/styles.css?v=e829fb534bed">
     <link rel="stylesheet" href="/assets/themes.css?v=07412e345894">
     <script type="application/ld+json">
       {
@@ -71,6 +71,7 @@
             <div class="editor-status" aria-hidden="true"><span class="mode">NORMAL</span><span class="file-path" data-scene-path>~/Projects/glassbox/docs/core.js</span><span class="status-position">1:1&nbsp; All</span></div>
             <div class="editor-command" aria-hidden="true">:<span id="typed-command"></span><span class="cursor">▌</span></div>
           </div>
+          <label class="scene-experiments" for="scene-experiment"><span>source experiments</span><select id="scene-experiment"><option value="" disabled selected>choose a sketch ↗</option><option value="interference">interference field</option><option value="sort">bubble sort</option><option value="automaton">rule 110</option><option value="graph">graph traversal</option><option value="tokens">compile sketch</option><option value="avatar">source portrait</option></select></label>
           <p class="entrance-hint visually-hidden">Press Enter to explore projects. Use the theme button to select a colour scheme.</p>
           <div class="entrance-footer">
             <p>// “a computer can be a bicycle for the mind”</p>
@@ -199,14 +200,36 @@ output color * (0.35 + 0.65 * glow);</code></pre></div>
       <div class="training-stage"><canvas id="training-canvas" width="360" height="480" tabindex="0" aria-label="Dragon Ball brick breaker" aria-describedby="training-instructions training-status"></canvas></div>
       <p id="training-status" role="status" aria-live="polite">ready to train</p>
       <div class="training-controls"><button id="training-action" type="button">launch ki ↗</button><button id="training-pause" type="button">pause</button></div>
+      <nav class="arcade-links" aria-label="More hidden games"><button type="button" data-arcade-open="ki">ki control ↗</button><button type="button" data-arcade-open="radar">radar hunt ↗</button></nav>
       <p id="training-instructions">drag anywhere to guide · arrows or a/d · space to launch · esc to leave</p>
     </dialog>
+    <dialog id="arcade-dialog" aria-labelledby="arcade-title">
+      <div class="arcade-heading"><span class="arcade-eyebrow">CAPSULE / TRAINING SYSTEMS</span><button id="arcade-close" type="button" aria-label="Close hidden arcade">esc</button></div>
+      <h2 id="arcade-title">ki control</h2>
+      <nav class="arcade-tabs" aria-label="Hidden games"><button type="button" data-arcade-mode="ki" aria-pressed="true">01 / ki control</button><button type="button" data-arcade-mode="radar" aria-pressed="false">02 / radar hunt</button></nav>
+      <p id="arcade-score"></p>
+      <section id="ki-game" aria-label="Ki Control">
+        <canvas id="ki-canvas" width="360" height="230" aria-hidden="true"></canvas>
+        <div class="ki-readout"><span>energy <strong id="ki-power">0%</strong></span><span>target <strong id="ki-band">56–78%</strong></span></div>
+        <div class="ki-gauge"><progress id="ki-meter" max="100" value="0" aria-label="Ki energy"></progress><span id="ki-target" aria-hidden="true"></span></div>
+        <button id="ki-charge" type="button" aria-pressed="false" aria-describedby="ki-help">charge ki</button>
+        <p id="ki-help">Hold and release, or tap twice. Keyboard: Enter or Space to start, then again to release. Aim for the marked band.</p>
+      </section>
+      <section id="radar-game" aria-label="Dragon Radar Hunt" hidden>
+        <div class="hunt-screen"><div id="hunt-grid" role="group" aria-label="Radar search grid, six rows A to F and columns 1 to 6"></div><img id="hunt-dragon" width="512" height="512" alt="The dragon appears: all seven balls found" hidden></div>
+        <p class="hunt-legend"><span>! hot: 1 step</span><span>+ warm: 2 steps</span><span>· cold: 3+ steps</span></p>
+        <p>Scan any square. Readings measure horizontal + vertical steps to the nearest remaining ball. Use Tab or arrow keys to move; Enter to scan.</p>
+      </section>
+      <p id="arcade-status" role="status" aria-live="polite" aria-atomic="true"></p>
+      <button id="arcade-reset" type="button">start fresh ↻</button>
+    </dialog>
+    <script src="/assets/hidden-games.js?v=b9e5caf16a2d" defer></script>
     <script src="/assets/brick-breaker.js?v=e26d59223cc2" defer></script>
-    <script src="/assets/training-chamber.js?v=415eccb30f41" defer></script>
+    <script src="/assets/training-chamber.js?v=8f59223fb8e3" defer></script>
     <script src="/assets/themes.js?v=b674fe50a97d" defer></script>
-    <script src="/script.js?v=ca2185f70447" defer></script>
-    <script src="/assets/workspace.js?v=b861776d0283" defer></script>
-    <script src="/assets/entrance-effects.js?v=ece26ee7634a" defer></script>
-    <script src="/assets/animation.js?v=dbfec6efb5de" defer></script>
+    <script src="/script.js?v=b28deb9e3420" defer></script>
+    <script src="/assets/workspace.js?v=65f4a97b6a32" defer></script>
+    <script src="/assets/entrance-effects.js?v=85f206bb6157" defer></script>
+    <script src="/assets/animation.js?v=656ffcb595a9" defer></script>
   </body>
 </html>

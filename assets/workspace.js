@@ -145,7 +145,7 @@
   let ink = "#c9b798", muted = "#969082", accent = ink;
   let centerX = 0, centerY = 0, radius = 0, selected = -1, energyAnimation, pulseAt = -Infinity;
   let summoned = null, dragonImage = null, dragonPoints = [], dragonMask = null, maskAccent = "", completionAnnounced = false;
-  const active = () => workspaceVisible() && !about.hidden && !document.querySelector("#training-dialog[open]");
+  const active = () => workspaceVisible() && !about.hidden && !document.querySelector("#training-dialog[open]") && !document.querySelector("#arcade-dialog[open]");
   const tau = Math.PI * 2;
   const ease = value => { const t = Math.max(0, Math.min(1, value)); return t * t * (3 - 2 * t); };
   const summonProgress = () => summoned ? (summoned.static ? 1 : ease((elapsed - summoned.started) / 1200)) : 0;

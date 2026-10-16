@@ -414,3 +414,45 @@ html.is-leaving .entrance-intro{opacity:0;transition:opacity .25s}
  [data-view=entrance] .scene{margin-top:14px}
  [data-view=entrance] .scene-body{height:clamp(84px,calc(100svh - 310px),250px)}
 }
+
+/* Hidden arcade: a self-contained instrument palette in every outer theme. */
+.arcade-links{display:flex;gap:12px;margin-top:8px;flex-wrap:wrap}
+.arcade-links button{min-height:44px;color:var(--accent);font-size:10px}
+#arcade-dialog{color-scheme:dark;width:min(450px,calc(100% - 24px));max-height:calc(100svh - 24px);overflow:auto;margin:auto;padding:20px;background:radial-gradient(ellipse at top left,#143044,#080f1c 65%);border:1px solid #52768c;border-radius:12px;color:#e9f8ff;box-shadow:0 30px 100px #0009}
+#arcade-dialog::backdrop{background:#020610dc;backdrop-filter:blur(6px)}
+#arcade-dialog h2{font-size:23px;letter-spacing:-1px;font-weight:400;margin:2px 0 18px;color:#e9f8ff}
+#arcade-dialog p{font-size:10px;line-height:1.7;color:#afc4d6}
+#arcade-dialog button{min-height:44px;padding:8px 12px;border:1px solid #52768c;border-radius:5px;color:#e9f8ff;font:inherit;font-size:11px}
+#arcade-dialog button:hover{background:#163445;border-color:#8be9ee}
+#arcade-dialog button:focus-visible{outline:2px solid #ffbf75;outline-offset:3px}
+.arcade-heading{display:flex;align-items:center;justify-content:space-between;gap:10px}
+.arcade-eyebrow{font-size:8px;letter-spacing:1.2px;color:#8be9ee}
+.arcade-tabs{display:flex;gap:8px}
+.arcade-tabs button{flex:1}
+#arcade-dialog .arcade-tabs button[aria-pressed=true]{background:#183e4c;border-color:#8be9ee;color:#a8faff}
+#arcade-score{padding:12px 0 4px;font-variant-numeric:tabular-nums}
+#ki-canvas{display:block;width:100%;height:auto;max-height:230px;object-fit:contain;border-radius:8px;background:#07101e}
+.ki-readout{display:flex;justify-content:space-between;font-size:10px;margin:14px 0 8px;color:#afc4d6}.ki-readout strong{color:#e9f8ff;font-weight:400}
+.ki-gauge{position:relative;height:20px;margin-bottom:16px;border:1px solid #52768c;border-radius:3px;background:#152434}
+#ki-meter{appearance:none;display:block;border:0;width:100%;height:100%;background:transparent}
+#ki-meter::-webkit-progress-bar{background:transparent}#ki-meter::-webkit-progress-value{background:#8be9ee}#ki-meter::-moz-progress-bar{background:#8be9ee}
+#ki-target{position:absolute;top:-4px;bottom:-4px;border:2px solid #ffbf75;background:#ffbf7525;pointer-events:none}
+#arcade-dialog #ki-charge{width:100%;background:#ffbf75;color:#15101a;border-color:#ffbf75;font-size:13px;touch-action:none;user-select:none}
+#arcade-dialog #ki-charge[aria-pressed=true]{background:#8be9ee;border-color:#8be9ee}
+#ki-help{margin-top:12px}
+#arcade-status{min-height:48px;padding:14px 0;color:#8be9ee!important}
+#arcade-reset{width:100%}
+.hunt-screen{position:relative;background:radial-gradient(circle,#123c36,#071b1b);padding:12px;border:1px solid #518c79;border-radius:12px}
+#hunt-grid{display:grid;grid-template-columns:repeat(6,minmax(0,1fr));gap:4px}
+#arcade-dialog #hunt-grid button{min-width:0;min-height:44px;aspect-ratio:1;padding:0;border-color:#37645b;color:#8eecc4;background:#062b2570;font-size:20px}
+#arcade-dialog #hunt-grid button[data-signal=hot]{color:#ffe0ae;border-color:#ffbf75;background:#523a21}
+#arcade-dialog #hunt-grid button[data-signal=warm]{color:#f3e5a3;background:#343b23}
+#arcade-dialog #hunt-grid button[data-signal=found]{color:#ffce82;background:#594025;border-color:#ffbf75}
+#hunt-dragon{position:absolute;inset:0;width:100%;height:100%;object-fit:contain;background:#06191be8;pointer-events:none}
+.hunt-legend{display:flex;justify-content:space-between;gap:6px;flex-wrap:wrap;margin:10px 0}
+@media(max-width:360px){#arcade-dialog{padding:12px}#arcade-dialog #hunt-grid button{min-height:40px}.hunt-screen{padding:7px}#arcade-dialog .arcade-tabs button{padding:6px;font-size:10px}}
+@media(max-height:500px) and (min-width:480px){#arcade-dialog{width:640px}#ki-canvas{max-height:140px}.arcade-links{grid-column:2}#hunt-grid{max-width:310px;margin:auto}}
+.scene-experiments{display:flex;align-items:center;justify-content:flex-end;gap:12px;width:min(736px,calc(100% - 40px));margin:8px auto 0;font-size:9px;color:var(--muted)}
+.scene-experiments select{max-width:190px;min-height:44px;padding:8px;background:var(--paper);color:var(--ink);border:1px solid var(--line);border-radius:4px;font:inherit;cursor:pointer}
+.scene-experiments select:focus-visible{outline:2px solid var(--accent);outline-offset:3px}
+#hunt-grid img{display:block;width:32px;height:32px;margin:auto;filter:drop-shadow(0 0 5px #ffb85065)}

@@ -75,7 +75,7 @@
 
   function exactCommand(command) {
     return routes.includes(aliases[command] || command) || themeCommands().includes(command)
-      || ["home", "exit", "motion", "help", "?", "kamehameha", "training", "breaker", "wish", "shenron"].includes(command);
+      || ["home", "exit", "motion", "help", "?", "kamehameha", "training", "breaker", "ki", "charge", "radar", "hunt", "wish", "shenron"].includes(command);
   }
 
   function rankCommand(record, query) {
@@ -319,6 +319,11 @@
       window.PortfolioTraining?.open();
       return;
     }
+    if (["ki", "charge", "radar", "hunt"].includes(command)) {
+      closeCommands(false);
+      window.PortfolioArcade?.open(["radar", "hunt"].includes(command) ? "radar" : "ki", dialogOpener);
+      return;
+    }
     const route = Object.hasOwn(aliases, command) ? aliases[command] : command;
     if (routes.includes(route)) {
       closeCommands(false);
@@ -434,7 +439,7 @@
   });
   document.addEventListener("keydown", (event) => {
     if (event.defaultPrevented || event.isComposing || event.ctrlKey || event.metaKey || event.altKey) return;
-    if (document.getElementById("theme-dialog")?.open || document.getElementById("training-dialog")?.open) return;
+    if (document.getElementById("theme-dialog")?.open || document.getElementById("training-dialog")?.open || document.getElementById("arcade-dialog")?.open) return;
     if (dialog?.open) {
       if (event.key === "Escape" && typeof dialog.close !== "function") {
         event.preventDefault();

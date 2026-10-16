@@ -508,10 +508,11 @@
 
   function cleanup() {
     stop(); keys.clear(); releasePointer(); clearEffects();
-    opener?.focus?.({ preventScroll: true });
+    const arcadeOpen = Boolean(document.getElementById("arcade-dialog")?.open);
+    if (!arcadeOpen) opener?.focus?.({ preventScroll: true });
     opener = null;
-    delete root.dataset.training;
-    window.dispatchEvent(new CustomEvent("portfolio:training", { detail: { open: false } }));
+    if (!arcadeOpen) delete root.dataset.training;
+    window.dispatchEvent(new CustomEvent("portfolio:training", { detail: { open: arcadeOpen } }));
   }
 
   function open(trigger = document.activeElement) {
