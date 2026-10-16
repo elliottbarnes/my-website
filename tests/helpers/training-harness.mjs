@@ -29,18 +29,27 @@ export function trainingHarness({ engineSource, uiSource, cssWidth = 360 }) {
   dialog.close = () => { dialog.open = false; dialog.emit("close"); };
   dialog.querySelectorAll = () => [];
   const observeDraw = (method, args) => drawing.push({ method, args: [...args], fillStyle: context.fillStyle,
-    strokeStyle: context.strokeStyle, globalAlpha: context.globalAlpha, font: context.font, shadowBlur: context.shadowBlur });
-  const paintProperties = ["fillStyle", "strokeStyle", "globalAlpha", "font", "shadowBlur", "shadowColor", "lineWidth", "textAlign"];
+    strokeStyle: context.strokeStyle, globalAlpha: context.globalAlpha, font: context.font,
+    shadowBlur: context.shadowBlur, globalCompositeOperation: context.globalCompositeOperation });
+  const paintProperties = ["fillStyle", "strokeStyle", "globalAlpha", "font", "shadowBlur", "shadowColor", "lineWidth", "textAlign", "globalCompositeOperation"];
   const paintStack = [];
+  const gradient = (type, args) => ({ type, args: [...args], stops: [],
+    addColorStop(offset, color) { this.stops.push([offset, color]); } });
   const context = new Proxy({ globalAlpha: 1, shadowBlur: 0, lineWidth: 1,
-    fillStyle: "#000000", strokeStyle: "#000000", font: "10px sans-serif", shadowColor: "transparent", textAlign: "start",
+    fillStyle: "#000000", strokeStyle: "#000000", font: "10px sans-serif", shadowColor: "transparent", textAlign: "start", globalCompositeOperation: "source-over",
     clearRect() { paints++; drawing = []; },
     save() { paintStack.push(Object.fromEntries(paintProperties.map(key => [key, context[key]]))); },
     restore() { const saved = paintStack.pop(); if (saved) Object.assign(context, saved); },
     fillText(...args) { observeDraw("fillText", args); }, drawImage(...args) { observeDraw("drawImage", args); },
     fillRect(...args) { observeDraw("fillRect", args); }, roundRect(...args) { observeDraw("roundRect", args); },
     arc(...args) { observeDraw("arc", args); },
-    createRadialGradient: () => ({ addColorStop() {} }),
+    beginPath(...args) { observeDraw("beginPath", args); }, closePath(...args) { observeDraw("closePath", args); },
+    moveTo(...args) { observeDraw("moveTo", args); }, lineTo(...args) { observeDraw("lineTo", args); },
+    quadraticCurveTo(...args) { observeDraw("quadraticCurveTo", args); },
+    fill(...args) { observeDraw("fill", args); }, stroke(...args) { observeDraw("stroke", args); },
+    strokeRect(...args) { observeDraw("strokeRect", args); },
+    createRadialGradient: (...args) => gradient("radial", args),
+    createLinearGradient: (...args) => gradient("linear", args),
   }, { get: (target, key) => target[key] ?? (() => {}) });
   canvas.getContext = () => context;
   let bounds = { left: 50, top: 60, width: cssWidth, height: cssWidth * 4 / 3 };
@@ -58,9 +67,10 @@ export function trainingHarness({ engineSource, uiSource, cssWidth = 360 }) {
     matchMedia: () => motion, dispatchEvent() {} });
   const performance = { now: () => wallMs };
   class Image {
-    constructor() { this.complete = false; this.naturalWidth = 0; images.push(this); }
+    constructor() { this.complete = false; this.naturalWidth = 0; this.naturalHeight = 0; images.push(this); }
     set src(value) { this.url = value; requests.push(value); }
-    load() { this.complete = true; this.naturalWidth = 128; this.onload?.(); }
+    load() { this.complete = true; this.naturalWidth = 128; this.naturalHeight = 128; this.onload?.(); }
+    fail() { this.complete = true; this.naturalWidth = 0; this.naturalHeight = 0; this.onerror?.(); }
   }
   vm.runInNewContext(engineSource, { window });
   const actualEngine = window.PortfolioBreakerEngine;
