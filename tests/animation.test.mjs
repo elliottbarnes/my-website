@@ -98,7 +98,7 @@ function animation({ reduced = false, paused = false, hidden = false, view = "en
   field.parentElement.parentElement = scene;
   root.dataset = { view, ...(paused ? { motion: "paused" } : {}) };
   const nodes = new Map([["#entrance", entrance], ["#code-field", field], ["#scene", scene], ["[data-pointer-readout]", readout]]);
-  for (const selector of ["#code-wall", "[data-scene-file]", "[data-scene-path]", "#typed-command", "#entrance .mode", "#entrance .status-position", "#scene-feedback"]) nodes.set(selector, node());
+  for (const selector of ["#scene-experiment", "#code-wall", "[data-scene-file]", "[data-scene-path]", "#typed-command", "#entrance .mode", "#entrance .status-position", "#scene-feedback"]) nodes.set(selector, node());
   const document = Object.assign(surface(), {
     documentElement: root, hidden,
     querySelector: (selector) => selector === "dialog[open]" ? (document.openDialog || null) : nodes.get(selector) || null,
@@ -655,4 +655,20 @@ test("touch visitors can select real hashes in a static history preview", () => 
   assert.equal(controls.api.state.selectedCommit, "6baf3aacc2b86458bd42dfb4d3f511721005bcef");
   assert.equal(controls.api.state.static, true);
   assert.equal(controls.frames.size, 0);
+});
+
+
+test("interference selector preserves static discovery and pauses without losing the surface", () => {
+  for (const options of [{ paused: true }, { reduced: true }]) {
+    const controls = animation(options);
+    const selector = controls.document.getElementById("scene-experiment");
+    selector.value = "interference"; selector.dispatch("change");
+    assert.equal(controls.api.state.effect, "interference");
+    assert.equal(controls.frames.size, 0);
+    assert.ok(controls.field.calls.text.map(call => call.text).join("").includes("twosources"));
+    const before = JSON.stringify(controls.field.calls.text);
+    controls.window.dispatch("pointermove", { clientX: 500, clientY: 100, target: controls.field });
+    controls.frame(1000);
+    assert.equal(JSON.stringify(controls.field.calls.text), before);
+  }
 });

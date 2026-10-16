@@ -574,18 +574,20 @@ const snippets = [{"repo": "glassbox", "title": "source → WebAssembly", "path"
   function drawInteraction(time) {
     const { snippet, amount, kind, anchor } = interaction;
     const quiet = interaction.static;
+    const renderKind = kind === "object" && snippet.repo !== "architecture-lab" ? "interference" : kind;
     if (quiet) time = 0;
     scene.dataset.phase = "interactive";
     // Keep the live code outside the graphic clear; fade the cells beneath its
     // labels without painting a panel or hiding the continuous typing.
-    sourceDimming = window.PortfolioEntranceEffects?.bounds?.(kind, {
+    sourceDimming = window.PortfolioEntranceEffects?.bounds?.(renderKind, {
       width, height, amount, anchor, glyphs: interaction.glyphs, pull: interaction.pull,
     }) || null;
     editor(snippet, quiet ? 1 : (time % cycleLength) / cycleLength, 1 - amount * .58, time, !quiet, !quiet);
     scene.dataset.effect = kind;
     scene.dataset.selectedCommit = kind === "history" ? interaction.selectedCommit || commitHistory[snippet.repo]?.[0]?.sha || "" : "";
-    if (["history", "tokens", "sort", "automaton", "graph"].includes(kind) && window.PortfolioEntranceEffects) {
-      const bounds = window.PortfolioEntranceEffects.draw(kind, { context, width, height, amount, time, anchor, snippet,
+    if (["history", "tokens", "sort", "automaton", "graph", "interference"].includes(renderKind) && window.PortfolioEntranceEffects) {
+      const bounds = window.PortfolioEntranceEffects.draw(renderKind, { context, width, height, amount, time, anchor, snippet,
+        pointerX: quiet ? 0 : pointerX, pointerY: quiet ? 0 : pointerY,
         history: commitHistory[snippet.repo] || [], selectedCommit: interaction.selectedCommit,
         pull: interaction.pull, glyphs: transportedGlyphs(), ...palette });
       displayedGraphic = { kind, snippet, amount, anchor, bounds, glyphs: interaction.glyphs, glyphKeys: interaction.glyphKeys };

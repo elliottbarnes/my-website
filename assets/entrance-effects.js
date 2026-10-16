@@ -245,6 +245,60 @@
     return { left: box.left, top: box.top, right: box.right, bottom: box.bottom };
   }
 
+  // Two coherent radial sources. A tilted sampled surface makes phase and
+  // cancellation legible without post-processing, textures, or extra canvases.
+  function interference(args) {
+    const { amount, time = 0, accent, ink, muted, highlight } = args;
+    const box = layout(args, 260), ctx = begin(args, box);
+    const t = time / 1000, px = clamp(args.pointerX || 0, -1, 1), py = clamp(args.pointerY || 0, -1, 1);
+    const columns = box.w < 340 ? 35 : 53, rows = 27;
+    const sources = [[-.23 + px * .09, -.08 + Math.sin(t * .24) * .08], [.23 + px * .04, .08 + Math.cos(t * .21) * .08]];
+    const frequency = 24 + py * 5, phase = t * 2.6;
+    const amplitude = (u, v) => sources.reduce((sum, [x, y]) => sum + Math.sin(Math.hypot(u - x, v - y) * frequency - phase), 0) / 2;
+    const project = (u, v, wave) => ({ x: box.w * (.5 + u * .80 + v * .12), y: box.h * (.49 + v * .48 - wave * .105) });
+    const points = [];
+    for (let y = 0; y < rows; y++) {
+      const row = [];
+      for (let x = 0; x < columns; x++) {
+        const u = x / (columns - 1) - .5, v = y / (rows - 1) - .5;
+        const wave = amplitude(u, v), edge = clamp(Math.min(.5 - Math.abs(u), .5 - Math.abs(v)) * 12);
+        row.push({ ...project(u, v, wave), wave, edge });
+      }
+      points.push(row);
+    }
+    // The mesh appears late in the morph so source letters remain the transition.
+    const meshAlpha = smooth((amount - .55) / .45);
+    ctx.strokeStyle = accent; ctx.lineWidth = .65;
+    for (let y = 1; y < rows - 1; y += 2) {
+      ctx.globalAlpha = meshAlpha * (.16 + y / rows * .20); ctx.beginPath();
+      points[y].forEach((p, x) => x ? ctx.lineTo(p.x, p.y) : ctx.moveTo(p.x, p.y)); ctx.stroke();
+    }
+    for (let x = 2; x < columns - 2; x += 4) {
+      ctx.globalAlpha = meshAlpha * .14; ctx.beginPath();
+      points.forEach((row, y) => y ? ctx.lineTo(row[x].x, row[x].y) : ctx.moveTo(row[x].x, row[x].y)); ctx.stroke();
+    }
+    for (let y = 0; y < rows; y++) for (let x = 0; x < columns; x++) {
+      const p = points[y][x], crest = Math.max(0, p.wave), trough = Math.max(0, -p.wave);
+      const glyph = crest > .7 ? '+' : trough > .65 ? '−' : Math.abs(p.wave) < .12 ? '·' : ':';
+      carry(ctx, glyph, p.x, p.y, crest > .65 ? highlight : trough > .45 ? muted : accent,
+        amount * p.edge * (.30 + Math.abs(p.wave) * .70), box.w < 340 ? 6 : 7);
+    }
+    sources.forEach(([u,v], i) => {
+      const p = project(u,v,amplitude(u,v));
+      for (let ring = 0; ring < 3; ring++) {
+        const travel = ((t * .55 + ring / 3) % 1 + 1) % 1;
+        ctx.globalAlpha = meshAlpha * (1 - travel) * .45; ctx.strokeStyle = i ? highlight : accent;
+        ctx.beginPath(); ctx.arc(p.x, p.y, 3 + travel * 17, 0, Math.PI * 2); ctx.stroke();
+      }
+      carry(ctx, '✦', p.x - 4, p.y, ink, amount, 12);
+      text(ctx, i ? 'B' : 'A', p.x + 9, p.y - 10, i ? highlight : accent, amount * .85, 8);
+    });
+    text(ctx, 'two sources / one interference field', 6, 13, accent, amount * .85, box.w < 340 ? 8 : 9);
+    text(ctx, 'move → phase + spacing · drag → pull', 6, box.h - 9, muted, amount * .8, box.w < 340 ? 7 : 8);
+    ctx.restore();
+    return { left: box.left, top: box.top, right: box.right, bottom: box.bottom };
+  }
+
   // Algorithm sketches, deliberately separate from the pinned repository code.
   // Each frame is derived from a bounded deterministic trace (no background timers).
   const sortFrames = (() => {
@@ -306,8 +360,8 @@
 
   window.PortfolioEntranceEffects = Object.freeze({
     bounds(kind, args) {
-      if (!["history", "tokens", "sort", "automaton", "graph"].includes(kind) || !(args?.width > 0) || !(args.height > 0)) return null;
-      return layout(args, kind === "history" ? 206 : kind === "tokens" ? 220 : 224);
+      if (!["history", "tokens", "sort", "automaton", "graph", "interference"].includes(kind) || !(args?.width > 0) || !(args.height > 0)) return null;
+      return layout(args, kind === "history" ? 206 : kind === "tokens" ? 220 : kind === "interference" ? 260 : 224);
     },
     pick(kind, args, x, y) {
       if (kind !== "history" || !(args?.width > 0) || !(args.height > 0) || args.amount < .65) return null;
@@ -322,6 +376,7 @@
       if (!args?.context || !(args.width > 0) || !(args.height > 0)) return null;
       flow = null;
       try {
+        if (kind === "interference") return interference(args);
         if (kind === "history") return history(args);
         if (kind === "tokens") return tokens(args);
         if (["sort", "automaton", "graph"].includes(kind)) return algorithm(kind, args);
