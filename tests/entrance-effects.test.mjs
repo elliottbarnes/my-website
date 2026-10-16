@@ -264,3 +264,26 @@ test('algorithm sketches use their originating source glyphs during the transiti
     assert.ok(calls.text.some(p => p.value === 'X' && Math.abs(p.x - 30) < .01));
   }
 });
+
+
+test("interference stays finite and bounded at pointer extremes on narrow and short canvases", () => {
+  for (const width of [260, 348, 740]) for (const height of [180, 320]) for (const time of [0, 1200, 8300]) for (const pointer of [-1, 1]) {
+    const { calls, bounds } = draw("interference", { width, height, time, pointerX: pointer, pointerY: pointer });
+    assert.ok(calls.text.length <= 1500);
+    assert.ok(calls.lines.length <= 1200);
+    const expected = effects.bounds("interference", {width,height,amount:1,anchor:{x:.5,y:.5}});
+    for (const key of ["left","right","top","bottom"]) assert.equal(bounds[key], expected[key]);
+    for (const p of [...calls.text, ...calls.dots]) {
+      assert.ok(Number.isFinite(p.x) && Number.isFinite(p.y));
+      assert.ok(p.x >= bounds.left && p.x <= bounds.right);
+      assert.ok(p.y >= bounds.top && p.y <= bounds.bottom);
+    }
+  }
+});
+test("interference reacts to pointer spacing and carries real source glyphs during formation", () => {
+  const first = draw("interference", {time:1200,pointerX:-1,pointerY:-1});
+  const next = draw("interference", {time:1200,pointerX:1,pointerY:1});
+  assert.notDeepEqual(first.calls.text, next.calls.text);
+  const {calls} = draw("interference", {amount:0,glyphs:[{glyph:'X',x:30,y:50,size:10}]});
+  assert.ok(calls.text.some(p=>p.value==='X' && Math.abs(p.x-30)<.01 && Math.abs(p.y-50)<.01));
+});
