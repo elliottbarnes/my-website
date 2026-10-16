@@ -453,3 +453,12 @@ html.is-leaving .entrance-intro{opacity:0;transition:opacity .25s}
 @media(max-width:360px){#arcade-dialog{padding:12px}#arcade-dialog #hunt-grid button{min-height:40px}.hunt-screen{padding:7px}#arcade-dialog .arcade-tabs button{padding:6px;font-size:10px}}
 @media(max-height:500px) and (min-width:480px){#arcade-dialog{width:640px}#ki-canvas{max-height:140px}.arcade-links{grid-column:2}#hunt-grid{max-width:310px;margin:auto}}
 #hunt-grid img{display:block;width:32px;height:32px;margin:auto;filter:drop-shadow(0 0 5px #ffb85065)}
+
+/* One hidden entry, three explicit choices. Nothing starts until selected. */
+#arcade-picker .arcade-picker-intro{margin:0 0 16px;color:#afc4d6}
+#arcade-dialog .game-choice{display:flex;align-items:center;gap:14px;width:100%;text-align:left;padding:16px 12px;margin-top:10px;background:#0a1b2b;border-color:#385369;transition:border-color .15s,background-color .15s}
+#arcade-dialog .game-choice:hover{background:#153445;border-color:#8be9ee}
+.game-choice img{flex:none;width:40px;height:40px;object-fit:contain;filter:drop-shadow(0 0 8px #ffb85025)}
+.game-choice>span:nth-child(2){flex:1;min-width:0}.game-choice strong{display:block;font-size:13px;font-weight:400;color:#e9f8ff}.game-choice small{display:block;font-size:9px;line-height:1.6;margin-top:5px;color:#afc4d6}.game-choice>span:last-child{color:#8be9ee}
+#arcade-dialog[data-mode=choose]{padding-bottom:24px}
+#arcade-dialog #arcade-back{font-size:10px;padding-inline:0;border-color:transparent;color:#8be9ee}

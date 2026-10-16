@@ -30,6 +30,7 @@
   const ki = document.getElementById('ki-game'), radar = document.getElementById('radar-game');
   const action = document.getElementById('ki-charge'), meter = document.getElementById('ki-meter');
   const powerText = document.getElementById('ki-power'), target = document.getElementById('ki-target');
+  const picker = document.getElementById('arcade-picker'), back = document.getElementById('arcade-back');
   const score = document.getElementById('arcade-score'), grid = document.getElementById('hunt-grid');
   const canvas = document.getElementById('ki-canvas'), ctx = canvas.getContext('2d');
   let mode = 'ki', opener, frame = 0, started = null, round = 0, hits = 0, energy = 0;
@@ -133,17 +134,29 @@
     else { renderGrid(); announce('Find seven hidden balls. Scan a square; its reading points toward the nearest remaining ball.'); }
   }
   function select(next) {
-    mode = next; ki.hidden = mode !== 'ki'; radar.hidden = mode !== 'radar'; title.textContent = mode === 'ki' ? 'ki control' : 'dragon radar hunt';
-    dialog.querySelectorAll('[data-arcade-mode]').forEach(button => button.setAttribute('aria-pressed', String(button.dataset.arcadeMode === mode)));
-    reset();
+    mode = next; const choosing = mode === 'choose';
+    ki.hidden = mode !== 'ki'; radar.hidden = mode !== 'radar'; picker.hidden = !choosing;
+    back.hidden = choosing; score.hidden = choosing; status.hidden = choosing;
+    document.getElementById('arcade-reset').hidden = choosing;
+    title.textContent = choosing ? 'training chamber' : mode === 'ki' ? 'ki control' : 'dragon radar hunt';
+    dialog.dataset.mode = mode;
+    if (choosing) { stop(); announce('Choose a training game.'); } else reset();
   }
   function open(next = 'ki', trigger = document.activeElement) {
     opener = trigger;
-    if (document.getElementById('training-dialog')?.open) { window.PortfolioTraining.close(); opener = document.querySelector('[data-training-open]'); }
+    if (document.getElementById('training-dialog')?.open) { window.PortfolioTraining.close(); opener = document.querySelector('[data-game-trigger]'); }
     dialog.showModal(); root.dataset.training = 'open'; select(next);
     window.dispatchEvent(new CustomEvent('portfolio:training', { detail: { open: true } }));
-    (mode === 'ki' ? action : grid.children[0]).focus();
+    focusGame();
   }
+  function focusGame() { (mode === 'choose' ? document.getElementById('game-pick-breaker') : mode === 'ki' ? action : grid.children[0]).focus(); }
+  for (const game of ['breaker', 'ki', 'radar']) document.getElementById(`game-pick-${game}`).addEventListener('click', () => {
+    if (game === 'breaker') {
+      const trigger = opener;
+      dialog.close(); window.PortfolioTraining?.open(trigger);
+    } else { select(game); focusGame(); }
+  });
+  back.addEventListener('click', () => { select('choose'); focusGame(); });
   function cancelCharge(message) { if (started !== null) { stop(); energy = 0; meter.value = 0; powerText.textContent = '0%'; announce(message); } draw(); }
   action.addEventListener('pointerdown', event => {
     if (event.button !== 0 || event.isPrimary === false) return;
@@ -158,10 +171,14 @@
   });
   action.addEventListener('blur', () => cancelCharge('Charge cancelled when focus moved. No round lost.'));
   document.querySelectorAll('[data-arcade-open]').forEach(button => button.addEventListener('click', () => open(button.dataset.arcadeOpen)));
-  dialog.querySelectorAll('[data-arcade-mode]').forEach(button => button.addEventListener('click', () => select(button.dataset.arcadeMode)));
   document.getElementById('arcade-reset').addEventListener('click', reset);
   document.getElementById('arcade-close').addEventListener('click', () => dialog.close());
-  dialog.addEventListener('close', () => { stop(); delete root.dataset.training; window.dispatchEvent(new CustomEvent('portfolio:training', { detail: { open: false } })); if (opener?.isConnected) opener.focus({ preventScroll: true }); });
+  dialog.addEventListener('close', () => {
+    stop(); const trainingOpen = Boolean(document.getElementById('training-dialog')?.open);
+    if (!trainingOpen) delete root.dataset.training;
+    window.dispatchEvent(new CustomEvent('portfolio:training', { detail: { open: trainingOpen } }));
+    if (!trainingOpen && opener?.isConnected) opener.focus({ preventScroll: true });
+  });
   document.addEventListener('visibilitychange', () => { if (document.hidden) { cancelCharge('Charge cancelled while away. No round lost.'); cancelAnimationFrame(frame); frame = 0; } });
   window.addEventListener('blur', () => cancelCharge('Charge cancelled while away. No round lost.'));
   reduced.addEventListener('change', () => draw());

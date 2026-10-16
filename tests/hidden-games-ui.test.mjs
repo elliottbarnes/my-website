@@ -71,3 +71,26 @@ test('five rounds reach a terminal result and restart resets score and meter', (
   assert.equal(action.textContent,'train again'); assert.match(h.get('arcade-status').textContent,/Training complete/);
   action.fire('click',{detail:0}); assert.equal(h.get('ki-meter').value,0); assert.match(h.get('arcade-score').textContent,/1 \/ 5 · 0 hits/);assert.equal(h.frames.size,0);
 });
+test('the game chooser starts no game and opens either small game through its card', () => {
+  const h = harness(); h.window.PortfolioArcade.open('choose');
+  assert.equal(h.get('arcade-picker').hidden,false);
+  assert.equal(h.get('ki-game').hidden,true); assert.equal(h.get('radar-game').hidden,true);
+  assert.equal(h.get('arcade-reset').hidden,true); assert.equal(h.frames.size,0);
+  assert.equal(h.focus(),h.get('game-pick-breaker'));
+  h.get('game-pick-ki').fire('click'); assert.equal(h.get('ki-game').hidden,false); assert.equal(h.focus(),h.get('ki-charge'));
+  h.get('ki-charge').fire('click',{detail:0}); h.advance(500);
+  h.get('arcade-back').fire('click'); assert.equal(h.frames.size,0); assert.equal(h.get('arcade-picker').hidden,false);
+  h.get('game-pick-radar').fire('click'); assert.equal(h.get('radar-game').hidden,false); assert.equal(h.focus(),h.get('hunt-grid').children[0]);
+});
+test('brick breaker handoff retains the original trigger and survives deferred close cleanup', () => {
+  const h = harness(), trigger = h.get('footer-trigger'); let passed;
+  h.window.PortfolioTraining = {open(opener){passed=opener; h.get('training-dialog').open=true; h.document.documentElement.dataset.training='open';}};
+  h.window.PortfolioArcade.open('choose',trigger); h.get('game-pick-breaker').fire('click');
+  assert.equal(passed,trigger); assert.equal(h.get('arcade-dialog').open,false);
+  h.get('arcade-dialog').fire('close'); assert.equal(h.document.documentElement.dataset.training,'open');
+});
+test('closing the chooser restores the original footer trigger', () => {
+  const h=harness(), trigger=h.get('footer-trigger');
+  h.window.PortfolioArcade.open('choose',trigger); h.get('arcade-dialog').close();
+  assert.equal(h.focus(),trigger); assert.equal(h.document.documentElement.dataset.training,undefined);
+});
