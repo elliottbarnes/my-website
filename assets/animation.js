@@ -80,7 +80,7 @@ const snippets = [{"repo": "glassbox", "title": "source → WebAssembly", "path"
   const ease = number => { const t = clamp(number); return t * t * (3 - 2 * t); };
   const visible = () => !document.hidden && root.dataset.view !== "workspace";
   const still = () => root.dataset.motion === "paused" || (root.dataset.motion !== "running" && motion.matches);
-  const running = () => visible() && !document.querySelector("#training-dialog[open]") && (!still() || Boolean(leaving));
+  const running = () => visible() && !document.querySelector("#training-dialog[open]") && !document.querySelector("#arcade-dialog[open]") && (!still() || Boolean(leaving));
   let quietPreviously = still(), frozenTime = null;
 
   function announceScene(message) {
@@ -349,10 +349,10 @@ const snippets = [{"repo": "glassbox", "title": "source → WebAssembly", "path"
     const spacingY = Math.min(11, (height - 60) / rows);
     const cx = width * (anchor?.x ?? .5) + (interaction?.pull?.x || 0), cy = height * (anchor?.y ?? .49) + (interaction?.pull?.y || 0);
     const growth = .1 + .9 * ease(amount);
-    displayedGraphic = { kind: "object", snippet, amount, anchor,
+    displayedGraphic = { kind: interaction?.kind || "object", snippet, amount, anchor,
       bounds: { left: cx - columns * spacingX / 2, right: cx + columns * spacingX / 2,
         top: cy - rows * spacingY / 2, bottom: cy + rows * spacingY / 2 } };
-    const architecture = snippet.repo === "architecture-lab";
+    const architecture = snippet.repo === "architecture-lab" && interaction?.kind !== "interference";
     const marks = " .:;+=*#%@";
     const points = transportedGlyphs();
     context.textAlign = "left";
@@ -366,7 +366,9 @@ const snippets = [{"repo": "glassbox", "title": "source → WebAssembly", "path"
       const distance = Math.hypot(px - pointerX * .34, py - pointerY * .28);
       const value = architecture
         ? Math.sin(x * .35 - t * 1.6) * Math.cos(y * .45 + t * .8) + Math.sin(distance * 25 - t * 2)
-        : Math.sin(px * 15 + t) + Math.cos(py * 18 - t * 1.3) + Math.sin(distance * 25 - t * 2);
+        : Math.sin(Math.hypot(px - .22 * Math.cos(t * .32) - pointerX * .12, py - .18 * Math.sin(t * .4)) * 48 - t * 2.4)
+          + Math.sin(Math.hypot(px + .24 * Math.cos(t * .27), py + .20 * Math.sin(t * .33) - pointerY * .12) * 48 - t * 2.4)
+          + Math.cos(px * 12 - py * 9 + t * .6) * .65;
       const brightness = clamp((value + 3) / 6);
       const edge = clamp((.72 - Math.hypot(px, py)) * 4);
       context.globalAlpha = amount * edge * (.16 + brightness * .79);
@@ -374,9 +376,9 @@ const snippets = [{"repo": "glassbox", "title": "source → WebAssembly", "path"
       const glyph = architecture ? ((x + y + Math.floor(t * 3)) % 7 === 0 ? "1" : brightness > .6 ? "▦" : "0")
         : marks[Math.min(marks.length - 1, Math.floor(brightness * marks.length))];
       const destX = cx + (x - columns / 2) * spacingX * growth;
-      const destY = cy + (y - rows / 2) * spacingY * growth;
+      const destY = cy + ((y - rows / 2) * spacingY + (architecture ? 0 : (brightness - .5) * 22)) * growth;
       carryGlyph(points, index, { x: destX, y: destY }, amount,
-        brightness > .64 ? palette.accent : palette.ink, edge * (.16 + brightness * .79), Math.max(6, spacingX), glyph);
+        brightness > .78 ? palette.highlight : brightness > .48 ? palette.accent : palette.ink, edge * (.16 + brightness * .79), Math.max(6, spacingX), glyph);
     }
     context.globalAlpha = amount * .78;
     context.textAlign = "left";
@@ -519,7 +521,7 @@ const snippets = [{"repo": "glassbox", "title": "source → WebAssembly", "path"
     } else interaction = next;
 
     lastInput = now;
-    announceScene(`${({ history: "git history", tokens: "compile sketch", avatar: "source portrait", object: "source field" })[kind]} for ${next.snippet.repo}. ${kind === "history" ? "left and right select commits. " : ""}escape returns to code.`);
+    announceScene(`${({ history: "git history", tokens: "compile sketch", avatar: "source portrait", object: "source field", interference: "interference field", sort: "bubble sort", automaton: "rule 110 cellular automaton", graph: "breadth-first search" })[kind]} for ${next.snippet.repo}. ${kind === "history" ? "left and right select commits. " : ""}escape returns to code.`);
     if (staticEffect) drawScene(elapsed);
     schedule();
   }
@@ -582,7 +584,7 @@ const snippets = [{"repo": "glassbox", "title": "source → WebAssembly", "path"
     editor(snippet, quiet ? 1 : (time % cycleLength) / cycleLength, 1 - amount * .58, time, !quiet, !quiet);
     scene.dataset.effect = kind;
     scene.dataset.selectedCommit = kind === "history" ? interaction.selectedCommit || commitHistory[snippet.repo]?.[0]?.sha || "" : "";
-    if (["history", "tokens"].includes(kind) && window.PortfolioEntranceEffects) {
+    if (["history", "tokens", "sort", "automaton", "graph"].includes(kind) && window.PortfolioEntranceEffects) {
       const bounds = window.PortfolioEntranceEffects.draw(kind, { context, width, height, amount, time, anchor, snippet,
         history: commitHistory[snippet.repo] || [], selectedCommit: interaction.selectedCommit,
         pull: interaction.pull, glyphs: transportedGlyphs(), ...palette });
@@ -592,7 +594,7 @@ const snippets = [{"repo": "glassbox", "title": "source → WebAssembly", "path"
     if (displayedGraphic) Object.assign(displayedGraphic, { glyphs: interaction.glyphs,
       glyphKeys: interaction.glyphKeys, static: interaction.static, pull: interaction.pull,
       pullTarget: interaction.pullTarget, pointerType: interaction.pointerType, selectedCommit: interaction.selectedCommit });
-    status(snippet, "NORMAL", kind === "history" ? "git log --graph --oneline" : kind === "tokens" ? "./source --inspect" : kind === "avatar" ? "!./avatar --track" : `!./${snippet.repo} --live`);
+    status(snippet, "NORMAL", kind === "history" ? "git log --graph --oneline" : kind === "tokens" ? "./source --inspect" : kind === "avatar" ? "!./avatar --track" : ["sort", "automaton", "graph"].includes(kind) ? `./sketch --${kind}` : `!./${snippet.repo} --live`);
     drawInputHud(time);
   }
 
@@ -941,6 +943,10 @@ const snippets = [{"repo": "glassbox", "title": "source → WebAssembly", "path"
     }
     lastInput = performance.now();
     schedule();
+  });
+  document.getElementById("scene-experiment")?.addEventListener("change", event => {
+    const row = sourceRows[0];
+    if (row) openGraphic(row, "button", event.target.value);
   });
   window.PortfolioAnimation = Object.freeze({ enter, cancel: completeEntry,
     get state() { return Object.freeze({ effect: interaction?.kind || null, glyphCount: interaction?.glyphs?.length || 0,

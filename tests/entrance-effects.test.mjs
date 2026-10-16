@@ -244,3 +244,23 @@ test("short compile sketches show only rows that fit between labels and the sour
     }
   }
 });
+
+test('algorithm sketches remain bounded and finite on desktop and mobile over their full cycles', () => {
+  for (const kind of ['sort', 'automaton', 'graph']) for (const width of [280, 740]) for (const time of [0, 650, 4800, 12600, 20000]) {
+    const { calls, bounds } = draw(kind, { width, height: 260, time });
+    assert.ok(bounds.left >= 0 && bounds.right <= width);
+    assert.ok(bounds.top >= 0 && bounds.bottom <= 260);
+    assert.ok(calls.text.length >= 10);
+    for (const point of [...calls.text, ...calls.dots]) {
+      assert.ok(Number.isFinite(point.x) && Number.isFinite(point.y));
+      assert.ok(point.x >= bounds.left - 1 && point.x <= bounds.right + 1);
+      assert.ok(point.y >= bounds.top && point.y <= bounds.bottom);
+    }
+  }
+});
+test('algorithm sketches use their originating source glyphs during the transition', () => {
+  for (const kind of ['sort', 'automaton', 'graph']) {
+    const { calls } = draw(kind, { amount: 0, glyphs: [{ glyph: 'X', x: 30, y: 50, size: 10 }] });
+    assert.ok(calls.text.some(p => p.value === 'X' && Math.abs(p.x - 30) < .01));
+  }
+});

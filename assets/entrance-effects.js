@@ -245,10 +245,69 @@
     return { left: box.left, top: box.top, right: box.right, bottom: box.bottom };
   }
 
+  // Algorithm sketches, deliberately separate from the pinned repository code.
+  // Each frame is derived from a bounded deterministic trace (no background timers).
+  const sortFrames = (() => {
+    const values = [7, 2, 10, 4, 1, 8, 3, 9, 5, 6], frames = [];
+    for (let end = values.length - 1; end > 0; end--) for (let i = 0; i < end; i++) {
+      frames.push({ values: [...values], pair: i, end });
+      if (values[i] > values[i + 1]) [values[i], values[i + 1]] = [values[i + 1], values[i]];
+    }
+    frames.push({ values: [...values], pair: -1, end: 0 });
+    return frames;
+  })();
+  const generations = (() => {
+    const rows = [Array.from({ length: 49 }, (_, i) => i === 35 ? 1 : 0)];
+    for (let y = 1; y < 48; y++) rows.push(rows[y - 1].map((_, x, row) => {
+      const pattern = (row[(x + 48) % 49] << 2) | (row[x] << 1) | row[(x + 1) % 49];
+      return (110 >> pattern) & 1;
+    }));
+    return rows;
+  })();
+  function algorithm(kind, args) {
+    const { amount, time = 0, ink, accent, muted, highlight } = args;
+    const box = layout(args, 224), ctx = begin(args, box);
+    const title = { sort: 'bubble sort / compare → swap', automaton: 'rule 110 / local rules → complexity', graph: 'breadth-first search / frontier → visited' }[kind];
+    text(ctx, title, 6, 13, accent, amount * .95, box.w < 330 ? 8 : 9);
+    const bottom = box.h - 25, top = 40, usable = Math.max(20, bottom - top);
+    if (kind === 'sort') {
+      const step = Math.floor(time / 280) % (sortFrames.length + 6), current = sortFrames[Math.min(step, sortFrames.length - 1)];
+      const gap = (box.w - 24) / 10;
+      current.values.forEach((value, i) => {
+        const x = 12 + i * gap, h = usable * value / 10, active = i === current.pair || i === current.pair + 1;
+        for (let y = bottom; y > bottom - h; y -= 8) text(ctx, active ? '▰' : '▪', x, y, active ? highlight : i > current.end ? accent : ink, amount * .85, 10);
+        text(ctx, String(value), x, bottom + 12, muted, amount * .9, 8);
+      });
+    } else if (kind === 'automaton') {
+      const cols = box.w < 330 ? 35 : 49, cell = Math.min((box.w - 16) / cols, usable / 22), left = (box.w - cols * cell) / 2;
+      const generation = Math.floor(time / 180) % 27;
+      for (let y = 0; y < 22; y++) for (let x = 0; x < cols; x++) {
+        const alive = generations[y + generation][x + 49 - cols];
+        if (alive) carry(ctx, y === 21 ? '▰' : '▪', left + x * cell, top + y * cell, y === 21 ? highlight : accent, amount * (.25 + y / 30), cell);
+      }
+    } else {
+      const nodes = [[.1,.5],[.32,.17],[.32,.8],[.55,.12],[.55,.5],[.55,.88],[.83,.3],[.83,.72]];
+      const edges = [[0,1],[0,2],[1,3],[1,4],[2,4],[2,5],[3,6],[4,6],[4,7],[5,7]], order = [0,1,2,3,4,5,6,7];
+      const visited = Math.floor(time / 650) % 11;
+      for (const [a,b] of edges) {
+        const active = order.indexOf(a) < visited && order.indexOf(b) <= visited;
+        segment(ctx, nodes[a][0] * box.w, top + nodes[a][1] * usable, nodes[b][0] * box.w, top + nodes[b][1] * usable, active ? accent : muted, amount * (active ? .7 : .22));
+      }
+      nodes.forEach(([x,y], i) => {
+        const current = i === visited, done = i < visited;
+        dot(ctx, x * box.w, top + y * usable, current ? highlight : done ? accent : muted, amount * .6, current ? 9 : 5);
+        text(ctx, String.fromCharCode(65 + i), x * box.w - 3, top + y * usable - 14, current ? highlight : ink, amount, 9);
+      });
+    }
+    text(ctx, 'algorithm sketch · escape returns to source', 6, box.h - 4, muted, amount * .7, box.w < 330 ? 7 : 8);
+    ctx.restore();
+    return { left: box.left, right: box.right, top: box.top, bottom: box.bottom };
+  }
+
   window.PortfolioEntranceEffects = Object.freeze({
     bounds(kind, args) {
-      if (!["history", "tokens"].includes(kind) || !(args?.width > 0) || !(args.height > 0)) return null;
-      return layout(args, kind === "history" ? 206 : 220);
+      if (!["history", "tokens", "sort", "automaton", "graph"].includes(kind) || !(args?.width > 0) || !(args.height > 0)) return null;
+      return layout(args, kind === "history" ? 206 : kind === "tokens" ? 220 : 224);
     },
     pick(kind, args, x, y) {
       if (kind !== "history" || !(args?.width > 0) || !(args.height > 0) || args.amount < .65) return null;
@@ -265,6 +324,7 @@
       try {
         if (kind === "history") return history(args);
         if (kind === "tokens") return tokens(args);
+        if (["sort", "automaton", "graph"].includes(kind)) return algorithm(kind, args);
         return null;
       } finally { flow = null; }
     },
