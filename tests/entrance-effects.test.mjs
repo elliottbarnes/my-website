@@ -287,3 +287,15 @@ test("interference reacts to pointer spacing and carries real source glyphs duri
   const {calls} = draw("interference", {amount:0,glyphs:[{glyph:'X',x:30,y:50,size:10}]});
   assert.ok(calls.text.some(p=>p.value==='X' && Math.abs(p.x-30)<.01 && Math.abs(p.y-50)<.01));
 });
+
+test('sorting moves compared values continuously and lands in the next trace state', () => {
+  const x = (time, value) => draw('sort', {time}).calls.text.find(p=>p.value===String(value)).x;
+  assert.ok(x(200,7)>x(0,7) && x(200,7)<x(450,7));
+  assert.ok(x(200,2)<x(0,2) && x(200,2)>x(450,2));
+  assert.equal(x(450,7),x(460,7)); assert.equal(x(450,2),x(460,2));
+});
+test('graph traversal sends its pulse along an edge instead of teleporting between nodes', () => {
+  const head = time => draw('graph',{time}).calls.text.find(p=>p.value==='◆');
+  assert.ok(head(900).x>head(650).x);
+  assert.ok(head(900).y<head(650).y);
+});

@@ -496,12 +496,33 @@ const snippets = [{"repo": "glassbox", "title": "source → WebAssembly", "path"
     return points;
   }
 
+  // Each project starts with a relevant visualization; repeated discoveries
+  // rotate through distinct forms. Portrait is a rare ninth discovery, never
+  // the default for ordinary text. History does not consume the sequence.
+  const effectDecks = {
+    glassbox: ["tokens", "sort", "graph", "interference", "automaton"],
+    "pixel-language": ["interference", "automaton", "sort", "graph", "tokens"],
+    "architecture-lab": ["object", "graph", "automaton", "sort", "interference"],
+    "automata-lab": ["graph", "automaton", "tokens", "interference", "sort"],
+  };
+  const effectVisits = new Map();
+  let discoveries = 0, lastSourceEffect = null;
+  function nextSourceEffect(repo) {
+    discoveries++;
+    if (discoveries % 9 === 0) { lastSourceEffect = "avatar"; return "avatar"; }
+    const deck = effectDecks[repo] || effectDecks.glassbox;
+    let visit = effectVisits.get(repo) || 0, kind = deck[visit++ % deck.length];
+    if (kind === lastSourceEffect) kind = deck[visit++ % deck.length];
+    effectVisits.set(repo, visit); lastSourceEffect = kind;
+    return kind;
+  }
+
   function openGraphic(row, pointerType, requestedKind) {
     if (!row || !visible() || leaving || document.querySelector("dialog[open]")) return;
     const staticEffect = still();
     const now = performance.now();
-    const kind = requestedKind || (row.gutter ? "history" : ["tokens", "tokenize", "ast", "ir", "wasm", "emitWasm", "compile", "lower", "optimize", "output", "byteLocation", "match"].includes(row.token) ? "tokens" : renderedSnippet.repo === "glassbox" ? "avatar" : "object");
-    const next = { kind, snippet: renderedSnippet, anchor: makeAnchor(row),
+    const kind = requestedKind || (row.gutter ? "history" : nextSourceEffect(renderedSnippet.repo));
+    const next = { kind, snippet: renderedSnippet, anchor: makeAnchor(row), visualStarted: elapsed,
       amount: staticEffect ? 1 : 0, velocity: 0, target: 1, static: staticEffect,
       pointerType, pull: { x: 0, y: 0 }, pullTarget: { x: 0, y: 0 },
       expires: staticEffect ? Infinity : now + holdDuration(pointerType) };
@@ -514,6 +535,7 @@ const snippets = [{"repo": "glassbox", "title": "source → WebAssembly", "path"
       interaction.target = 1;
       interaction.expires = next.expires;
       interaction.next = null;
+      interaction.visualStarted = next.visualStarted;
       interaction.glyphs = next.glyphs;
       interaction.glyphKeys = next.glyphKeys;
     } else if (displayedGraphic && displayedGraphic.amount > .02) {
@@ -549,7 +571,7 @@ const snippets = [{"repo": "glassbox", "title": "source → WebAssembly", "path"
       const follow = 1 - Math.exp(-dt / .07);
       for (const axis of ["x", "y"]) interaction.pull[axis] += ((interaction.pullTarget?.[axis] || 0) - interaction.pull[axis]) * follow;
     }
-    const frequency = ["history", "tokens"].includes(interaction.kind) ? (interaction.target ? 9 : 11) : interaction.target ? 14 : 20;
+    const frequency = interaction.target ? (["history", "tokens"].includes(interaction.kind) ? 9 : 14) : 20;
     const offset = interaction.amount - interaction.target;
     const impulse = (interaction.velocity + frequency * offset) * dt;
     const decay = Math.exp(-frequency * dt);
@@ -586,7 +608,7 @@ const snippets = [{"repo": "glassbox", "title": "source → WebAssembly", "path"
     scene.dataset.effect = kind;
     scene.dataset.selectedCommit = kind === "history" ? interaction.selectedCommit || commitHistory[snippet.repo]?.[0]?.sha || "" : "";
     if (["history", "tokens", "sort", "automaton", "graph", "interference"].includes(renderKind) && window.PortfolioEntranceEffects) {
-      const bounds = window.PortfolioEntranceEffects.draw(renderKind, { context, width, height, amount, time, anchor, snippet,
+      const bounds = window.PortfolioEntranceEffects.draw(renderKind, { context, width, height, amount, time: quiet ? 0 : Math.max(0, time - (interaction.visualStarted || 0)), anchor, snippet,
         pointerX: quiet ? 0 : pointerX, pointerY: quiet ? 0 : pointerY,
         history: commitHistory[snippet.repo] || [], selectedCommit: interaction.selectedCommit,
         pull: interaction.pull, glyphs: transportedGlyphs(), ...palette });
@@ -594,7 +616,7 @@ const snippets = [{"repo": "glassbox", "title": "source → WebAssembly", "path"
     } else if (kind === "avatar") avatar(amount, time);
     else liveObject(snippet, amount, time, anchor);
     if (displayedGraphic) Object.assign(displayedGraphic, { glyphs: interaction.glyphs,
-      glyphKeys: interaction.glyphKeys, static: interaction.static, pull: interaction.pull,
+      glyphKeys: interaction.glyphKeys, visualStarted: interaction.visualStarted, static: interaction.static, pull: interaction.pull,
       pullTarget: interaction.pullTarget, pointerType: interaction.pointerType, selectedCommit: interaction.selectedCommit });
     status(snippet, "NORMAL", kind === "history" ? "git log --graph --oneline" : kind === "tokens" ? "./source --inspect" : kind === "avatar" ? "!./avatar --track" : ["sort", "automaton", "graph"].includes(kind) ? `./sketch --${kind}` : `!./${snippet.repo} --live`);
     drawInputHud(time);
@@ -945,10 +967,6 @@ const snippets = [{"repo": "glassbox", "title": "source → WebAssembly", "path"
     }
     lastInput = performance.now();
     schedule();
-  });
-  document.getElementById("scene-experiment")?.addEventListener("change", event => {
-    const row = sourceRows[0];
-    if (row) openGraphic(row, "button", event.target.value);
   });
   window.PortfolioAnimation = Object.freeze({ enter, cancel: completeEntry,
     get state() { return Object.freeze({ effect: interaction?.kind || null, glyphCount: interaction?.glyphs?.length || 0,
