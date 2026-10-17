@@ -1,5 +1,9 @@
 # Asset sources
 
+## Arcade generations
+
+Piccolo’s Lookout and Goku Cloud Trail use original pixel sprites, scenery, room layouts, and game code drawn locally with Canvas and CSS. Piccolo’s monochrome handheld presentation takes inspiration from 1990s Game Boy adventures such as *Link’s Awakening*. Goku’s layered colour scenery and controller styling take inspiration from 16-bit consoles. No Nintendo game sprites, maps, music, logos, or ROM data are included. The Dragon Ball characters are fan interpretations; the earlier Brick Breaker artwork retains its provenance below.
+
 ## Celestial training arena
 
 `assets/training-arena.webp` is original scenery generated with the built-in Image Generation tool on 16 October 2026. The dark, open composition leaves room for the game's independently drawn shields and energy ball. It is 1086×1448 and 144,808 bytes, encoded as WebP at quality 80 without cropping or resizing. It loads only when the training chamber opens; it adds one file to the publication allowlist. Existing Dragon Ball artwork and credits are unchanged. [Exact prompt and preparation](assets/TRAINING_ARENA.md).

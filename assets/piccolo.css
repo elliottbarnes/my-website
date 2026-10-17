@@ -1,0 +1,41 @@
+/* Original early-1990s pocket-console presentation. */
+#piccolo-dialog { box-sizing:border-box; width:min(480px,calc(100vw - 24px)); max-height:calc(100dvh - 24px); padding:18px 23px; overflow:auto; color:#273047; background:#d6d5ce; border:2px solid #eeeae0; border-radius:14px 14px 53px 14px; box-shadow:inset -5px -7px 0 #a8aba9,inset 3px 3px 0 #f3f0e7,0 24px 90px #07131c90; font-family:"Plex Mono",monospace; color-scheme:light; }
+#piccolo-dialog::backdrop { background:#101a22bc; backdrop-filter:blur(6px); }
+#piccolo-dialog[open] { display:block; }
+#piccolo-dialog .piccolo-heading { display:flex; justify-content:space-between; align-items:center; gap:8px; margin:0 0 13px; }
+#piccolo-dialog .piccolo-edition { font-size:8px; letter-spacing:.1em; color:#555a62; }
+#piccolo-dialog h2 { font-size:23px; line-height:1.2; letter-spacing:-1px; margin:5px 0 0; color:#263553; }
+#piccolo-dialog button { box-sizing:border-box; min-height:44px; font:inherit; border:1px solid #979c9d; border-radius:7px; background:#c4c6c0; color:#293449; cursor:pointer; }
+#piccolo-dialog button:hover { background:#e0e1d7; border-color:#626b74; }
+#piccolo-dialog button:focus-visible,#piccolo-dialog canvas:focus-visible,#piccolo-dialog summary:focus-visible { outline:3px solid #77547e; outline-offset:3px; }
+#piccolo-dialog button:disabled { opacity:.45; cursor:default; }
+#piccolo-dialog .piccolo-heading>button { min-width:43px; padding:5px 9px; font-size:11px; }
+#piccolo-dialog .piccolo-screen-bezel { width:min(100%,max(270px,calc((100dvh - 480px) * 10 / 7))); box-sizing:border-box; margin-inline:auto; padding:12px 16px 8px; border-radius:10px 10px 30px 10px; background:#686d76; box-shadow:inset 0 3px 0 #4c525c,0 2px 0 #f0eee4; }
+#piccolo-dialog .piccolo-screen-label { display:flex; align-items:center; justify-content:space-between; gap:6px; margin-bottom:8px; color:#e3e0db; font-size:5px; letter-spacing:.05em; }
+#piccolo-dialog .piccolo-screen-label i { display:inline-block; height:5px; width:5px; margin-right:3px; border-radius:50%; background:#c35b63; }
+#piccolo-canvas { box-sizing:border-box; display:block; width:100%; height:auto; aspect-ratio:10/7; background:#d8e6a0; image-rendering:pixelated; border:2px solid #3c4644; touch-action:none; }
+#piccolo-dialog .piccolo-screen-brand { display:flex; justify-content:space-between; gap:5px; margin-top:8px; font-size:7px; font-style:italic; color:#e6e4dc; text-align:right; letter-spacing:.12em; }
+#piccolo-objective { color:#273c33; font-size:11px; font-weight:bold; margin:11px 0 4px; }
+#piccolo-status { color:#454d52; font-size:10px; line-height:1.6; min-height:32px; margin:0 0 8px; }
+#piccolo-dialog .piccolo-controller { display:flex; align-items:center; gap:20px; padding:0 10px; min-height:118px; }
+#piccolo-dialog .piccolo-dpad { display:grid; grid-template-columns:44px 44px 44px; grid-template-rows:44px 44px 44px; flex:none; filter:drop-shadow(0 4px 0 #8a8f90); }
+#piccolo-dialog .piccolo-dpad button { background:#343c42; border:0; border-radius:4px; color:#8c9496; touch-action:none; min-height:44px; padding:0; font-size:14px; user-select:none; -webkit-user-select:none; -webkit-touch-callout:none; }
+#piccolo-dialog .piccolo-dpad [data-piccolo-hold="up"] { grid-column:2; grid-row:1; border-radius:5px 5px 0 0; }
+#piccolo-dialog .piccolo-dpad [data-piccolo-hold="left"] { grid-column:1; grid-row:2; border-radius:5px 0 0 5px; }
+#piccolo-dialog .piccolo-dpad span { grid-column:2; grid-row:2; background:#343c42; box-shadow:inset 0 0 0 13px #343c42,inset 0 0 0 15px #272e34; }
+#piccolo-dialog .piccolo-dpad [data-piccolo-hold="right"] { grid-column:3; grid-row:2; border-radius:0 5px 5px 0; }
+#piccolo-dialog .piccolo-dpad [data-piccolo-hold="down"] { grid-column:2; grid-row:3; border-radius:0 0 5px 5px; }
+#piccolo-dialog .piccolo-dpad button:hover,#piccolo-dialog .piccolo-dpad button[data-held] { background:#1e262d; color:#c7cfcc; }
+#piccolo-dialog .piccolo-ab { margin-left:auto; display:flex; flex-direction:column; align-items:center; gap:8px; transform:rotate(-12deg); }
+#piccolo-dialog .piccolo-ab button { width:58px; height:58px; border-radius:50%; background:#84415f; color:#edbecb; border:2px solid #71354e; box-shadow:0 4px 0 #9d7e89,inset 1px 2px 0 #a86a83; font-size:24px; font-weight:bold; touch-action:none; user-select:none; -webkit-user-select:none; -webkit-touch-callout:none; }
+#piccolo-dialog .piccolo-ab button:hover,#piccolo-dialog .piccolo-ab button[data-held] { background:#6b304a; transform:translateY(2px); }
+#piccolo-dialog .piccolo-ab span { font-size:7px; font-weight:bold; }
+#piccolo-dialog .piccolo-speaker { display:none; color:#8c9292; font-size:14px; letter-spacing:2px; line-height:1.4; transform:rotate(-20deg); }
+#piccolo-dialog .piccolo-actions { display:flex; align-items:center; gap:7px; margin-top:10px; }
+#piccolo-dialog .piccolo-actions button { min-height:40px; padding:7px 10px; font-size:10px; }
+#piccolo-dialog .piccolo-actions button:first-child { margin-right:auto; }
+#piccolo-dialog .piccolo-help { margin-top:8px; color:#515961; font-size:9px; line-height:1.7; }
+#piccolo-dialog .piccolo-help summary { padding:4px 0; cursor:pointer; }
+#piccolo-dialog .piccolo-help p { margin:7px 0 0; }
+@media(min-width:450px) { #piccolo-dialog .piccolo-speaker { display:block; } }
+@media(max-width:450px) { #piccolo-dialog { padding:14px 16px 19px; }#piccolo-dialog h2 { font-size:21px; }#piccolo-dialog .piccolo-screen-bezel { padding:10px 12px 8px; }#piccolo-dialog .piccolo-controller { padding:0 3px; gap:12px; } }

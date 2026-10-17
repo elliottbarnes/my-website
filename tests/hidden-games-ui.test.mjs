@@ -76,7 +76,7 @@ test('the game chooser starts no game and opens either small game through its ca
   assert.equal(h.get('arcade-picker').hidden,false);
   assert.equal(h.get('ki-game').hidden,true); assert.equal(h.get('radar-game').hidden,true);
   assert.equal(h.get('arcade-reset').hidden,true); assert.equal(h.frames.size,0);
-  assert.equal(h.focus(),h.get('game-pick-blocks'));
+  assert.equal(h.focus(),h.get('game-pick-piccolo'));
   h.get('game-pick-ki').fire('click'); assert.equal(h.get('ki-game').hidden,false); assert.equal(h.focus(),h.get('ki-charge'));
   h.get('ki-charge').fire('click',{detail:0}); h.advance(500);
   h.get('arcade-back').fire('click'); assert.equal(h.frames.size,0); assert.equal(h.get('arcade-picker').hidden,false);
@@ -93,4 +93,15 @@ test('closing the chooser restores the original footer trigger', () => {
   const h=harness(), trigger=h.get('footer-trigger');
   h.window.PortfolioArcade.open('choose',trigger); h.get('arcade-dialog').close();
   assert.equal(h.focus(),trigger); assert.equal(h.document.documentElement.dataset.training,undefined);
+});
+
+test('generation picker hands Piccolo and Goku to the lazy loader with the original opener', () => {
+  for (const game of ['piccolo', 'platformer']) {
+    const h = harness(), trigger = h.get('footer-trigger');
+    let received;
+    h.window.PortfolioGames = { run(mode, opener) { received = { mode, opener }; } };
+    h.window.PortfolioArcade.open('choose', trigger);
+    h.get(`game-pick-${game}`).fire('click');
+    assert.deepEqual(received, { mode: game, opener: trigger });
+  }
 });

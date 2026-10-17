@@ -39,15 +39,51 @@ test('slow cartridge switches close the current game immediately and cancellatio
   h.loading.fire('cancel'); assert.equal(h.loading.open, false); assert.equal(h.focus(), h.footer);
   h.pending[1].onload(); assert.equal(await opening, false); assert.equal(h.pending.length, 2);
 });
-test('a failed script can be retried and does not leave a rejected load cached', async () => {
-  const h = harness(); const first = h.window.PortfolioGames.open('blocks').catch(error => error);
+test('each generation loads its own stylesheet before its game and caches successful loads', async () => {
+  for (const [mode, css, js, api] of [
+    ['piccolo', '/assets/piccolo.css', '/assets/piccolo-lookout.js', 'PortfolioPiccolo'],
+    ['platformer', '/assets/goku-platformer.css', '/assets/goku-platformer.js', 'PortfolioPlatformer'],
+  ]) {
+    const h = harness(); const opening = h.window.PortfolioGames.open(mode, h.footer);
+    h.pending[0].onload(); await flush();
+    assert.equal(h.pending.length, 2); assert.equal(h.pending[1].href, css);
+    h.pending[1].onload(); await flush();
+    assert.equal(h.pending.length, 3); assert.equal(h.pending[2].src, js);
+    let opened = 0; h.window[api] = { open(trigger) { assert.equal(trigger, h.footer); opened++; } };
+    h.pending[2].onload(); assert.equal(await opening, true);
+    assert.equal(await h.window.PortfolioGames.open(mode, h.footer), true);
+    assert.equal(h.pending.length, 3); assert.equal(opened, 2);
+  }
+});
+test('a failed game stylesheet can be retried without fetching its script early', async () => {
+  const h = harness(); const first = h.window.PortfolioGames.open('piccolo').catch(error => error);
   h.pending[0].onload(); await flush(); h.pending[1].onerror();
+  assert.match((await first).message, /styles could not load/);
+  assert.equal(h.pending[1].removed, true); assert.equal(h.pending.length, 2);
+  const second = h.window.PortfolioGames.open('piccolo'); await flush();
+  assert.equal(h.pending[2].href, '/assets/piccolo.css'); h.pending[2].onload(); await flush();
+  assert.equal(h.pending[3].src, '/assets/piccolo-lookout.js');
+  h.window.PortfolioPiccolo = { open() {} }; h.pending[3].onload(); assert.equal(await second, true);
+});
+test('a failed script can be retried and does not leave a rejected load cached', async () => {
+  const h = harness(); const first = h.window.PortfolioGames.open('piccolo').catch(error => error);
+  h.pending[0].onload(); await flush(); h.pending[1].onload(); await flush(); h.pending[2].onerror();
   assert.match((await first).message, /could not load/);
   assert.equal(h.loading.querySelector('[data-game-retry]').hidden, false);
-  assert.equal(h.pending[1].removed, true);
-  const second = h.window.PortfolioGames.open('blocks'); await flush();
-  assert.equal(h.pending.length, 3); assert.equal(h.pending[2].src, '/assets/block-blast.js');
-  h.window.PortfolioBlocks = { open() {} }; h.pending[2].onload(); assert.equal(await second, true);
+  assert.equal(h.pending[2].removed, true);
+  const second = h.window.PortfolioGames.open('piccolo'); await flush(); await flush();
+  assert.equal(h.pending.length, 4); assert.equal(h.pending[3].src, '/assets/piccolo-lookout.js');
+  h.window.PortfolioPiccolo = { open() {} }; h.pending[3].onload(); assert.equal(await second, true);
+});
+test('cancelling while a game stylesheet loads prevents its script from starting', async () => {
+  const h = harness(); const opening = h.window.PortfolioGames.open('platformer');
+  h.pending[0].onload(); await flush(); assert.equal(h.pending[1].href, '/assets/goku-platformer.css');
+  h.loading.fire('cancel'); h.pending[1].onload();
+  assert.equal(await opening, false); assert.equal(h.pending.length, 2); assert.equal(h.focus(), h.footer);
+});
+test('removed Block Blast route is not loadable', async () => {
+  const h = harness(); await assert.rejects(h.window.PortfolioGames.open('blocks'), /Unknown arcade cartridge/);
+  assert.equal(h.pending.length, 0);
 });
 test('newer request wins a shared in-flight load and never opens the superseded cartridge', async () => {
   const h = harness(); let firstOpened = false, secondOpened = false;

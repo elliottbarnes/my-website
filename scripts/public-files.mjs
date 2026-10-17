@@ -9,7 +9,7 @@ export const PUBLIC_FILES = Object.freeze([
   "assets/dragon-ball.png", "assets/dragon-ball-1.webp", "assets/dragon-ball-2.webp", "assets/dragon-ball-3.webp", "assets/dragon-ball-4.webp", "assets/dragon-ball-5.webp", "assets/dragon-ball-6.webp", "assets/dragon-ball-7.webp",
   "assets/themes.css", "assets/themes.js", "assets/workspace.js",
   "assets/projects/glassbox.jpg", "assets/projects/pixel-language.jpg", "assets/projects/architecture-lab.jpg", "assets/projects/automata-lab.jpg", "assets/projects/ellmiott.jpg", "assets/projects/batchline.jpg", "assets/projects/evaldeck.jpg",
-  "assets/optional-games.js", "assets/block-blast.js", "assets/goku-platformer.js", "assets/arcade.css",
+  "assets/optional-games.js", "assets/piccolo-lookout.js", "assets/piccolo.css", "assets/goku-platformer.js", "assets/goku-platformer.css", "assets/arcade.css",
   "assets/animation.js", "assets/entrance-effects.js", "assets/ecdsa-math.js", "assets/ecdsa-effect.js", "assets/source-signal-effects.js", "assets/source-structure-effects.js", "assets/hidden-games.js", "assets/goku-story.js", "assets/goku-terminal.js", "assets/goku-adventure.js", "assets/brick-breaker.js", "assets/training-chamber.js", "assets/training-arena.webp", "assets/memoji-saiyan.webp", "assets/shenron.webp", "assets/fonts/IBMPlexMono-Regular.woff2", "assets/fonts/OFL.txt",
 ]);
 
