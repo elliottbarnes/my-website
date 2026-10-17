@@ -93,7 +93,7 @@ const snippets = [{"repo": "glassbox", "title": "source → WebAssembly", "path"
   const ease = number => { const t = clamp(number); return t * t * (3 - 2 * t); };
   const visible = () => !document.hidden && root.dataset.view !== "workspace";
   const still = () => root.dataset.motion === "paused" || (root.dataset.motion !== "running" && motion.matches);
-  const running = () => visible() && !document.querySelector("#training-dialog[open]") && !document.querySelector("#arcade-dialog[open]") && (!still() || Boolean(leaving));
+  const running = () => visible() && !document.querySelector("#training-dialog[open]") && !document.querySelector("#arcade-dialog[open]") && !document.querySelector("#goku-dialog[open]") && (!still() || Boolean(leaving));
   let quietPreviously = still(), frozenTime = null;
 
   function announceScene(message) {

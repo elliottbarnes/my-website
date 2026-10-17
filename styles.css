@@ -476,3 +476,48 @@ html.is-leaving .entrance-intro{opacity:0;transition:opacity .25s}
 }
 @media(max-width:600px){.ecdsa-controls>span{width:100%}}
 @media(max-width:380px){.ecdsa-controls{gap:3px}.ecdsa-controls button{padding-inline:5px}.ecdsa-controls>span{width:100%}}
+
+/* One reading surface; the episode's choices remain native controls. */
+#goku-dialog{width:min(720px,calc(100% - 24px));max-height:calc(100dvh - 24px);margin:auto;padding:22px;background:var(--paper);color:var(--ink);border:1px solid var(--line);border-radius:6px;overflow:auto;overscroll-behavior:contain}
+#goku-dialog[open]{display:flex;flex-direction:column;gap:16px}
+#goku-dialog::backdrop{background:#020610df}
+.goku-heading{display:flex;align-items:flex-start;justify-content:space-between;gap:12px;flex-shrink:0}
+#goku-dialog h2{margin:5px 0 0;font-size:22px;font-weight:400;letter-spacing:-.5px;color:var(--accent)}
+.goku-kicker{font-size:10px;color:var(--muted)}
+#goku-dialog button{min-height:44px;padding:8px 12px;border:1px solid var(--line);border-radius:3px;font-size:12px}
+#goku-dialog button:hover{border-color:var(--accent);background:var(--panel)}
+#goku-dialog button:focus-visible,#goku-journal summary:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+.goku-meta{flex-shrink:0;border-block:1px solid var(--line);padding:12px 0;font-size:11px;line-height:1.7;color:var(--muted)}
+#goku-objective{color:var(--highlight)}
+#goku-progress{margin-top:4px}
+#goku-scroll{overflow:auto;overscroll-behavior:contain;min-height:100px;scrollbar-color:var(--line) transparent;padding:2px 4px 6px 2px}
+#goku-scene:focus{outline:none}
+#goku-scene h3{font-size:12px;font-weight:400;color:var(--accent);margin-bottom:15px}
+#goku-prose{font-size:14px;line-height:1.85;overflow-wrap:break-word}
+#goku-prose p+p{margin-top:16px}
+#goku-memory{font-size:11px;line-height:1.8;color:var(--highlight);border-left:2px solid var(--line);padding-left:12px;margin-top:18px}
+#goku-choices{display:grid;gap:10px;margin-top:22px}
+#goku-dialog .goku-choice{display:grid;grid-template-columns:76px minmax(0,1fr);gap:5px 12px;width:100%;text-align:left;padding:14px;background:var(--panel)}
+.goku-choice-command{grid-row:span 2;color:var(--accent);font-size:13px}
+.goku-choice-command:before{content:"> ";color:var(--muted)}
+.goku-choice-label{font-size:12px}
+.goku-choice-detail{font-size:11px;line-height:1.7;color:var(--muted)}
+#goku-journal{border-top:1px solid var(--line);margin-top:24px;font-size:11px;color:var(--muted)}
+#goku-journal summary{cursor:pointer;min-height:44px;padding:14px 0;color:var(--ink)}
+#goku-history{margin:0;padding-left:22px;line-height:1.7}
+#goku-history li{padding-bottom:16px}
+#goku-history h4{margin:0 0 5px;font-size:11px;color:var(--accent);font-weight:400}
+#goku-history p+p{margin-top:5px}
+#goku-status{flex-shrink:0;font-size:10px;line-height:1.7;color:var(--highlight);max-height:65px;overflow:auto}
+#goku-form{flex-shrink:0}
+#goku-form label{display:block;font-size:10px;color:var(--muted);margin-bottom:6px}
+.goku-command-row{display:flex;align-items:center;gap:10px;border-bottom:1px solid var(--line)}
+.goku-command-row>span{color:var(--accent)}
+#goku-input{width:100%;min-width:0;min-height:44px;border:0;background:transparent;color:var(--ink);font-size:16px;border-radius:0}
+#goku-input:focus-visible{outline-offset:-2px}
+.goku-command-row button{flex-shrink:0}
+.goku-tools{display:flex;align-items:center;gap:12px;flex-wrap:wrap;flex-shrink:0}
+#goku-dialog .goku-tools button{padding:0 5px;border-color:transparent;color:var(--muted)}
+.goku-tools span{font-size:9px;color:var(--muted);margin-left:auto}
+@media(max-width:480px){#goku-dialog{padding:14px;gap:12px}#goku-dialog h2{font-size:19px}.goku-tools span{width:100%;margin:0}#goku-prose{font-size:13px}#goku-dialog .goku-choice{grid-template-columns:1fr;gap:6px}.goku-choice-command{grid-row:auto}#goku-status{max-height:50px}}
+@media(max-height:650px){#goku-dialog[open]{display:block;max-height:calc(100dvh - 16px);padding:12px}#goku-scroll{overflow:visible;margin:14px 0}.goku-meta{margin-top:10px}.goku-tools{margin-top:8px}#goku-status{max-height:none;margin:12px 0}}

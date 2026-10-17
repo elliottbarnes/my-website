@@ -33,6 +33,7 @@
     motion: "motion animation pause resume",
     ecdsa: "ecdsa elliptic curve signature signing cryptography verification",
     help: "help commands shortcuts keyboard",
+    goku: "goku dragon ball adventure story episode",
   };
   const normalizeCommand = value => String(value).trim().toLowerCase().replace(/^[:/]\s*/, "").replace(/\s+/g, " ");
   const searchWords = value => normalizeCommand(value).replace(/[^a-z0-9]+/g, " ").trim();
@@ -76,7 +77,7 @@
 
   function exactCommand(command) {
     return routes.includes(aliases[command] || command) || themeCommands().includes(command)
-      || ["home", "exit", "motion", "ecdsa", "help", "?", "kamehameha", "training", "breaker", "ki", "charge", "radar", "hunt", "wish", "shenron"].includes(command);
+      || ["home", "exit", "motion", "ecdsa", "goku", "help", "?", "kamehameha", "training", "breaker", "ki", "charge", "radar", "hunt", "wish", "shenron"].includes(command);
   }
 
   function rankCommand(record, query) {
@@ -303,6 +304,11 @@
 
   function runCommand(raw) {
     const command = normalizeCommand(raw);
+    if (command === "goku") {
+      closeCommands(false);
+      window.PortfolioGoku?.open(dialogOpener);
+      return;
+    }
     if (command === "ecdsa") {
       closeCommands(false);
       navigate(null, false);
@@ -359,7 +365,7 @@
       say(`Animation ${motion === "paused" ? "paused" : "running"}.`);
     } else if (command === "help" || command === "?") {
       if (help) help.hidden = !help.hidden;
-      say("Commands: about, projects, glassbox, pixel, architecture, automata, ellmiott, batchline, evaldeck, connect, home, theme, light, dark, motion, ecdsa, help. Use arrow keys on the wheel or j/k to browse sections; Home/End select its first/last item. Escape returns home.");
+      say("Commands: about, projects, glassbox, pixel, architecture, automata, ellmiott, batchline, evaldeck, connect, home, theme, light, dark, motion, ecdsa, goku, help. Use arrow keys on the wheel or j/k to browse sections; Home/End select its first/last item. Escape returns home.");
     } else {
       say(command ? "Unknown command. Type help to see the available commands." : "Enter a command, such as about or theme.");
     }
@@ -446,7 +452,7 @@
   });
   document.addEventListener("keydown", (event) => {
     if (event.defaultPrevented || event.isComposing || event.ctrlKey || event.metaKey || event.altKey) return;
-    if (document.getElementById("theme-dialog")?.open || document.getElementById("training-dialog")?.open || document.getElementById("arcade-dialog")?.open) return;
+    if (document.getElementById("theme-dialog")?.open || document.getElementById("training-dialog")?.open || document.getElementById("arcade-dialog")?.open || document.getElementById("goku-dialog")?.open) return;
     if (dialog?.open) {
       if (event.key === "Escape" && typeof dialog.close !== "function") {
         event.preventDefault();
