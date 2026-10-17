@@ -2,7 +2,7 @@
 
 A dependency-free terminal portfolio for [elliottbarnes.ca](https://elliottbarnes.ca).
 
-The animated entrance renders Elliott’s selected Memoji as moving source-code characters. The entrance shows the existing role and project-focus copy before any interaction. A minimal header links directly to GitHub; “explore projects” opens the featured Glassbox project directly. The `whoami` panel remains available in the wheel and command menu. Pause and theme controls remain visible with 44px minimum targets. Each project has a public repository and a full interactive playground hosted on GitHub Pages:
+The animated entrance renders Elliott’s selected Memoji as moving source-code characters. The entrance shows the existing role and project-focus copy before any interaction. A minimal header links directly to GitHub; “explore projects” opens the featured Architecture Lab project directly. The `whoami` panel remains available in the wheel and command menu. Pause and theme controls remain visible with 44px minimum targets. Each project has a public repository and a full interactive playground hosted on GitHub Pages:
 
 | Project | Playground | Source |
 | --- | --- | --- |
