@@ -25,7 +25,7 @@
     <link rel="apple-touch-icon" href="/assets/dragon-ball.png" type="image/png" sizes="256x256">
     <link rel="manifest" href="/site.webmanifest">
     <link rel="preload" href="/assets/fonts/IBMPlexMono-Regular.ttf" as="font" type="font/ttf" crossorigin>
-    <link rel="stylesheet" href="/styles.css?v=0093ba1636c3">
+    <link rel="stylesheet" href="/styles.css?v=879c84ef9b77">
     <link rel="stylesheet" href="/assets/themes.css?v=07412e345894">
     <script type="application/ld+json">
       {
@@ -66,7 +66,15 @@
               <span class="monogram-fallback" aria-hidden="true">eb</span>
               <div class="scene-annotation" aria-hidden="true"><span>elliott typing…</span><span data-pointer-readout>x 0.500 / y 0.500</span><span>code → thought → code</span></div>
             </div>
-            <p id="scene-instructions" class="visually-hidden">Tap a line to explore it; each new activation reveals another source experiment. With a keyboard, use up and down to choose a line, Space to reveal its graphic, and Escape to return to code. In Git history, left and right select commits. Drag a graphic to pull it.</p>
+            <div class="ecdsa-controls" data-ecdsa-controls role="group" aria-label="ECDSA animation controls" hidden>
+              <span data-ecdsa-step></span>
+              <button type="button" data-ecdsa-back aria-label="Previous ECDSA step">←</button>
+              <button type="button" data-ecdsa-play>pause</button>
+              <button type="button" data-ecdsa-next aria-label="Next ECDSA step">→</button>
+              <button type="button" data-ecdsa-tamper aria-pressed="false">tamper hash</button>
+              <button type="button" data-ecdsa-close aria-label="Close ECDSA animation">esc</button>
+            </div>
+            <p id="scene-instructions" class="visually-hidden">Tap a line to explore it; each new activation reveals another source experiment. With a keyboard, use up and down to choose a line, Space to reveal its graphic, N to discover the next experiment, and Escape to return to code. In Git history, left and right select commits. Drag a graphic to pull it. In ECDSA, left and right step through signing and verification; use the controls to play or change the message hash.</p>
             <p id="scene-feedback" class="visually-hidden" role="status" aria-live="polite" aria-atomic="true"></p>
             <div class="editor-status" aria-hidden="true"><span class="mode">NORMAL</span><span class="file-path" data-scene-path>~/Projects/glassbox/docs/core.js</span><span class="status-position">1:1&nbsp; All</span></div>
             <div class="editor-command" aria-hidden="true">:<span id="typed-command"></span><span class="cursor">▌</span></div>
@@ -192,7 +200,7 @@ output color * (0.35 + 0.65 * glow);</code></pre></div>
       <p class="visually-hidden" data-radar-feedback role="status" aria-live="polite" aria-atomic="true"></p>
       <footer class="colophon"><button class="training-trigger" type="button" data-game-trigger data-arcade-open="choose" aria-label="Choose a training game" title="training chamber"><img src="/assets/dragon-ball-7.webp" width="128" height="128" alt="" loading="lazy" decoding="async"></button><p>© <span data-current-year>2026</span> elliott</p><p>Icon: <a href="https://www.iconarchive.com/show/dragon-ballz-icons-by-musett/Dragon-Ball-icon.html">Musett</a> / <a href="https://creativecommons.org/licenses/by-nc-nd/4.0/">CC BY-NC-ND</a></p></footer>
     </div>
-    <dialog id="command-dialog" aria-labelledby="command-title"><div class="dialog-heading"><h2 id="command-title">command</h2><button type="button" data-command-close aria-label="Close command menu">esc</button></div><form id="command-form"><label for="command-input">find a project or run a command</label><div class="command-input-row"><span aria-hidden="true">:</span><input id="command-input" type="text" autocomplete="off" spellcheck="false" placeholder="compiler, regex, theme…"><button type="submit">run ↵</button></div></form><div class="command-options"><button type="button" data-command="about">whoami</button><button type="button" data-command="glassbox">glassbox</button><button type="button" data-command="pixel-language">pixel language</button><button type="button" data-command="architecture-lab">architecture lab</button><button type="button" data-command="automata-lab">automata lab</button><button type="button" data-command="ellmiott">ellmiott</button><button type="button" data-command="batchline">batchline</button><button type="button" data-command="evaldeck">evaldeck</button><button type="button" data-command="connect">links</button><button type="button" data-command="theme">theme</button><button type="button" data-command="motion">motion</button><button type="button" data-command="help">help</button></div><p id="command-feedback" role="status">A small set of shortcuts. Try “help”.</p></dialog>
+    <dialog id="command-dialog" aria-labelledby="command-title"><div class="dialog-heading"><h2 id="command-title">command</h2><button type="button" data-command-close aria-label="Close command menu">esc</button></div><form id="command-form"><label for="command-input">find a project or run a command</label><div class="command-input-row"><span aria-hidden="true">:</span><input id="command-input" type="text" autocomplete="off" spellcheck="false" placeholder="compiler, regex, theme…"><button type="submit">run ↵</button></div></form><div class="command-options"><button type="button" data-command="about">whoami</button><button type="button" data-command="glassbox">glassbox</button><button type="button" data-command="pixel-language">pixel language</button><button type="button" data-command="architecture-lab">architecture lab</button><button type="button" data-command="automata-lab">automata lab</button><button type="button" data-command="ellmiott">ellmiott</button><button type="button" data-command="batchline">batchline</button><button type="button" data-command="evaldeck">evaldeck</button><button type="button" data-command="connect">links</button><button type="button" data-command="theme">theme</button><button type="button" data-command="motion">motion</button><button type="button" data-command="ecdsa">ecdsa</button><button type="button" data-command="help">help</button></div><p id="command-feedback" role="status">A small set of shortcuts. Try “help”.</p></dialog>
     <dialog id="training-dialog" aria-labelledby="training-title">
       <div class="training-heading"><img src="/assets/memoji-saiyan.webp" width="512" height="512" alt="" loading="lazy" decoding="async" aria-hidden="true"><h2 id="training-title">training chamber</h2><button type="button" data-training-close aria-label="Close training chamber">esc</button></div>
       <div class="training-hud"><span>power <strong id="training-score">0</strong></span><span>lives <strong id="training-lives">3</strong></span></div>
@@ -232,9 +240,13 @@ output color * (0.35 + 0.65 * glow);</code></pre></div>
     <script src="/assets/brick-breaker.js?v=e26d59223cc2" defer></script>
     <script src="/assets/training-chamber.js?v=8f59223fb8e3" defer></script>
     <script src="/assets/themes.js?v=b674fe50a97d" defer></script>
-    <script src="/script.js?v=b28deb9e3420" defer></script>
+    <script src="/script.js?v=06a21c295314" defer></script>
     <script src="/assets/workspace.js?v=65f4a97b6a32" defer></script>
-    <script src="/assets/entrance-effects.js?v=f2e593b6d5a4" defer></script>
-    <script src="/assets/animation.js?v=04fce2622873" defer></script>
+    <script src="/assets/ecdsa-math.js?v=29928befc401" defer></script>
+    <script src="/assets/ecdsa-effect.js?v=cdd5f7420506" defer></script>
+    <script src="/assets/source-signal-effects.js?v=943a60074983" defer></script>
+    <script src="/assets/source-structure-effects.js?v=63282fe6b97b" defer></script>
+    <script src="/assets/entrance-effects.js?v=a5532169f4a9" defer></script>
+    <script src="/assets/animation.js?v=c913639ff931" defer></script>
   </body>
 </html>
