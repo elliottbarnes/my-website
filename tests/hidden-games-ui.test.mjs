@@ -76,7 +76,7 @@ test('the game chooser starts no game and opens either small game through its ca
   assert.equal(h.get('arcade-picker').hidden,false);
   assert.equal(h.get('ki-game').hidden,true); assert.equal(h.get('radar-game').hidden,true);
   assert.equal(h.get('arcade-reset').hidden,true); assert.equal(h.frames.size,0);
-  assert.equal(h.focus(),h.get('game-pick-breaker'));
+  assert.equal(h.focus(),h.get('game-pick-blocks'));
   h.get('game-pick-ki').fire('click'); assert.equal(h.get('ki-game').hidden,false); assert.equal(h.focus(),h.get('ki-charge'));
   h.get('ki-charge').fire('click',{detail:0}); h.advance(500);
   h.get('arcade-back').fire('click'); assert.equal(h.frames.size,0); assert.equal(h.get('arcade-picker').hidden,false);

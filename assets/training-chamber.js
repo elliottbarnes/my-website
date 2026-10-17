@@ -50,12 +50,13 @@
     arena.decoding = "async";
     arena.onload = () => { if (dialog.open) draw(); };
     arena.src = "/assets/training-arena.webp";
+    const orbPaths = ["/assets/dragon-ball-1.webp", "/assets/dragon-ball-2.webp", "/assets/dragon-ball-3.webp", "/assets/dragon-ball-4.webp", "/assets/dragon-ball-5.webp", "/assets/dragon-ball-6.webp", "/assets/dragon-ball-7.webp"];
     for (let star = 1; star <= 7; star++) {
       const image = new Image();
       image.decoding = "async";
       image.onload = () => { if (dialog.open) draw(); };
       sprites.push(image);
-      image.src = `/assets/dragon-ball-${star}.webp`;
+      image.src = orbPaths[star - 1];
     }
   }
 
@@ -273,6 +274,7 @@
     const { width, height, paddle, ball } = game;
     context.clearRect(0, 0, width, height);
     drawArena(width, height);
+    const orbPaths = ["/assets/dragon-ball-1.webp", "/assets/dragon-ball-2.webp", "/assets/dragon-ball-3.webp", "/assets/dragon-ball-4.webp", "/assets/dragon-ball-5.webp", "/assets/dragon-ball-6.webp", "/assets/dragon-ball-7.webp"];
     for (let star = 1; star <= 7; star++) {
       const x = width / 2 + (star - 4) * 28, collected = game.collected.includes(star);
       context.save();
@@ -508,7 +510,8 @@
 
   function cleanup() {
     stop(); keys.clear(); releasePointer(); clearEffects();
-    const arcadeOpen = Boolean(document.getElementById("arcade-dialog")?.open);
+    if (dialog.open) return;
+    const arcadeOpen = ["arcade-dialog", "blocks-dialog", "platformer-dialog", "goku-dialog", "game-loading-dialog"].some(id => document.getElementById(id)?.open);
     if (!arcadeOpen) opener?.focus?.({ preventScroll: true });
     opener = null;
     if (!arcadeOpen) delete root.dataset.training;
@@ -595,8 +598,8 @@
   action?.addEventListener("click", event => { release(event); canvas.focus({ preventScroll: true }); });
   pause?.addEventListener("click", event => setPaused(!paused, event));
   dialog.querySelectorAll("[data-training-close]").forEach((button) => button.addEventListener("click", close));
-  document.querySelectorAll("[data-training-open]").forEach((button) => button.addEventListener("click", () => open(button)));
-  dialog.addEventListener("cancel", (event) => { event.stopPropagation(); });
+  if (!window.PortfolioGames) document.querySelectorAll("[data-training-open]").forEach((button) => button.addEventListener("click", () => open(button)));
+  dialog.addEventListener("cancel", (event) => { event.stopPropagation(); if (window.PortfolioGames) { event.preventDefault(); window.PortfolioGames.run("choose", opener); } });
   dialog.addEventListener("close", cleanup);
   window.addEventListener("resize", resize);
   window.addEventListener("blur", () => { if (dialog.open) setPaused(true); });

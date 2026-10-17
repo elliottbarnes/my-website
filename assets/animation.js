@@ -48,6 +48,10 @@ const snippets = [{"repo": "glassbox", "title": "source → WebAssembly", "path"
   const positionLabel = document.querySelector("#entrance .status-position");
   const codeSurface = document.querySelector("#scene .scene-body") || canvas.parentElement;
   const sceneFeedback = document.querySelector("#scene-feedback");
+  const projectLinks = document.querySelector(".scene-project-links");
+  const projectSource = document.querySelector("[data-scene-source]");
+  const projectDemo = document.querySelector("[data-scene-demo]");
+  const projectTry = document.querySelector("[data-scene-try]");
   const ecdsaControls = document.querySelector("[data-ecdsa-controls]");
   const ecdsaButtons = Object.fromEntries(["back", "next", "play", "tamper", "close"].map(name => [name, document.querySelector(`[data-ecdsa-${name}]`)]));
   const ecdsaLabel = document.querySelector("[data-ecdsa-step]");
@@ -89,11 +93,12 @@ const snippets = [{"repo": "glassbox", "title": "source → WebAssembly", "path"
   let palette = {}, leaving = null, entryPromise = null, finishEntry = null, entryTimer = 0, entryLayout = null;
   let currentFile = "", currentMode = "", currentCommand = "", currentPosition = "";
   let selectedSource = "", keyboardFocus = false;
+  let heldSnippet = null, projectHovered = false;
   const clamp = (number, low = 0, high = 1) => Math.max(low, Math.min(high, number));
   const ease = number => { const t = clamp(number); return t * t * (3 - 2 * t); };
   const visible = () => !document.hidden && root.dataset.view !== "workspace";
   const still = () => root.dataset.motion === "paused" || (root.dataset.motion !== "running" && motion.matches);
-  const running = () => visible() && !document.querySelector("#training-dialog[open]") && !document.querySelector("#arcade-dialog[open]") && !document.querySelector("#goku-dialog[open]") && (!still() || Boolean(leaving));
+  const running = () => visible() && root.dataset.training !== "open" && (!still() || Boolean(leaving));
   let quietPreviously = still(), frozenTime = null;
 
   function announceScene(message) {
@@ -129,6 +134,24 @@ const snippets = [{"repo": "glassbox", "title": "source → WebAssembly", "path"
       if (fileLabel) fileLabel.textContent = path;
       if (pathLabel) pathLabel.textContent = snippet ? `~/Projects/${path}` : "~/Projects";
       currentFile = path;
+      const project = snippet && document.getElementById(snippet.repo);
+      const demo = project?.querySelector("[data-demo]");
+      if (projectSource && snippet) {
+        projectSource.setAttribute("href", snippet.sourceUrl);
+        projectSource.setAttribute("aria-label", `Read ${path} on GitHub`);
+      }
+      if (projectDemo && demo) {
+        projectDemo.setAttribute("href", demo.getAttribute("href"));
+        projectDemo.setAttribute("aria-label", demo.getAttribute("aria-label"));
+        projectDemo.textContent = demo.textContent;
+      }
+      if (projectTry) {
+        projectTry.hidden = !project?.dataset.experiment;
+        if (project?.dataset.experiment) {
+          projectTry.textContent = `try ${project.dataset.experimentLabel}`;
+          projectTry.setAttribute("aria-label", `Try ${project.dataset.experimentLabel} from ${snippet.repo} source`);
+        }
+      }
     }
     currentMode = setLabel(modeLabel, mode, currentMode);
     currentCommand = setLabel(command, text, currentCommand);
@@ -674,7 +697,7 @@ const snippets = [{"repo": "glassbox", "title": "source → WebAssembly", "path"
     syncECDSA();
     if (!width || !height) return;
     const clock = time % cycleLength;
-    const snippet = resumedSnippet && time < resumeUntil ? resumedSnippet : snippets[Math.floor(time / cycleLength) % snippets.length];
+    const snippet = heldSnippet || (resumedSnippet && time < resumeUntil ? resumedSnippet : snippets[Math.floor(time / cycleLength) % snippets.length]);
     if (interaction && (interaction.static || interaction.frozen || !still())) { drawInteraction(time); return; }
     if (still()) {
       const frozen = frozenTime !== null;
@@ -813,6 +836,7 @@ const snippets = [{"repo": "glassbox", "title": "source → WebAssembly", "path"
     frame = 0; lastFrame = 0;
     const quiet = still();
     if (!visible()) {
+      heldSnippet = null; projectHovered = false;
       cancelGesture();
       interaction = null;
       displayedGraphic = null;
@@ -1019,6 +1043,31 @@ const snippets = [{"repo": "glassbox", "title": "source → WebAssembly", "path"
     }
     lastInput = performance.now();
     schedule();
+  });
+  // Keep action destinations stable while someone is reading or focusing them.
+  const holdProject = () => { heldSnippet = renderedSnippet; };
+  const releaseProject = () => {
+    if (heldSnippet) {
+      resumedSnippet = heldSnippet;
+      resumeUntil = elapsed + cycleLength - elapsed % cycleLength;
+    }
+    heldSnippet = null;
+  };
+  projectLinks?.addEventListener("pointerenter", () => { projectHovered = true; holdProject(); });
+  projectLinks?.addEventListener("pointerleave", () => {
+    projectHovered = false;
+    if (!projectLinks.contains(document.activeElement)) releaseProject();
+  });
+  projectLinks?.addEventListener("focusin", holdProject);
+  projectLinks?.addEventListener("focusout", event => {
+    if (!projectHovered && !projectLinks.contains(event.relatedTarget)) releaseProject();
+  });
+  projectTry?.addEventListener("click", () => {
+    const kind = document.getElementById(renderedSnippet.repo)?.dataset.experiment;
+    const row = selectedRow() || sourceRows[0];
+    if (!kind || !row) return;
+    openGraphic(row, "button", kind);
+    codeSurface?.focus?.({ preventScroll: true });
   });
   function syncECDSA() {
     const active = interaction?.kind === "ecdsa" && interaction.target && Boolean(interaction.ecdsa);

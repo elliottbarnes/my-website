@@ -1,5 +1,5 @@
 @charset "UTF-8";
-@font-face{font-family:"Plex Mono";src:url("/assets/fonts/IBMPlexMono-Regular.ttf") format("truetype");font-style:normal;font-weight:400;font-display:swap}
+@font-face{font-family:"Plex Mono";src:url("/assets/fonts/IBMPlexMono-Regular.woff2") format("woff2");font-style:normal;font-weight:400;font-display:swap}
 :root{color-scheme:dark;--paper:#090e18;--ink:#e9eff4;--muted:#a1abba;--faint:#586273;--line:#303c4d;--accent:#ffab48;--panel:#101d2d;--highlight:#70dfac;--mono:"Plex Mono",ui-monospace,SFMono-Regular,Consolas,monospace}
 :root[data-theme=parchment]{color-scheme:light;--paper:#eeece2;--ink:#30352e;--muted:#62695d;--faint:#858878;--line:#b9bdab;--accent:#3b5543;--panel:#e5e4d8;--highlight:#567155}
 :root[data-theme=phosphor]{color-scheme:dark;--paper:#0b110f;--ink:#bdd4bb;--muted:#819d87;--faint:#466452;--line:#2c4234;--accent:#a2c596;--panel:#101b14;--highlight:#bee4a7}
@@ -72,7 +72,7 @@ html.is-leaving .masthead,html.is-leaving .entrance-footer,html.is-leaving .scen
 .terminal-panel:not(.about-panel) h2{font-size:15px;letter-spacing:0;margin:7px 0}
 .project-kind{font-size:10px;margin:16px 0 6px}.project-description{font-size:12px;line-height:1.2}.project-actions{font-size:11px;gap:24px}.code-preview{font-size:10px}.code-preview pre{font-size:10px;line-height:1.3}
 .workspace-status{align-items:flex-start;min-height:52px;padding-top:8px;font-size:10px;gap:22px}.workspace-status .mode{display:none}.workspace-status>span:first-child{width:228px;text-transform:uppercase;letter-spacing:1px}.workspace-status #keyboard-help{position:absolute;left:0;top:428px;font-size:9px;color:var(--muted)}
-.github-stat{font-size:12px;line-height:1.7;color:var(--highlight)}.github-stat small{display:block;font-size:8px;letter-spacing:1px;color:var(--muted)}.workspace-status>div{align-self:center}.colophon{margin-top:90px;opacity:.8}
+.workspace-status>div{align-self:center}.colophon{margin-top:90px;opacity:.8}
 @media(max-width:1000px){.terminal{padding-right:170px}.workspace-avatar{width:150px}.workspace-avatar img{width:140px;height:140px}.workspace-status{gap:15px}}
 @media(max-width:760px){
  [data-view=entrance] .masthead{top:32px;width:calc(100% - 42px)}[data-view=entrance] .wordmark{font-size:11px}
@@ -84,7 +84,7 @@ html.is-leaving .masthead,html.is-leaving .entrance-footer,html.is-leaving .scen
  .file-list{height:418px;overflow:visible;padding:0}.file-list button{width:82px;height:69px;top:176px;left:1px;font-size:8px;transform:translateY(calc(var(--offset,0) * 76px)) rotate(calc(var(--offset,0) * -6deg)) scale(.82);white-space:normal;padding:4px}.file-list button img{height:48px}.file-list button[aria-pressed=true]{transform:none}.tree-note{display:block;font-size:7px;left:1px;bottom:8px}.links-preview{top:12px;left:10px;font-size:9px}
  .terminal{height:450px;padding:0 0 0 12px;overflow:auto}.terminal-title{padding:5px 0 12px;font-size:9px}.terminal-panel{padding:0 0 20px}.profile-plot{height:180px}.plot-caption{font-size:8px;padding-inline:7px}.plot-caption span{display:none}
  .workspace-avatar{display:none}.prompt{font-size:9px;line-height:1.5}.about-panel h2{font-size:16px;letter-spacing:0}.about-tagline,.about-role,.about-text,.about-panel .prompt~.about-text,.project-description{font-size:10px;line-height:1.5}.about-projects{font-size:9px;gap:6px}.terminal-panel:not(.about-panel) h2{font-size:16px;overflow-wrap:anywhere}.project-kind{font-size:8px}.code-preview pre{font-size:8px;padding:8px}.code-preview>div{font-size:8px;padding:8px}.project-actions{gap:8px;font-size:9px}.connect-links a{flex-direction:column;gap:4px;font-size:10px}
- .workspace-status{gap:15px;min-height:94px}.workspace-status>span:first-child{width:90px;font-size:9px}.workspace-status #keyboard-help{display:none}.github-stat{font-size:10px}.github-stat small{font-size:7px}.workspace-status>div{width:100%;justify-content:flex-end;border-top:1px solid var(--line);gap:18px}.colophon{margin-top:0;font-size:7px}
+ .workspace-status{gap:15px;min-height:94px}.workspace-status>span:first-child{width:90px;font-size:9px}.workspace-status #keyboard-help{display:none}.workspace-status>div{width:100%;justify-content:flex-end;border-top:1px solid var(--line);gap:18px}.colophon{margin-top:0;font-size:7px}
 }
 
 /* All content remains readable when scripting is unavailable. */
@@ -279,7 +279,7 @@ a:focus-visible,button:focus-visible,input:focus-visible{outline-color:var(--ink
 [data-enhanced] .file-list{height:calc(100% - 40px)}
 
 /* Quiet lowercase chrome; project code and prose retain their meaning. */
-h1,h2,h3,label,.plot-caption,.terminal-title,.project-kind,.scouter-title,.github-stat small,.workspace-status>span:first-child,.editor-status,.radar-tooltip,.radar-legend,.colophon{text-transform:lowercase}
+h1,h2,h3,label,.plot-caption,.terminal-title,.project-kind,.scouter-title,.workspace-status>span:first-child,.editor-status,.radar-tooltip,.radar-legend,.colophon{text-transform:lowercase}
 .radar-signal img{transition:filter .22s,scale .3s cubic-bezier(.22,1.35,.36,1)}
 .radar-signal:hover img,.radar-signal:focus-visible img{filter:drop-shadow(0 0 9px var(--accent));scale:1.12}
 
@@ -506,3 +506,11 @@ html.is-leaving .entrance-intro{opacity:0;transition:opacity .25s}
 #goku-hint{font-size:9px;line-height:1.6;color:var(--terminal-muted)}
 @media(max-width:480px){#goku-dialog{width:calc(100% - 12px);height:calc(100dvh - 12px);max-height:calc(100dvh - 12px);padding:10px 12px;gap:5px}#goku-title{font-size:11px}#goku-close span{display:none}#goku-output{font-size:12px;padding-right:3px}.goku-ascii,.goku-map{font-size:11px}#goku-dialog .goku-shortcut{font-size:11px;padding-inline:8px}#goku-dialog .goku-command-row button{font-size:11px;padding-inline:7px}}
 @media(max-height:480px){#goku-dialog{height:calc(100dvh - 8px);max-height:calc(100dvh - 8px);padding:4px 12px;gap:2px}.goku-heading{padding:0}#goku-location{padding:0}#goku-hint{display:none}#goku-dialog[open]{grid-template-rows:auto auto minmax(0,1fr) auto auto}#goku-choices{max-height:48px;flex-wrap:nowrap;overflow-x:auto}#goku-choices button{white-space:nowrap;flex-shrink:0}}
+
+/* The current source has a direct path to its related sketch and playground. */
+.scene-project-links{display:flex;align-items:center;flex-wrap:wrap;gap:4px 20px;margin:0 0 4px;font-size:10px;color:var(--muted)}
+.scene-project-links a,.scene-project-links button{display:inline-flex;align-items:center;min-height:44px;padding:0;font:inherit;color:inherit}
+.scene-project-links a:hover,.scene-project-links button:hover{color:var(--accent)}
+.scene-project-links [data-scene-try]{color:var(--ink)}
+html.is-leaving .scene-project-links{opacity:0;transition:opacity .25s}
+@media(max-width:420px){.scene-project-links{gap:0 14px;font-size:9px}}

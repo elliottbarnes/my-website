@@ -214,9 +214,9 @@ test('summon formation pauses continuously through hidden tabs and training, inc
   page.document.hidden = true; page.document.emit('visibilitychange');
   assert.equal(page.frames.size, 0);
   page.document.hidden = false; page.document.emit('visibilitychange');
-  page.document.training = true; page.window.emit('portfolio:training');
+  page.document.training = true; page.root.dataset.training = 'open'; page.window.emit('portfolio:training');
   assert.equal(page.frames.size, 0);
-  page.document.training = false; page.window.emit('portfolio:training');
+  page.document.training = false; delete page.root.dataset.training; page.window.emit('portfolio:training');
   assert.equal(page.frames.size, 1);
   assert.equal(page.plot.dataset.summoned, 'true');
 });
@@ -303,4 +303,14 @@ test('dragon Escape handling respects other dialogs and modified or composed inp
   page.document.openDialog = false;
   page.document.emit('keydown', {key: 'Escape'});
   assert.equal(page.plot.dataset.summoned, 'false');
+});
+
+
+test('the shared game lifecycle pauses radar even before a lazy game dialog exists', () => {
+  const page = radar();
+  assert.equal(page.frames.size, 1);
+  page.root.dataset.training = 'open'; page.window.emit('portfolio:training');
+  assert.equal(page.frames.size, 0);
+  delete page.root.dataset.training; page.window.emit('portfolio:training');
+  assert.equal(page.frames.size, 1);
 });

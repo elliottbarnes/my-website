@@ -2,7 +2,11 @@ import { createHash } from "node:crypto";
 import { readFile } from "node:fs/promises";
 import { join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
-import { PUBLIC_FILES, VERSIONED_FILES, assertRegularPublicFile, inspectPublicTree } from "./public-files.mjs";
+import { PUBLIC_FILES, VERSIONED_FILES, contentType, assertRegularPublicFile, inspectPublicTree } from "./public-files.mjs";
+
+import { cacheControl, createArtifact, readArtifactManifest, resourceReferences } from "./artifact.mjs";
+
+import { PROJECTS } from "../data/projects.mjs";
 
 const origin = "https://elliottbarnes.ca";
 
@@ -23,12 +27,17 @@ function tags(html) {
 }
 
 export async function verifySite(directory, { sourceRoot } = {}) {
-  await inspectPublicTree(directory);
+  const artifactManifest = await readArtifactManifest(directory, { optional: true });
+  if (sourceRoot && !artifactManifest) throw new Error("Built artifact requires its private manifest");
+  const paths = Object.fromEntries(PUBLIC_FILES.map(file => [file, artifactManifest?.assets[file].path || file]));
+  const published = Object.values(paths);
+  await inspectPublicTree(directory, { files: published });
+  const expected = sourceRoot ? await createArtifact(sourceRoot) : null;
   const content = new Map();
   const sha256 = {};
   for (const file of PUBLIC_FILES) {
-    await assertRegularPublicFile(directory, file);
-    const bytes = await readFile(join(directory, file));
+    await assertRegularPublicFile(directory, paths[file], published);
+    const bytes = await readFile(join(directory, paths[file]));
     if (!bytes.length) throw new Error(`Empty public file: ${file}`);
     if (file === "assets/dragon-ball.png") {
       const signature = Buffer.from([137, 80, 78, 71, 13, 10, 26, 10]);
@@ -41,11 +50,10 @@ export async function verifySite(directory, { sourceRoot } = {}) {
       }
     }
     content.set(file, bytes.toString("utf8"));
-    sha256[file] = createHash("sha256").update(bytes).digest("hex");
-    if (sourceRoot) {
-      await assertRegularPublicFile(sourceRoot, file);
-      if (!bytes.equals(await readFile(join(sourceRoot, file)))) throw new Error(`Built file differs from source: ${file}`);
-    }
+    sha256[paths[file]] = createHash("sha256").update(bytes).digest("hex");
+    if (artifactManifest && sha256[paths[file]] !== artifactManifest.assets[file].sha256) throw new Error(`Artifact hash mismatch: ${paths[file]}`);
+    if (expected && (expected.manifest.assets[file].path !== paths[file]
+      || !bytes.equals(expected.contents.get(paths[file])))) throw new Error(`Built file differs from source: ${file}`);
   }
 
   const documents = new Map();
@@ -85,7 +93,7 @@ export async function verifySite(directory, { sourceRoot } = {}) {
     } catch {
       throw new Error(`${from}: invalid encoded reference: ${raw}`);
     }
-    if (!PUBLIC_FILES.includes(file)) throw new Error(`${from}: reference is not published: ${raw}`);
+    if (!published.includes(file)) throw new Error(`${from}: reference is not published: ${raw}`);
     if (fragment && documents.has(file) && !documents.get(file).ids.has(fragment)) {
       throw new Error(`${from}: missing fragment target: ${raw}`);
     }
@@ -102,7 +110,7 @@ export async function verifySite(directory, { sourceRoot } = {}) {
     }
     for (const rel of ["icon", "apple-touch-icon"]) {
       const icons = document.parsed.filter((tag) => tag.name === "link" && tag.attrs.get("rel")?.split(/\s+/).includes(rel));
-      if (icons.length !== 1 || icons[0].attrs.get("href") !== "/assets/dragon-ball.png"
+      if (icons.length !== 1 || icons[0].attrs.get("href") !== `/${paths["assets/dragon-ball.png"]}`
         || icons[0].attrs.get("type") !== "image/png" || icons[0].attrs.get("sizes") !== "256x256") {
         throw new Error(`${file}: expected exactly one ${rel} reference to the 256x256 image/png Dragon Ball favicon`);
       }
@@ -113,44 +121,51 @@ export async function verifySite(directory, { sourceRoot } = {}) {
   // demo and source links, each with an accessible name.
   for (const [attribute, base] of [["data-demo", "https://elliottbarnes.github.io/"], ["data-source", "https://github.com/elliottbarnes/"]]) {
     const links = index.filter((tag) => tag.attrs.has(attribute));
-    const expected = ["architecture-lab", "automata-lab", "batchline", "ellmiott", "evaldeck", "glassbox", "pixel-language"];
+    const expected = PROJECTS.map(project => project.id).sort();
     if (JSON.stringify(links.map((tag) => tag.attrs.get(attribute)).sort()) !== JSON.stringify(expected)) {
-      throw new Error(`index.html: expected seven unique ${attribute} links`);
+      throw new Error(`index.html: expected ${PROJECTS.length} unique ${attribute} links`);
     }
     for (const tag of links) {
       const slug = tag.attrs.get(attribute);
-      if (tag.name !== "a" || tag.attrs.get("href") !== `${base}${slug}${attribute === "data-demo" ? "/" : ""}` || !tag.attrs.get("aria-label")) {
+      if (tag.name !== "a" || tag.attrs.get("href") !== (attribute === "data-demo" ? PROJECTS.find(project => project.id === slug)?.demo.url : PROJECTS.find(project => project.id === slug)?.source) || !tag.attrs.get("aria-label")) {
         throw new Error(`index.html: invalid ${attribute} destination or accessible name`);
       }
     }
   }
   for (const file of VERSIONED_FILES.filter((file) => file.endsWith(".css"))) {
     for (const match of content.get(file).matchAll(/url\(\s*(?:"([^"]*)"|'([^']*)'|([^\s)]+))\s*\)/gi)) {
-      reference(match[1] ?? match[2] ?? match[3], file, { localOnly: true });
+      reference(match[1] ?? match[2] ?? match[3], paths[file], { localOnly: true });
     }
   }
 
-  // A new URL prevents cached CSS/JS from being paired with another release's HTML.
-  // Check the bytes, not a manually maintained release label, so stale versions fail the build.
-  const stylesheets = index.filter((tag) => tag.name === "link" && tag.attrs.get("rel")?.split(/\s+/).includes("stylesheet"));
-  const scripts = index.filter((tag) => tag.name === "script" && tag.attrs.has("src"));
-  const referencesByFile = new Map(VERSIONED_FILES.map((file) => [file, []]));
-  for (const [references, attribute, extension] of [[stylesheets, "href", ".css"], [scripts, "src", ".js"]]) {
-    for (const tag of references) {
-      const raw = tag.attrs.get(attribute);
-      const url = new URL(raw, origin);
-      const file = decodeURIComponent(url.pathname).replace(/^\//, "");
-      if (url.origin !== origin || !referencesByFile.has(file) || !file.endsWith(extension)) {
-        throw new Error(`index.html: unknown ${extension === ".css" ? "stylesheet" : "script"} reference: ${raw}`);
-      }
-      referencesByFile.get(file).push({ tag, raw });
+  // Every code asset must be referenced by HTML or another published asset.
+  // Optional games load through literal URLs in the loader, not eager script tags.
+  const incoming = new Map(VERSIONED_FILES.map(file => [paths[file], 0]));
+  for (const file of PUBLIC_FILES.filter(file => /\.(?:html|css|js)$/.test(file))) {
+    for (const raw of resourceReferences(content.get(file))) {
+      if (!/^(?:\/assets\/|\/script\.js|\/styles\.css|\.\.?\/)/.test(raw)) continue;
+      const url = new URL(raw, `${origin}/${paths[file]}`);
+      const target = decodeURIComponent(url.pathname).slice(1);
+      // Relative require calls are checked too. Non-resource strings are ignored.
+      if (!/\.(?:css|js|png|jpg|webp|svg|ttf|woff2)$/.test(target)) continue;
+      if (raw.includes("${")) throw new Error(`${file}: dynamic resource URL is not verifiable: ${raw}`);
+      reference(raw, paths[file], { localOnly: true });
+      if (incoming.has(target)) incoming.set(target, incoming.get(target) + 1);
     }
   }
-  for (const [file, references] of referencesByFile) {
-    const expected = `/${file}?v=${sha256[file].slice(0, 12)}`;
-    if (references.length !== 1 || references[0].raw !== expected) {
-      throw new Error(`index.html: ${file} must have exactly one reference with its content hash: ${expected}`);
-    }
+  for (const [file, count] of incoming) if (count === 0) throw new Error(`Unreferenced code asset: ${file}`);
+  const eager = new Set();
+  for (const tag of index.filter(tag => tag.name === "link" && tag.attrs.get("rel")?.split(/\s+/).includes("stylesheet"))) {
+    const url = new URL(tag.attrs.get("href"), origin);
+    if (eager.has(url.pathname)) throw new Error(`Duplicate eager asset: ${url.pathname}`);
+    eager.add(url.pathname);
+    if (url.origin !== origin || !url.pathname.endsWith(".css")) throw new Error("index.html: unknown stylesheet reference");
+  }
+  for (const tag of index.filter(tag => tag.name === "script" && tag.attrs.has("src"))) {
+    const path = new URL(tag.attrs.get("src"), origin).pathname;
+    if (eager.has(path)) throw new Error(`Duplicate eager asset: ${path}`);
+    eager.add(path);
+    if (!path.endsWith(".js")) throw new Error("index.html: unknown script reference");
   }
   for (const [file, document] of documents) {
     for (const script of document.parsed.filter((tag) => tag.name === "script" && tag.attrs.has("src"))) {
@@ -169,7 +184,7 @@ export async function verifySite(directory, { sourceRoot } = {}) {
   if (!manifest || typeof manifest.name !== "string" || !manifest.name.trim() || !Array.isArray(manifest.icons) || !manifest.icons.length) throw new Error("site.webmanifest: missing name or icons");
   reference(manifest.start_url, "site.webmanifest", { localOnly: true });
   for (const icon of manifest.icons) reference(icon?.src, "site.webmanifest", { localOnly: true });
-  if (manifest.icons.length !== 1 || manifest.icons[0].src !== "/assets/dragon-ball.png"
+  if (manifest.icons.length !== 1 || manifest.icons[0].src !== `/${paths["assets/dragon-ball.png"]}`
     || manifest.icons[0].type !== "image/png" || manifest.icons[0].sizes !== "256x256") {
     throw new Error("site.webmanifest: expected exactly one 256x256 image/png Dragon Ball favicon");
   }
@@ -189,7 +204,9 @@ export async function verifySite(directory, { sourceRoot } = {}) {
   if (!sitemap.length) throw new Error("sitemap.xml: missing URL");
   for (const match of sitemap) reference(match[1], "sitemap.xml", { localOnly: true });
   for (const match of content.get("robots.txt").matchAll(/^Sitemap:\s*(\S+)/gim)) reference(match[1], "robots.txt", { localOnly: true });
-  return { files: PUBLIC_FILES.length, sha256 };
+  return { files: PUBLIC_FILES.length, sha256, paths,
+    publication: PUBLIC_FILES.map(source => ({ source, path: paths[source], sha256: sha256[paths[source]],
+      content_type: contentType(source), cache_control: cacheControl(paths[source]) })) };
 }
 
 if (process.argv[1] && resolve(process.argv[1]) === fileURLToPath(import.meta.url)) {

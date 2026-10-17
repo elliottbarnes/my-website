@@ -2,7 +2,7 @@
 
 A dependency-free terminal portfolio for [elliottbarnes.ca](https://elliottbarnes.ca).
 
-The animated entrance renders Elliott’s selected Memoji as moving source-code characters. The entrance shows the existing role and project-focus copy before any interaction. A minimal header links directly to GitHub; the contrasting “explore projects” action opens the terminal portfolio and its independent systems projects. Pause and theme controls remain visible with 44px minimum targets. Each project has a public repository and a full interactive playground hosted on GitHub Pages:
+The animated entrance renders Elliott’s selected Memoji as moving source-code characters. The entrance shows the existing role and project-focus copy before any interaction. A minimal header links directly to GitHub; “explore projects” opens the featured Glassbox project directly. The `whoami` panel remains available in the wheel and command menu. Pause and theme controls remain visible with 44px minimum targets. Each project has a public repository and a full interactive playground hosted on GitHub Pages:
 
 | Project | Playground | Source |
 | --- | --- | --- |
@@ -22,7 +22,7 @@ The frameless entrance continuously types excerpts from Elliott’s projects. Gr
 
 Use “explore projects” (or Enter from the page) to open the portfolio. Arrow keys browse when the wheel is focused; Home/End select its first/last item. The details pane keeps native arrow-key scrolling, while j/k browse sections. `/` or `:` opens the command menu, and Escape returns home. The project wheel responds to scrolling and vertical dragging, with an elastic pull, deliberate one-card swipes, a section counter, and polite screen-reader announcements. A Dragon Ball project radar introduces the About panel: a theme-aware sweep, pulsing signals, and seven native project links using the existing Dragon Ball artwork. Selecting a signal gives a brief energy pulse without delaying navigation. Paused/reduced motion keeps the radar still; hidden panels stop drawing. The command menu is available as a button at every width and offers direct access to all seven projects. Commands only select local sections and preferences; no input is evaluated or sent to a server. Project demos and source links remain ordinary links. Without JavaScript, all portfolio sections are visible.
 
-GitHub counts are an explicitly dated public snapshot from 11 October 2026 (42 repositories, 4 stars across public repositories, 15 followers); they do not imply live synchronization.
+Project copy, links, previews, aliases, and search terms live in `data/projects.mjs`. The build generates the wheel, radar, project panels, and command entries from that list while retaining readable static HTML. Run `node scripts/generate-projects.mjs` to refresh the source preview after editing the list. The entrance’s source, related sketch, and playground controls follow the displayed project. The sketch is an illustration; the linked playground runs the full project.
 
 The layout adapts its reading height to the viewport, keeps wheel controls separate from the cards, shows a “more” cue while content remains below, provides visible focus and a skip link, and respects reduced motion. All 28 themes can be browsed by scrolling; on touch layouts the picker has larger rows and a visible Cancel control, and search takes focus only when requested. Project demo and source links appear before their previews. At tablet widths the decorative portrait gives its space to the main content. See [design QA](design-qa.md) for tested dimensions and limits.
 
@@ -31,7 +31,6 @@ The layout adapts its reading height to the viewport, keeps wheel controls separ
 Use Node.js 24 or newer; no package installation is needed.
 
 ```sh
-node scripts/version-assets.mjs
 node --test
 node build.mjs
 node scripts/verify-site.mjs dist --source .
@@ -58,9 +57,13 @@ Visible source letters now carry into every effect and return to their live code
 
 The generated Dragon Balls and Memoji use lossless WebP display copies sized for their rendered dimensions at high pixel density. Together they are 237 KB, saving 95.3% against the previous full-resolution WebPs; original PNG masters remain in source. Recreate them with the optional `scripts/optimize-art.mjs` authoring tool described in ASSET_SOURCES.md. Hidden workspace images load lazily, and the training game initializes its sprite images only when opened. Gameplay can begin with fallback balls while those images decode.
 
-## Hidden training chamber
+## Capsule Arcade
 
-The small seven-star ball in the footer opens a Dragon Ball-themed brick breaker. The secret command `kamehameha` (also `training` or `breaker`) opens it through the command menu. Drag the paddle on touch devices, or use arrows/a/d and Space. The game starts only after a launch, has three lives, pauses when hidden, and returns focus on close. Clearing all seven shield columns collects the balls; power passes 9000 on completion. No scores or inputs leave the browser.
+The small seven-star ball in the footer opens a cartridge picker with three games: **Block Blast**, an 8×8 block-placement puzzle; **Goku Platformer**, an original pixel-art running and jumping game; and the existing **Brick Breaker**. The presentation borrows the colourful, tactile feel of classic consoles with original code and artwork. Game scripts and the new console stylesheet load only when requested. A loading failure offers a retry, and closing a pending load prevents it from opening later.
+
+Choose a block from the three-piece tray, then place it on the board to clear complete rows and columns. Keyboard controls and native buttons provide the same actions as touch. In the platformer, run and jump through a finite level, gather Dragon Balls, avoid enemies, and reach the finish. Pause, restart, and return-to-picker controls remain available. Closing restores focus to the original trigger; hidden pages suspend play. Scores and input stay in the browser.
+
+Use `arcade`, `blocks`, or `platformer` from the command menu. `kamehameha` (also `training` or `breaker`) still opens Brick Breaker: drag the paddle on touch devices, or use arrows/a/d and Space. It starts only after a launch, has three lives, and collects the seven balls as its shield columns fall. The earlier Ki Control and Radar Hunt remain available through their `ki` and `radar` commands; `goku` opens the terminal story below.
 
 An original illustrated celestial arena gives the chamber depth; the game loads its 145 KB WebP only when opened, with a drawn fallback if it is unavailable. The dark court keeps the energy ball and shield health readable across site themes. Canvas effects add a tapered ki trail, impact rings, shield fragments and collection feedback without changing the physics. Reduced motion keeps the artwork and damage cues while suppressing decorative movement. [Arena provenance and generation prompt](assets/TRAINING_ARENA.md).
 

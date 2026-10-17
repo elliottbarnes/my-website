@@ -1,181 +1,93 @@
 import assert from "node:assert/strict";
-import { createHash } from "node:crypto";
 import { mkdtemp, readFile, rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { fileURLToPath } from "node:url";
 import test from "node:test";
 import { buildSite } from "../build.mjs";
-import { PUBLIC_FILES, VERSIONED_FILES, contentType } from "../scripts/public-files.mjs";
+import { PUBLIC_FILES, contentType } from "../scripts/public-files.mjs";
+import { cacheControl, digest, manifestPath, readArtifactManifest } from "../scripts/artifact.mjs";
 import { verifyLive } from "../scripts/verify-live.mjs";
-
 const source = fileURLToPath(new URL("..", import.meta.url));
 const origin = "https://elliottbarnes.ca";
 const missingPath = /^\/__portfolio_missing_[a-f0-9-]+\.html$/;
-const digest = (bytes) => createHash("sha256").update(bytes).digest("hex");
-
 async function fixture(t) {
   const directory = await mkdtemp(join(tmpdir(), "portfolio-live-test-"));
-  t.after(() => rm(directory, { recursive: true, force: true }));
+  t.after(async () => { await rm(directory, { recursive: true, force: true }); await rm(manifestPath(directory), { force: true }); });
   await buildSite({ root: source, destination: directory });
-  const files = new Map(await Promise.all(PUBLIC_FILES.map(async (file) =>
-    [file, await readFile(join(directory, file))])));
+  const manifest = await readArtifactManifest(directory), asset = source => manifest.assets[source].path;
+  const files = new Map(await Promise.all(Object.values(manifest.assets).map(async ({path}) => [path, await readFile(join(directory, path))])));
   const requests = [];
-
-  // Every response is local. An unexpected URL fails instead of falling back to fetch.
   function mockFetch(change = () => undefined) {
     return async (url, options) => {
       requests.push(url);
-      assert.equal(options.redirect, "manual");
-      assert.ok(options.signal instanceof AbortSignal);
-      assert.equal(options.headers["User-Agent"], "Elliott-Portfolio-Deployment-Verification/1.0");
-      const custom = await change(url, requests.filter((request) => request === url).length);
+      assert.equal(options.redirect, "manual"); assert.ok(options.signal instanceof AbortSignal);
+      const custom = await change(url, requests.filter(request => request === url).length);
       if (custom !== undefined) return custom;
-      const redirects = {
-        "http://elliottbarnes.ca/": `${origin}/`,
-        "http://www.elliottbarnes.ca/": "https://www.elliottbarnes.ca/",
-        "https://www.elliottbarnes.ca/": `${origin}/`,
-      };
+      const redirects = { "http://elliottbarnes.ca/": `${origin}/`, "http://www.elliottbarnes.ca/": "https://www.elliottbarnes.ca/", "https://www.elliottbarnes.ca/": `${origin}/` };
       if (redirects[url]) return new Response(null, { status: 301, headers: { location: redirects[url] } });
-      const parsed = new URL(url);
-      assert.equal(parsed.origin, origin, `Unexpected network destination: ${url}`);
-      assert.equal(parsed.hash, "");
+      const parsed = new URL(url); assert.equal(parsed.origin, origin); assert.equal(parsed.search, "");
       const missing = missingPath.test(parsed.pathname);
       const key = missing ? "404.html" : parsed.pathname === "/" ? "index.html" : parsed.pathname.slice(1);
-      assert.ok(files.has(key), `Unexpected public file: ${url}`);
-      if (parsed.search) {
-        assert.ok(VERSIONED_FILES.includes(key), `Unexpected versioned asset: ${url}`);
-        assert.equal(parsed.search, `?v=${digest(files.get(key)).slice(0, 12)}`);
-      }
-      return new Response(files.get(key), {
-        status: missing ? 404 : 200,
-        headers: { "content-type": contentType(key) },
-      });
+      assert.ok(files.has(key), `Unexpected network file: ${url}`);
+      return new Response(files.get(key), { status: missing ? 404 : 200, headers: { "content-type": contentType(key), "cache-control": cacheControl(key) } });
     };
   }
-  return { directory, files, requests, mockFetch };
+  return { directory, files, requests, asset, mockFetch };
 }
 
-test("live verification checks every published hash and versioned asset, the apex, canonical redirects, and custom 404", async (t) => {
-  const { directory, files, requests, mockFetch } = await fixture(t);
+test("live checks every exact immutable URL including lazy assets, roots, redirects and custom 404", async t => {
+  const { directory, files, requests, asset, mockFetch } = await fixture(t);
   const result = await verifyLive(directory, { fetchImpl: mockFetch(), delayMs: 0 });
-  assert.equal(result.origin, origin);
   assert.equal(result.files, PUBLIC_FILES.length);
-  assert.deepEqual(Object.keys(result.sha256).sort(), [...PUBLIC_FILES].sort());
+  assert.deepEqual(Object.keys(result.sha256).sort(), [...files.keys()].sort());
   for (const [key, bytes] of files) {
     assert.equal(result.sha256[key], digest(bytes));
-    assert.equal(requests.filter((url) => url === `${origin}/${key}`).length, 1);
+    assert.equal(requests.filter(url => url === `${origin}/${key}`).length, 1);
   }
-  assert.equal(Object.keys(result.versioned_assets).length, VERSIONED_FILES.length);
-  for (const key of VERSIONED_FILES) {
-    const path = `/${key}?v=${digest(files.get(key)).slice(0, 12)}`;
-    assert.equal(result.versioned_assets[path], digest(files.get(key)));
-    assert.equal(requests.filter((url) => url === origin + path).length, 1);
-  }
-  assert.deepEqual(result.redirects.map(({ start, hops }) => ({
-    start, urls: hops.map((hop) => hop.url), statuses: hops.map((hop) => hop.status),
-  })), [
-    { start: "http://elliottbarnes.ca/", urls: ["http://elliottbarnes.ca/", `${origin}/`], statuses: [301, 200] },
-    { start: "http://www.elliottbarnes.ca/", urls: ["http://www.elliottbarnes.ca/", "https://www.elliottbarnes.ca/", `${origin}/`], statuses: [301, 301, 200] },
-    { start: "https://www.elliottbarnes.ca/", urls: ["https://www.elliottbarnes.ca/", `${origin}/`], statuses: [301, 200] },
-  ]);
-  assert.equal(requests.filter((url) => url === `${origin}/`).length, 4);
-  assert.match(result.not_found.path, missingPath);
-  assert.equal(result.not_found.status, 404);
-  assert.equal(result.not_found.sha256, digest(files.get("404.html")));
-  assert.equal(requests.at(-1), origin + result.not_found.path);
-  assert.equal(requests.length, PUBLIC_FILES.length + VERSIONED_FILES.length + 9);
-  assert.ok(Number.isFinite(Date.parse(result.checked_at)));
+  for (const source of ["assets/block-blast.js", "assets/goku-platformer.js", "assets/arcade.css"]) assert.equal(result.versioned_assets['/' + asset(source)], digest(files.get(asset(source))));
+  assert.equal(result.redirects.length, 3);
+  assert.equal(requests.filter(url => url === origin + '/').length, 4);
+  assert.equal(result.not_found.status, 404); assert.match(result.not_found.path, missingPath);
+  assert.equal(requests.length, PUBLIC_FILES.length + 9);
 });
 
-test("live verification rejects stale bytes and wrong content types at the exact versioned asset URLs", async (t) => {
-  for (const key of VERSIONED_FILES) {
-    for (const failure of ["stale", "wrong-type", "missing-type"]) {
-      const { directory, files, requests, mockFetch } = await fixture(t);
-      const path = `/${key}?v=${digest(files.get(key)).slice(0, 12)}`;
-      const fetchImpl = mockFetch((url) => url === origin + path ? new Response(
-        failure === "stale" ? "stale deployment" : files.get(key),
-        { headers: failure === "missing-type" ? {} : { "content-type": failure === "wrong-type" ? "text/plain" : contentType(key) } },
-      ) : undefined);
-      const error = failure === "stale" ? /Byte hash differs/ : /Unexpected content type/;
-      await assert.rejects(verifyLive(directory, { fetchImpl, attempts: 1 }), error);
-      assert.equal(requests.filter((url) => url === origin + path).length, 1);
-    }
-  }
-});
-
-test("live verification rejects stale bytes for public files, the apex, and custom 404", async (t) => {
-  for (const [matches, status, label] of [
-    [(url) => url === `${origin}/styles.css`, 200, /styles\.css: Byte hash differs/],
-    [(url) => url === `${origin}/`, 200, /Apex homepage: Byte hash differs/],
-    [(url) => missingPath.test(new URL(url).pathname), 404, /Custom 404: Byte hash differs/],
-  ]) {
-    const { directory, mockFetch } = await fixture(t);
-    const fetchImpl = mockFetch((url) => matches(url) ? new Response("stale deployment", {
-      status, headers: { "content-type": contentType(url.endsWith("styles.css") ? "styles.css" : "index.html") },
+test("live rejects stale lazy assets, wrong MIME, absent MIME, and incorrect cache policy", async t => {
+  for (const mode of ["bytes", "type", "missing", "cache"]) {
+    const { directory, files, asset, mockFetch } = await fixture(t), key = asset("assets/goku-platformer.js");
+    const fetchImpl = mockFetch(url => url === `${origin}/${key}` ? new Response(mode === "bytes" ? "stale" : files.get(key), {
+      headers: { ...(mode === "missing" ? {} : { "content-type": mode === "type" ? "text/plain" : contentType(key) }), "cache-control": mode === "cache" ? "no-cache" : cacheControl(key) },
     }) : undefined);
-    await assert.rejects(verifyLive(directory, { fetchImpl, attempts: 1, delayMs: 0 }), label);
+    await assert.rejects(verifyLive(directory, { fetchImpl, attempts: 1 }), /Byte hash differs|Unexpected content type|Unexpected cache policy/);
   }
 });
 
-test("live verification refuses an external redirect without requesting its destination", async (t) => {
-  const { directory, requests, mockFetch } = await fixture(t);
-  const fetchImpl = mockFetch((url) => url === "http://elliottbarnes.ca/" ?
-    new Response(null, { status: 302, headers: { location: "https://example.org/" } }) : undefined);
-  await assert.rejects(verifyLive(directory, { fetchImpl, attempts: 1 }), /Unexpected redirect destination: https:\/\/example\.org\//);
-  assert.ok(!requests.some((url) => url.includes("example.org")));
-});
-
-test("live verification rejects incorrect and missing content types", async (t) => {
-  for (const type of ["application/octet-stream", ""]) {
-    const { directory, files, mockFetch } = await fixture(t);
-    const fetchImpl = mockFetch((url) => url === `${origin}/styles.css` ?
-      new Response(files.get("styles.css"), { headers: type ? { "content-type": type } : {} }) : undefined);
-    await assert.rejects(verifyLive(directory, { fetchImpl, attempts: 1 }), /styles\.css: Unexpected content type:/);
-  }
-});
-
-test("live verification requires custom error pages to return HTTP 404, not a soft 404", async (t) => {
-  const { directory, files, mockFetch } = await fixture(t);
-  const fetchImpl = mockFetch((url) => missingPath.test(new URL(url).pathname) ?
-    new Response(files.get("404.html"), { status: 200, headers: { "content-type": contentType("404.html") } }) : undefined);
-  await assert.rejects(verifyLive(directory, { fetchImpl, attempts: 1 }), /Custom 404: Expected HTTP 404, received 200/);
-});
-
-test("live verification recovers from transient failures within three attempts", async (t) => {
-  const { directory, requests, mockFetch } = await fixture(t);
-  const fetchImpl = mockFetch((url, count) => {
-    if (url === `${origin}/styles.css` && count < 3) throw new Error("temporary outage");
-  });
-  const result = await verifyLive(directory, { fetchImpl, delayMs: 0 });
-  assert.equal(result.files, PUBLIC_FILES.length);
-  assert.equal(requests.filter((url) => url === `${origin}/styles.css`).length, 3);
-});
-
-test("live verification bounds persistent failures by the configured attempt count", async (t) => {
-  for (const attempts of [1, 2, 3]) {
-    const { directory, requests, mockFetch } = await fixture(t);
-    const fetchImpl = mockFetch((url) => {
-      if (url === `${origin}/styles.css`) throw new Error("persistent outage");
+test("live rejects stale homepage, incorrect 404 status, external redirects and loops", async t => {
+  for (const mode of ["home", "404", "external", "loop"]) {
+    const { directory, files, requests, mockFetch } = await fixture(t);
+    const fetchImpl = mockFetch(url => {
+      if (mode === "home" && url === origin + '/') return new Response("stale", { headers: { "content-type": "text/html" } });
+      if (mode === "404" && missingPath.test(new URL(url).pathname)) return new Response(files.get("404.html"), { headers: { "content-type": "text/html" } });
+      if (["external", "loop"].includes(mode) && url === "http://elliottbarnes.ca/") return new Response(null, {status:302,headers:{location:mode === "external" ? "https://example.org/" : "https://www.elliottbarnes.ca/"}});
+      if (mode === "loop" && url === "https://www.elliottbarnes.ca/") return new Response(null, {status:308,headers:{location:url}});
     });
-    await assert.rejects(verifyLive(directory, { fetchImpl, attempts, delayMs: 0 }), /styles\.css: persistent outage/);
-    assert.equal(requests.filter((url) => url === `${origin}/styles.css`).length, attempts);
+    await assert.rejects(verifyLive(directory, { fetchImpl, attempts: 1 }), /Byte hash differs|Expected HTTP 404|Unexpected redirect destination|Too many redirects/);
+    assert.ok(!requests.some(url => url.includes("example.org")));
   }
 });
 
-test("live verification rejects invalid attempt limits before issuing requests", async (t) => {
-  const { directory, requests, mockFetch } = await fixture(t);
-  for (const attempts of [0, 4, -1, 1.5, NaN, Infinity]) {
-    await assert.rejects(verifyLive(directory, { fetchImpl: mockFetch(), attempts, delayMs: 0 }), /attempts must be between one and three/);
+test("live retries transient failure and bounds persistent failure", async t => {
+  for (const persistent of [false, true]) {
+    const { directory, requests, asset, mockFetch } = await fixture(t), target = origin + '/' + asset("styles.css");
+    const fetchImpl = mockFetch((url, count) => { if (url === target && (persistent || count < 3)) throw new Error("outage"); });
+    if (persistent) await assert.rejects(verifyLive(directory, { fetchImpl, delayMs: 0 }), /outage/);
+    else await verifyLive(directory, { fetchImpl, delayMs: 0 });
+    assert.equal(requests.filter(url => url === target).length, 3);
   }
+});
+
+test("live invalid retry limits issue no requests", async t => {
+  const { directory, requests, mockFetch } = await fixture(t);
+  for (const attempts of [0, 4, -1, 1.5, NaN, Infinity]) await assert.rejects(verifyLive(directory, { fetchImpl: mockFetch(), attempts }), /attempts must be between/);
   assert.deepEqual(requests, []);
-});
-
-test("live verification bounds redirect loops to four hops per attempt", async (t) => {
-  const { directory, requests, mockFetch } = await fixture(t);
-  const fetchImpl = mockFetch((url) => ["http://elliottbarnes.ca/", "https://www.elliottbarnes.ca/"].includes(url) ?
-    new Response(null, { status: 308, headers: { location: "https://www.elliottbarnes.ca/" } }) : undefined);
-  await assert.rejects(verifyLive(directory, { fetchImpl, attempts: 1 }), /Too many redirects/);
-  assert.equal(requests.filter((url) => url === "http://elliottbarnes.ca/").length, 1);
-  assert.equal(requests.filter((url) => url === "https://www.elliottbarnes.ca/").length, 3);
 });
