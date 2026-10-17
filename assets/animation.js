@@ -48,6 +48,19 @@ const snippets = [{"repo": "glassbox", "title": "source → WebAssembly", "path"
   const positionLabel = document.querySelector("#entrance .status-position");
   const codeSurface = document.querySelector("#scene .scene-body") || canvas.parentElement;
   const sceneFeedback = document.querySelector("#scene-feedback");
+  const ecdsaControls = document.querySelector("[data-ecdsa-controls]");
+  const ecdsaButtons = Object.fromEntries(["back", "next", "play", "tamper", "close"].map(name => [name, document.querySelector(`[data-ecdsa-${name}]`)]));
+  const ecdsaLabel = document.querySelector("[data-ecdsa-step]");
+  const ecdsaStepLength = 3200;
+  const ecdsaDescriptions = [
+    "The toy curve is y squared = x cubed + 2x + 2 modulo 17. G = (5, 1), with order 19. These tiny public values are for learning only.",
+    "The demo private key is d = 7. Repeated point addition gives the public key Q = 7G = (0, 6).",
+    "The demo nonce is k = 3. R = 3G = (10, 6). Real signing requires a secret nonce that is never reused across different messages.",
+    "Using the example message hash representative z = 11, r = 10 and s = inverse(3) times (11 + 10 times 7) modulo 19 = 8. The signature is (10, 8).",
+    "Verification uses the public key and signature: w = inverse(8) = 12, u1 = 18 and u2 = 6. Compute u1G + u2Q.",
+    "Verified: the reconstructed point is (10, 6). Its x coordinate modulo 19 equals r = 10.",
+  ];
+  let ecdsaAnnouncement = "";
   // Public commit snapshot; no browser API requests or fabricated history.
   const commitHistory = {"glassbox":[{"sha":"c7ae7bd3eb374580b0c28e0b554108b5504a1c00","parents":["5789eec04c64bea45b2f5b9bce3adc6387128d81"],"message":"docs: make the README a concise project entry point (#2)"},{"sha":"5789eec04c64bea45b2f5b9bce3adc6387128d81","parents":["6baf3aacc2b86458bd42dfb4d3f511721005bcef"],"message":"docs: expand project guide and protect local files (#1)"},{"sha":"6baf3aacc2b86458bd42dfb4d3f511721005bcef","parents":[],"message":"Build an inspectable typed compiler with a WebAssembly backend"}],"pixel-language":[{"sha":"bf7abf01bd02a9a3f40216a81f6a6b8809009ea2","parents":["cd06ed6f5e2d42fb484af4d330905266417d9098"],"message":"docs: make the README a concise project entry point (#2)"},{"sha":"cd06ed6f5e2d42fb484af4d330905266417d9098","parents":["fe0af8647aedf8d711789868bf717e4663081889"],"message":"docs: expand project guide and protect local files (#1)"},{"sha":"fe0af8647aedf8d711789868bf717e4663081889","parents":["62ab5f3b97880c16763dc0e78163a8d536542735"],"message":"Use the repository owner handle for copyright attribution"},{"sha":"62ab5f3b97880c16763dc0e78163a8d536542735","parents":[],"message":"Build a typed graphics language and live WebGL compiler playground"}],"architecture-lab":[{"sha":"c452bb8ff75c68809035e3efa569e49473932cb2","parents":["19e468a1cb4fe2eee032afc94079da63a6dc9d52"],"message":"Version published assets to prevent stale mixed releases"},{"sha":"19e468a1cb4fe2eee032afc94079da63a6dc9d52","parents":["db570f2adea137f8a362ee171ca4230f5f7b76fc"],"message":"Explore three generations of Macintosh hardware in interactive 3D"},{"sha":"db570f2adea137f8a362ee171ca4230f5f7b76fc","parents":["81349c74afb61f8444e664c154ab56a882d27b7c"],"message":"Refine Macintosh lab with rainbow styling and integrated experiments"},{"sha":"81349c74afb61f8444e664c154ab56a882d27b7c","parents":[],"message":"Build an interactive Macintosh 128K architecture exhibit"}],"automata-lab":[{"sha":"5f6754580cfb0ffcf393d9e3d944ce1753cc1554","parents":["e0faf5ceae6eeb2c8a0cb00b51496976dad9655d"],"message":"Document regex resource limits with a bounded research harness (#2)"},{"sha":"e0faf5ceae6eeb2c8a0cb00b51496976dad9655d","parents":["4747efde9b7da4a791ea51809697a5bcbe2cdf96"],"message":"docs: expand project guide and protect local files (#1)"},{"sha":"4747efde9b7da4a791ea51809697a5bcbe2cdf96","parents":["ccd219aeaba07d3c214fcf216f623fb9d2a577af"],"message":"Link the lab back to the portfolio"},{"sha":"ccd219aeaba07d3c214fcf216f623fb9d2a577af","parents":[],"message":"Build an inspectable regex compiler and automata playground"}]};
   const motion = window.matchMedia("(prefers-reduced-motion: reduce)");
@@ -496,24 +509,43 @@ const snippets = [{"repo": "glassbox", "title": "source → WebAssembly", "path"
     return points;
   }
 
-  // Each project starts with a relevant visualization; repeated discoveries
-  // rotate through distinct forms. Portrait is a rare ninth discovery, never
-  // the default for ordinary text. History does not consume the sequence.
+  // Interleave different silhouettes. Recent choices are shared across source
+  // changes, so a new project cannot immediately recycle the same experiment.
   const effectDecks = {
-    glassbox: ["tokens", "sort", "graph", "interference", "automaton"],
-    "pixel-language": ["interference", "automaton", "sort", "graph", "tokens"],
-    "architecture-lab": ["object", "graph", "automaton", "sort", "interference"],
-    "automata-lab": ["graph", "automaton", "tokens", "interference", "sort"],
+    glassbox: ["tokens", "fourier", "graph", "quadtree", "interference", "pathfinding", "ecdsa", "convolution", "sort", "phyllotaxis", "automaton", "attractor"],
+    "pixel-language": ["interference", "convolution", "phyllotaxis", "fourier", "quadtree", "attractor", "tokens", "pathfinding", "sort", "ecdsa", "automaton", "graph"],
+    "architecture-lab": ["object", "quadtree", "convolution", "graph", "fourier", "pathfinding", "sort", "attractor", "automaton", "ecdsa", "phyllotaxis", "interference"],
+    "automata-lab": ["graph", "pathfinding", "automaton", "quadtree", "attractor", "tokens", "fourier", "convolution", "phyllotaxis", "ecdsa", "sort", "interference"],
   };
-  const effectVisits = new Map();
-  let discoveries = 0, lastSourceEffect = null;
+  const effectNames = {
+    history: "git history", tokens: "compile sketch", avatar: "source portrait", object: "source field",
+    interference: "interference field", sort: "bubble sort", automaton: "rule 110 cellular automaton",
+    graph: "breadth-first search", ecdsa: "ECDSA signing and verification", fourier: "Fourier synthesis",
+    attractor: "Lorenz attractor", phyllotaxis: "golden-angle spiral", pathfinding: "shortest-path search",
+    quadtree: "quadtree spatial subdivision", convolution: "image convolution",
+  };
+  const renderedEffects = new Set(["history", "tokens", "sort", "automaton", "graph", "interference", "ecdsa",
+    "fourier", "attractor", "phyllotaxis", "pathfinding", "quadtree", "convolution"]);
+  // A reduced-motion discovery is a useful frozen illustration, not an empty
+  // first frame. Pausing a running effect still preserves its exact live frame.
+  const previewTimes = { tokens: 1500, sort: 5000, graph: 2400, automaton: 3200,
+    interference: 1200, fourier: 1600, attractor: 3000, phyllotaxis: 3500,
+    pathfinding: 5000, quadtree: 3200, convolution: 5000 };
+  const effectVisits = new Map(), recentEffects = [];
+  let discoveries = 0;
   function nextSourceEffect(repo) {
     discoveries++;
-    if (discoveries % 9 === 0) { lastSourceEffect = "avatar"; return "avatar"; }
+    // Keep the portrait as an occasional surprise, four times rarer than before.
+    if (discoveries % 36 === 0) return "avatar";
     const deck = effectDecks[repo] || effectDecks.glassbox;
-    let visit = effectVisits.get(repo) || 0, kind = deck[visit++ % deck.length];
-    if (kind === lastSourceEffect) kind = deck[visit++ % deck.length];
-    effectVisits.set(repo, visit); lastSourceEffect = kind;
+    let visit = effectVisits.get(repo) || 0, kind;
+    for (let attempt = 0; attempt < deck.length; attempt++) {
+      kind = deck[visit++ % deck.length];
+      if (!recentEffects.includes(kind)) break;
+    }
+    effectVisits.set(repo, visit);
+    recentEffects.push(kind);
+    if (recentEffects.length > 6) recentEffects.shift();
     return kind;
   }
 
@@ -525,7 +557,8 @@ const snippets = [{"repo": "glassbox", "title": "source → WebAssembly", "path"
     const next = { kind, snippet: renderedSnippet, anchor: makeAnchor(row), visualStarted: elapsed,
       amount: staticEffect ? 1 : 0, velocity: 0, target: 1, static: staticEffect,
       pointerType, pull: { x: 0, y: 0 }, pullTarget: { x: 0, y: 0 },
-      expires: staticEffect ? Infinity : now + holdDuration(pointerType) };
+      expires: staticEffect || kind === "ecdsa" ? Infinity : now + holdDuration(pointerType),
+      ecdsa: kind === "ecdsa" ? { position: 0, playing: !staticEffect, tampered: false } : null };
     next.glyphs = sourceGlyphs(row, ["history", "tokens"].includes(kind) ? 180 : 720);
     next.glyphKeys = new Set(next.glyphs.map(point => point.key));
     if (staticEffect) interaction = next;
@@ -538,12 +571,14 @@ const snippets = [{"repo": "glassbox", "title": "source → WebAssembly", "path"
       interaction.visualStarted = next.visualStarted;
       interaction.glyphs = next.glyphs;
       interaction.glyphKeys = next.glyphKeys;
+      interaction.ecdsa = next.ecdsa;
     } else if (displayedGraphic && displayedGraphic.amount > .02) {
       interaction = { ...displayedGraphic, velocity: 0, target: 0, next };
     } else interaction = next;
 
     lastInput = now;
-    announceScene(`${({ history: "git history", tokens: "compile sketch", avatar: "source portrait", object: "source field", interference: "interference field", sort: "bubble sort", automaton: "rule 110 cellular automaton", graph: "breadth-first search" })[kind]} for ${next.snippet.repo}. ${kind === "history" ? "left and right select commits. " : ""}escape returns to code.`);
+    announceScene(`${effectNames[kind]} from source characters. ${kind === "history" ? "left and right select commits. " : ""}escape returns to code.`);
+    if (kind === "ecdsa") { scene.dataset.effect = "ecdsa"; resize(); }
     if (staticEffect) drawScene(elapsed);
     schedule();
   }
@@ -552,6 +587,7 @@ const snippets = [{"repo": "glassbox", "title": "source → WebAssembly", "path"
     if (!interaction && displayedGraphic) interaction = { ...displayedGraphic, velocity: 0 };
     if (interaction) {
       interaction.target = 0; interaction.next = null;
+      syncECDSA();
       if (interaction.static || still()) {
         resumedSnippet = interaction.snippet;
         resumeUntil = elapsed + cycleLength - elapsed % cycleLength;
@@ -565,6 +601,10 @@ const snippets = [{"repo": "glassbox", "title": "source → WebAssembly", "path"
   function updateInteraction(now, delta) {
     if (!interaction) return;
     if (interaction.static) return;
+    if (interaction.ecdsa?.playing && interaction.target) {
+      interaction.ecdsa.position = Math.min(ecdsaStepLength * 6 - 1, interaction.ecdsa.position + Math.min(delta || 0, 80));
+      if (interaction.ecdsa.position >= ecdsaStepLength * 6 - 1) interaction.ecdsa.playing = false;
+    }
     if (now >= interaction.expires) { interaction.target = 0; }
     const dt = Math.min(delta || 16.67, 48) / 1000;
     if (interaction.pull) {
@@ -607,9 +647,12 @@ const snippets = [{"repo": "glassbox", "title": "source → WebAssembly", "path"
     editor(snippet, quiet ? 1 : (time % cycleLength) / cycleLength, 1 - amount * .58, time, !quiet, !quiet);
     scene.dataset.effect = kind;
     scene.dataset.selectedCommit = kind === "history" ? interaction.selectedCommit || commitHistory[snippet.repo]?.[0]?.sha || "" : "";
-    if (["history", "tokens", "sort", "automaton", "graph", "interference"].includes(renderKind) && window.PortfolioEntranceEffects) {
-      const bounds = window.PortfolioEntranceEffects.draw(renderKind, { context, width, height, amount, time: quiet ? 0 : Math.max(0, time - (interaction.visualStarted || 0)), anchor, snippet,
+    if (renderedEffects.has(renderKind) && window.PortfolioEntranceEffects) {
+      const bounds = window.PortfolioEntranceEffects.draw(renderKind, { context, width, height, amount, time: quiet ? (previewTimes[kind] || 0) : Math.max(0, time - (interaction.visualStarted || 0)), anchor, snippet,
         pointerX: quiet ? 0 : pointerX, pointerY: quiet ? 0 : pointerY,
+        ecdsaStep: Math.floor((interaction.ecdsa?.position || 0) / ecdsaStepLength),
+        ecdsaProgress: interaction.ecdsa ? (interaction.ecdsa.position % ecdsaStepLength) / (ecdsaStepLength - 1) : 1,
+        ecdsaTampered: Boolean(interaction.ecdsa?.tampered),
         history: commitHistory[snippet.repo] || [], selectedCommit: interaction.selectedCommit,
         pull: interaction.pull, glyphs: transportedGlyphs(), ...palette });
       displayedGraphic = { kind, snippet, amount, anchor, bounds, glyphs: interaction.glyphs, glyphKeys: interaction.glyphKeys };
@@ -617,8 +660,8 @@ const snippets = [{"repo": "glassbox", "title": "source → WebAssembly", "path"
     else liveObject(snippet, amount, time, anchor);
     if (displayedGraphic) Object.assign(displayedGraphic, { glyphs: interaction.glyphs,
       glyphKeys: interaction.glyphKeys, visualStarted: interaction.visualStarted, static: interaction.static, pull: interaction.pull,
-      pullTarget: interaction.pullTarget, pointerType: interaction.pointerType, selectedCommit: interaction.selectedCommit });
-    status(snippet, "NORMAL", kind === "history" ? "git log --graph --oneline" : kind === "tokens" ? "./source --inspect" : kind === "avatar" ? "!./avatar --track" : ["sort", "automaton", "graph"].includes(kind) ? `./sketch --${kind}` : `!./${snippet.repo} --live`);
+      ecdsa: interaction.ecdsa, pullTarget: interaction.pullTarget, pointerType: interaction.pointerType, selectedCommit: interaction.selectedCommit });
+    status(snippet, "NORMAL", kind === "history" ? "git log --graph --oneline" : kind === "tokens" ? "./source --inspect" : kind === "avatar" ? "!./avatar --track" : renderedEffects.has(kind) ? `./sketch --${kind}` : `!./${snippet.repo} --live`);
     drawInputHud(time);
   }
 
@@ -628,6 +671,7 @@ const snippets = [{"repo": "glassbox", "title": "source → WebAssembly", "path"
     displayedGraphic = null;
     scene.dataset.effect = interaction?.kind || "";
     if (!interaction) scene.dataset.selectedCommit = "";
+    syncECDSA();
     if (!width || !height) return;
     const clock = time % cycleLength;
     const snippet = resumedSnippet && time < resumeUntil ? resumedSnippet : snippets[Math.floor(time / cycleLength) % snippets.length];
@@ -773,6 +817,7 @@ const snippets = [{"repo": "glassbox", "title": "source → WebAssembly", "path"
       interaction = null;
       displayedGraphic = null;
       frozenTime = null;
+      syncECDSA();
       releaseAt = Infinity;
       targetX = 0; targetY = 0;
     } else if (quiet) {
@@ -786,7 +831,7 @@ const snippets = [{"repo": "glassbox", "title": "source → WebAssembly", "path"
     } else {
       frozenTime = null;
       if (interaction?.static || interaction?.frozen) {
-        interaction.expires = performance.now() + (interaction.static ? holdDuration(interaction.pointerType) : interaction.remainingHold || 0);
+        interaction.expires = interaction.kind === "ecdsa" ? Infinity : performance.now() + (interaction.static ? holdDuration(interaction.pointerType) : interaction.remainingHold || 0);
         interaction.static = false;
         interaction.frozen = false;
       }
@@ -825,7 +870,7 @@ const snippets = [{"repo": "glassbox", "title": "source → WebAssembly", "path"
     if (!still() && gesture.effect && gesture.effect === interaction && gesture.distance > 6) {
       interaction.pullTarget = { x: clamp((event.clientX - gesture.x) * .55, -40, 40),
         y: clamp((event.clientY - gesture.y) * .55, -40, 40) };
-      interaction.expires = performance.now() + holdDuration(event.pointerType);
+      interaction.expires = interaction.kind === "ecdsa" ? Infinity : performance.now() + holdDuration(event.pointerType);
       lastInput = performance.now();
       schedule();
     }
@@ -924,7 +969,9 @@ const snippets = [{"repo": "glassbox", "title": "source → WebAssembly", "path"
   codeSurface?.addEventListener("keydown", event => {
     if (event.defaultPrevented || event.isComposing || event.ctrlKey || event.metaKey || event.altKey
       || !visible() || leaving || document.querySelector("dialog[open]")) return;
-    if (interaction?.kind === "history" && ["ArrowLeft", "ArrowRight"].includes(event.key)) {
+    if (interaction?.kind === "ecdsa" && ["ArrowLeft", "ArrowRight"].includes(event.key)) {
+      stepECDSA(event.key === "ArrowLeft" ? -1 : 1);
+    } else if (interaction?.kind === "history" && ["ArrowLeft", "ArrowRight"].includes(event.key)) {
       const records = (commitHistory[interaction.snippet.repo] || []).slice(0, 4).reverse();
       const current = Math.max(0, records.findIndex(record => record.sha === (interaction.selectedCommit || records.at(-1)?.sha)));
       const index = clamp(current + (event.key === "ArrowLeft" ? -1 : 1), 0, records.length - 1);
@@ -937,6 +984,11 @@ const snippets = [{"repo": "glassbox", "title": "source → WebAssembly", "path"
       keyboardFocus = true;
       announceScene(`line ${row.line}: ${row.text.trim()}`);
       drawScene(elapsed);
+    } else if (event.key.toLowerCase() === "n") {
+      if (event.repeat) { event.preventDefault(); return; }
+      const row = selectedRow();
+      if (!row) return;
+      openGraphic(row, "keyboard", nextSourceEffect(renderedSnippet.repo));
     } else if (event.key === " " || event.key === "Spacebar") {
       if (event.repeat) { event.preventDefault(); return; }
       if (interaction?.target) closeGraphic();
@@ -968,10 +1020,74 @@ const snippets = [{"repo": "glassbox", "title": "source → WebAssembly", "path"
     lastInput = performance.now();
     schedule();
   });
-  window.PortfolioAnimation = Object.freeze({ enter, cancel: completeEntry,
+  function syncECDSA() {
+    const active = interaction?.kind === "ecdsa" && interaction.target && Boolean(interaction.ecdsa);
+    if (ecdsaControls) {
+      const restoreFocus = visible() && !active && !ecdsaControls.hidden && ecdsaControls.contains(document.activeElement);
+      ecdsaControls.hidden = !active;
+      if (restoreFocus) codeSurface?.focus?.({ preventScroll: true });
+    }
+    if (!active) { ecdsaAnnouncement = ""; return; }
+    const state = interaction.ecdsa, step = Math.floor(state.position / ecdsaStepLength);
+    if (ecdsaLabel) ecdsaLabel.textContent = `${step + 1} / 6`;
+    if (ecdsaButtons.back) ecdsaButtons.back.disabled = step === 0;
+    if (ecdsaButtons.next) ecdsaButtons.next.disabled = step === 5;
+    if (ecdsaButtons.play) {
+      ecdsaButtons.play.disabled = still();
+      ecdsaButtons.play.textContent = still() ? "paused" : state.playing ? "pause" : step === 5 ? "replay" : "play";
+      ecdsaButtons.play.setAttribute("aria-label", still() ? "Animation paused; use arrows to step" : state.playing ? "Pause ECDSA playback" : "Play ECDSA animation");
+    }
+    ecdsaButtons.tamper?.setAttribute("aria-pressed", String(state.tampered));
+    if (ecdsaButtons.tamper) ecdsaButtons.tamper.textContent = state.tampered ? "restore hash" : "tamper hash";
+    const key = `${step}:${state.tampered}`;
+    if (ecdsaAnnouncement !== key) {
+      ecdsaAnnouncement = key;
+      const description = state.tampered && step >= 4
+        ? step === 4 ? "Changed hash z = 12, with the original signature and public key. u1 = 11 and u2 = 6."
+          : "Rejected: changing the hash from 11 to 12 reconstructs (3, 16). Its x coordinate 3 does not match r = 10."
+        : ecdsaDescriptions[step];
+      announceScene(`ECDSA step ${step + 1} of 6. ${description}`);
+    }
+  }
+  function stepECDSA(direction) {
+    if (!interaction?.ecdsa || !interaction.target) return;
+    const state = interaction.ecdsa;
+    state.position = (clamp(Math.floor(state.position / ecdsaStepLength) + direction, 0, 5) + 1) * ecdsaStepLength - 1;
+    state.playing = false;
+    drawScene(elapsed); schedule();
+  }
+  function openECDSA() {
+    if (!visible() || document.querySelector("dialog[open]")) return;
+    // A command opens immediately, even if another source experiment is retracting.
+    interaction = null; displayedGraphic = null;
+    openGraphic(selectedRow() || sourceRows[0], "keyboard", "ecdsa");
+    codeSurface?.focus?.({ preventScroll: true });
+  }
+  ecdsaButtons.back?.addEventListener("click", () => stepECDSA(-1));
+  ecdsaButtons.next?.addEventListener("click", () => stepECDSA(1));
+  ecdsaButtons.close?.addEventListener("click", () => { closeGraphic(); schedule(); });
+  ecdsaButtons.play?.addEventListener("click", () => {
+    if (!interaction?.ecdsa || still()) return;
+    const state = interaction.ecdsa;
+    if (Math.floor(state.position / ecdsaStepLength) === 5 && !state.playing) state.position = 0;
+    state.playing = !state.playing;
+    drawScene(elapsed); schedule();
+  });
+  ecdsaButtons.tamper?.addEventListener("click", () => {
+    if (!interaction?.ecdsa) return;
+    interaction.ecdsa.tampered = !interaction.ecdsa.tampered;
+    interaction.ecdsa.position = ecdsaStepLength * 6 - 1;
+    interaction.ecdsa.playing = false;
+    drawScene(elapsed); schedule();
+  });
+  if (typeof ResizeObserver !== "undefined") new ResizeObserver(resize).observe(codeSurface);
+  window.PortfolioAnimation = Object.freeze({ enter, cancel: completeEntry, openECDSA,
+
     get state() { return Object.freeze({ effect: interaction?.kind || null, glyphCount: interaction?.glyphs?.length || 0,
       static: Boolean(interaction?.static), frozen: Boolean(interaction?.frozen), amount: interaction?.amount || 0,
       pull: Object.freeze({ x: interaction?.pull?.x || 0, y: interaction?.pull?.y || 0 }), selectedCommit: interaction?.selectedCommit || null,
+      ecdsaStep: interaction?.ecdsa ? Math.floor(interaction.ecdsa.position / ecdsaStepLength) : null,
+      ecdsaPlaying: Boolean(interaction?.ecdsa?.playing), ecdsaTampered: Boolean(interaction?.ecdsa?.tampered),
       selectedLine: selectedRow()?.line || null }); } });
   const image = new Image();
   image.onload = () => { sourceImage = image; buildPortrait(); refresh(); };

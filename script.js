@@ -31,6 +31,7 @@
     connect: "links github linkedin contact",
     theme: "theme themes colour color colours colors palette",
     motion: "motion animation pause resume",
+    ecdsa: "ecdsa elliptic curve signature signing cryptography verification",
     help: "help commands shortcuts keyboard",
   };
   const normalizeCommand = value => String(value).trim().toLowerCase().replace(/^[:/]\s*/, "").replace(/\s+/g, " ");
@@ -75,7 +76,7 @@
 
   function exactCommand(command) {
     return routes.includes(aliases[command] || command) || themeCommands().includes(command)
-      || ["home", "exit", "motion", "help", "?", "kamehameha", "training", "breaker", "ki", "charge", "radar", "hunt", "wish", "shenron"].includes(command);
+      || ["home", "exit", "motion", "ecdsa", "help", "?", "kamehameha", "training", "breaker", "ki", "charge", "radar", "hunt", "wish", "shenron"].includes(command);
   }
 
   function rankCommand(record, query) {
@@ -302,6 +303,12 @@
 
   function runCommand(raw) {
     const command = normalizeCommand(raw);
+    if (command === "ecdsa") {
+      closeCommands(false);
+      navigate(null, false);
+      window.PortfolioAnimation?.openECDSA();
+      return;
+    }
     if (["wish", "shenron"].includes(command)) {
       if (!window.PortfolioRadar?.unlocked) {
         say("follow all seven project signals first.");
@@ -352,7 +359,7 @@
       say(`Animation ${motion === "paused" ? "paused" : "running"}.`);
     } else if (command === "help" || command === "?") {
       if (help) help.hidden = !help.hidden;
-      say("Commands: about, projects, glassbox, pixel, architecture, automata, ellmiott, batchline, evaldeck, connect, home, theme, light, dark, motion, help. Use arrow keys on the wheel or j/k to browse sections; Home/End select its first/last item. Escape returns home.");
+      say("Commands: about, projects, glassbox, pixel, architecture, automata, ellmiott, batchline, evaldeck, connect, home, theme, light, dark, motion, ecdsa, help. Use arrow keys on the wheel or j/k to browse sections; Home/End select its first/last item. Escape returns home.");
     } else {
       say(command ? "Unknown command. Type help to see the available commands." : "Enter a command, such as about or theme.");
     }

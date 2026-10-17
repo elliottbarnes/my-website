@@ -19,13 +19,13 @@ function surface() {
     restore() { transform = saved.pop(); },
     translate(x, y) { transform.x += x * transform.scale; transform.y += y * transform.scale; },
     scale(x, y) { assert.equal(x, y); transform.scale *= x; },
-    fillText(value, x, y) { calls.text.push({ value, size: parseFloat(this.font) * transform.scale, ...point(x, y) }); },
+    fillText(value, x, y) { calls.text.push({ value, color: this.fillStyle, alpha: this.globalAlpha, size: parseFloat(this.font) * transform.scale, ...point(x, y) }); },
     strokeRect(x, y, width, height) {
       calls.boxes.push({ ...point(x, y), width: width * transform.scale, height: height * transform.scale });
     },
     beginPath() { start = null; },
     moveTo(x, y) { start = point(x, y); },
-    lineTo(x, y) { calls.lines.push({ start, end: point(x, y) }); },
+    lineTo(x, y) { calls.lines.push({ start, end: point(x, y), color: this.strokeStyle, alpha: this.globalAlpha }); },
     bezierCurveTo(x1, y1, x2, y2, x, y) {
       calls.curves.push({ start, control1: point(x1, y1), control2: point(x2, y2), end: point(x, y) });
     },
@@ -290,12 +290,109 @@ test("interference reacts to pointer spacing and carries real source glyphs duri
 
 test('sorting moves compared values continuously and lands in the next trace state', () => {
   const x = (time, value) => draw('sort', {time}).calls.text.find(p=>p.value===String(value)).x;
-  assert.ok(x(200,7)>x(0,7) && x(200,7)<x(450,7));
-  assert.ok(x(200,2)<x(0,2) && x(200,2)>x(450,2));
-  assert.equal(x(450,7),x(460,7)); assert.equal(x(450,2),x(460,2));
+  assert.ok(x(85,7)>x(0,7) && x(85,7)<x(160,7));
+  assert.ok(x(85,2)<x(0,2) && x(85,2)>x(160,2));
+  assert.equal(x(160,7),x(165,7)); assert.equal(x(160,2),x(165,2));
 });
 test('graph traversal sends its pulse along an edge instead of teleporting between nodes', () => {
   const head = time => draw('graph',{time}).calls.text.find(p=>p.value==='◆');
   assert.ok(head(900).x>head(650).x);
   assert.ok(head(900).y<head(650).y);
+});
+
+test('sort finishes during a normal effect appearance and holds every value in its settled state', () => {
+  for (const time of [4620, 5000, 6100]) {
+    const { calls } = draw('sort', { time, accent: 'settled' });
+    const values = calls.text.filter(p => /^[1-8]$/.test(p.value)).sort((a, b) => a.x - b.x);
+    assert.deepEqual(values.map(p => Number(p.value)), [1, 2, 3, 4, 5, 6, 7, 8]);
+    assert.ok(values.every(p => p.color === 'settled'));
+    assert.ok(calls.text.some(p => p.value === 'complete / every value in order'));
+  }
+  const initial = draw('sort', { time: 6200 }).calls.text.filter(p => /^[1-8]$/.test(p.value)).sort((a,b) => a.x-b.x);
+  assert.deepEqual(initial.map(p => Number(p.value)), [7, 2, 8, 4, 1, 6, 3, 5]);
+});
+
+test('rule 110 begins with one visible seed and applies the actual three-neighbour rule', () => {
+  for (const width of [280, 740]) {
+    const first = draw('automaton', { width, time: 0 });
+    const seed = first.calls.text.filter(p => p.value === '■');
+    assert.equal(seed.length, 1);
+    assert.ok(seed[0].x > first.bounds.left && seed[0].x < first.bounds.right);
+    const frame = draw('automaton', { width, time: 405 });
+    const cells = frame.calls.text.filter(p => ['■', '·'].includes(p.value));
+    const levels = [...new Set(cells.map(p => p.y))].sort((a,b) => a-b);
+    assert.equal(levels.length, 4);
+    for (let row = 1; row < levels.length; row++) {
+      const previous = cells.filter(p => p.y === levels[row - 1]).sort((a,b) => a.x-b.x);
+      const current = cells.filter(p => p.y === levels[row]).sort((a,b) => a.x-b.x);
+      for (let x = 0; x < current.length; x++) {
+        const alive = index => previous[(index + previous.length) % previous.length].value === '■' ? 1 : 0;
+        const pattern = (alive(x - 1) << 2) | (alive(x) << 1) | alive(x + 1);
+        assert.equal(current[x].value === '■', Boolean((110 >> pattern) & 1));
+      }
+    }
+  }
+});
+
+test('breadth-first search displays a FIFO frontier and highlights only actual parent edges', () => {
+  const expected = ['B C', 'C D E', 'D E F', 'E F G', 'F G H', 'G H', 'H', ''];
+  for (const [step, queue] of expected.entries()) {
+    const { calls } = draw('graph', { time: step * 560, accent: 'tree', muted: 'other' });
+    assert.ok(calls.text.some(p => p.value.startsWith(`queue [${queue}]`)));
+    const tree = calls.lines.filter(p => p.color === 'tree');
+    assert.equal(tree.length, [2, 4, 5, 6, 7, 7, 7, 7][step]);
+  }
+  for (const time of [4480, 5500, 6199]) {
+    const { calls } = draw('graph', { time, accent: 'tree', muted: 'other' });
+    assert.ok(calls.text.some(p => p.value === 'queue [] / traversal complete'));
+    assert.equal(calls.lines.filter(p => p.color === 'tree').length, 7);
+    assert.equal(calls.lines.filter(p => p.color === 'other').length, 3, 'cross edges never become invented discovery edges');
+    assert.equal(calls.text.filter(p => p.value === '◆').length, 0);
+  }
+});
+
+test('algorithm sketches retain readable labels on compact canvases', () => {
+  for (const kind of ['sort', 'automaton', 'graph']) for (const height of [110, 166, 260]) for (const time of [0, 1500, 4800, 7000]) {
+    const { calls, bounds } = draw(kind, { height, time, width: 280 });
+    for (const label of calls.text) {
+      assert.ok(Number.isFinite(label.x) && Number.isFinite(label.y));
+      assert.ok(label.y - label.size / 2 >= bounds.top && label.y + label.size / 2 <= bounds.bottom);
+    }
+  }
+});
+
+test('compile sketch recognizes source keywords and keeps its pulse between token cells', () => {
+  const { calls } = draw('tokens', { time: 0, anchor: { text: 'return 17;' } });
+  assert.ok(calls.text.some(p => p.value === 'keyword'));
+  assert.equal(calls.dots.length, 1, 'only the current token gets a traveling pulse');
+  const dot = calls.dots[0], row = calls.boxes.filter(p => Math.abs(p.y + p.height / 2 - dot.y) < .001);
+  assert.equal(row.length, 3);
+  assert.ok(dot.x >= row[0].x + row[0].width && dot.x <= row[1].x);
+});
+
+test('optional effect modules share source-glyph helpers and fail harmlessly when unavailable', () => {
+  const kinds = { PortfolioSignalEffects: ['fourier', 'attractor', 'phyllotaxis'], PortfolioStructureEffects: ['pathfinding', 'quadtree', 'convolution'] };
+  for (const [name, group] of Object.entries(kinds)) {
+    for (const kind of group) {
+      assert.equal(draw(kind).bounds, null);
+      const bounds = effects.bounds(kind, { width: 348, height: 360, amount: 1 });
+      assert.equal(bounds.h, 260);
+    }
+    const used = [];
+    window[name] = { draw(kind, args, helpers) {
+      used.push(kind);
+      const box = helpers.layout(args, 260), ctx = helpers.begin(args, box);
+      helpers.text(ctx, 'target', 20, 30, 'ink', args.amount);
+      ctx.restore();
+      assert.deepEqual(Object.keys(helpers).sort(), ['begin', 'carry', 'clamp', 'dot', 'layout', 'segment', 'smooth', 'text']);
+      return box;
+    } };
+    for (const kind of group) {
+      const { calls, bounds } = draw(kind, { amount: 0, glyphs: [{ glyph: 'X', x: 30, y: 50, size: 10 }] });
+      assert.ok(bounds);
+      assert.ok(calls.text.some(p => p.value === 'X' && Math.abs(p.x - 30) < .01 && Math.abs(p.y - 50) < .01));
+    }
+    assert.deepEqual(used, group);
+    delete window[name];
+  }
 });

@@ -5,6 +5,10 @@ import vm from "node:vm";
 import { PUBLIC_FILES } from "../scripts/public-files.mjs";
 
 const effectsSource = await readFile(new URL("../assets/entrance-effects.js", import.meta.url), "utf8");
+const ecdsaMathSource = await readFile(new URL("../assets/ecdsa-math.js", import.meta.url), "utf8");
+const ecdsaEffectSource = await readFile(new URL("../assets/ecdsa-effect.js", import.meta.url), "utf8");
+const signalSource = await readFile(new URL("../assets/source-signal-effects.js", import.meta.url), "utf8");
+const structureSource = await readFile(new URL("../assets/source-structure-effects.js", import.meta.url), "utf8");
 const source = await readFile(new URL("../assets/animation.js", import.meta.url), "utf8");
 
 // Exercise the shipped animation controller and its clock without a browser
@@ -53,6 +57,7 @@ function animation({ reduced = false, paused = false, hidden = false, view = "en
       setAttribute(name, value) { attributes.set(name, String(value)); },
       hasAttribute: (name) => attributes.has(name),
       getAttribute: (name) => attributes.get(name) ?? null,
+      focus() { document.activeElement = this; this.dispatch("focus"); },
       append(child) { child.parentElement = this; },
       contains(child) {
         for (let current = child; current; current = current.parentElement) if (current === this) return true;
@@ -99,6 +104,17 @@ function animation({ reduced = false, paused = false, hidden = false, view = "en
   root.dataset = { view, ...(paused ? { motion: "paused" } : {}) };
   const nodes = new Map([["#entrance", entrance], ["#code-field", field], ["#scene", scene], ["[data-pointer-readout]", readout]]);
   for (const selector of ["#code-wall", "[data-scene-file]", "[data-scene-path]", "#typed-command", "#entrance .mode", "#entrance .status-position", "#scene-feedback"]) nodes.set(selector, node());
+  const ecdsaControls = node(), ecdsaButtons = {};
+  ecdsaControls.hidden = true;
+  ecdsaControls.parentElement = scene;
+  nodes.set("[data-ecdsa-controls]", ecdsaControls);
+  nodes.set("[data-ecdsa-step]", node());
+  for (const name of ["back", "next", "play", "tamper", "close"]) {
+    const button = node("button");
+    button.parentElement = ecdsaControls;
+    ecdsaButtons[name] = button;
+    nodes.set(`[data-ecdsa-${name}]`, button);
+  }
   const document = Object.assign(surface(), {
     documentElement: root, hidden,
     querySelector: (selector) => selector === "dialog[open]" ? (document.openDialog || null) : nodes.get(selector) || null,
@@ -120,6 +136,10 @@ function animation({ reduced = false, paused = false, hidden = false, view = "en
   class Image {
     constructor() { this.naturalWidth = 420; this.naturalHeight = 500; images.push(this); }
   }
+  vm.runInNewContext(ecdsaMathSource, { window });
+  vm.runInNewContext(ecdsaEffectSource, { window });
+  vm.runInNewContext(signalSource, { window });
+  vm.runInNewContext(structureSource, { window });
   vm.runInNewContext(effectsSource, { window });
   vm.runInNewContext(source, {
     document, window, Image, performance, requestAnimationFrame, cancelAnimationFrame,
@@ -128,7 +148,7 @@ function animation({ reduced = false, paused = false, hidden = false, view = "en
     clearTimeout: (id) => timers.delete(id),
   });
   return {
-    root, entrance, scene, field, readout, document, motion, window, frames, timers, images, node,
+    root, entrance, scene, field, readout, document, motion, window, frames, timers, images, node, ecdsaControls, ecdsaButtons,
     api: window.PortfolioAnimation,
     frame(ms = 16) {
       now += ms;
@@ -241,6 +261,9 @@ function tap(controls, values = {}) {
 function displayFor(controls, milliseconds) {
   for (let time = 0; time < milliseconds; time += 16) controls.frame(16);
 }
+
+// Source morphing paints individual glyphs, omitting spaces between them.
+const renderedText = controls => controls.field.calls.text.map(call => call.text).join("").replace(/\s/g, "");
 
 test("a quick code-line tap reacts on the next frame and remains open after release", () => {
   for (const pointerType of ["touch", "pen"]) {
@@ -661,9 +684,9 @@ test("touch visitors can select real hashes in a static history preview", () => 
 test("code-discovered interference preserves static discovery without losing the surface", () => {
   for (const options of [{ paused: true }, { reduced: true }]) {
     const controls = animation(options);
-    for (let i = 0; i < 4; i++) {
+    for (let i = 0; i < 5; i++) {
       tap(controls);
-      if (i < 3) controls.entrance.dispatch("keydown", { key: "Escape" });
+      if (i < 4) controls.entrance.dispatch("keydown", { key: "Escape" });
     }
     assert.equal(controls.api.state.effect, "interference");
     assert.equal(controls.frames.size, 0);
@@ -676,18 +699,51 @@ test("code-discovered interference preserves static discovery without losing the
 });
 
 
-test("ordinary code taps reveal five distinct experiments before the rare portrait", () => {
+test("source discoveries show twelve distinct experiments before the much rarer portrait", () => {
   const controls = animation({paused:true}), kinds = [];
-  for (let i=0;i<18;i++) {
+  for (let i=0;i<108;i++) {
     tap(controls); kinds.push(controls.api.state.effect);
     assert.ok(controls.api.state.glyphCount > 0);
     controls.entrance.dispatch("keydown", {key:"Escape"});
   }
-  assert.deepEqual(kinds.slice(0,5), ["tokens","sort","graph","interference","automaton"]);
-  assert.equal(kinds.filter(kind=>kind==="avatar").length,2);
-  assert.equal(kinds[8],"avatar"); assert.equal(kinds[17],"avatar");
-  assert.ok(kinds.every((kind,index)=>!index || kind!==kinds[index-1]));
+  assert.equal(new Set(kinds.slice(0,12)).size,12);
+  for (const kind of ["fourier", "attractor", "phyllotaxis", "pathfinding", "quadtree", "convolution", "ecdsa"]) {
+    assert.ok(kinds.slice(0,12).includes(kind), `${kind} must appear in the first complete deck`);
+  }
+  assert.deepEqual(kinds.flatMap((kind,i)=>kind==='avatar'?[i+1]:[]),[36,72,108]);
+  const experiments = kinds.filter(kind=>kind!=="avatar");
+  assert.ok(experiments.every((kind,index)=>!experiments.slice(Math.max(0,index-6),index).includes(kind)), "no recycling within six experiments");
   assert.equal(controls.frames.size,0);
+});
+
+test("N discovers the next source experiment without adding a picker or consuming held-key repeats", () => {
+  const controls = animation({reduced:true});
+  const surface = controls.field.parentElement;
+  surface.focus();
+  surface.dispatch("keydown", {key:"n"});
+  assert.equal(controls.api.state.effect,"tokens");
+  surface.dispatch("keydown", {key:"n",repeat:true});
+  assert.equal(controls.api.state.effect,"tokens");
+  surface.dispatch("keydown", {key:"N"});
+  assert.equal(controls.api.state.effect,"fourier");
+  assert.ok(controls.api.state.glyphCount>0);
+  assert.equal(controls.frames.size,0);
+  controls.entrance.dispatch("keydown", {key:"Escape"});
+  assert.equal(controls.api.state.effect,null);
+});
+
+test("recent experiments are avoided when the displayed project changes", () => {
+  const controls = animation(), kinds=[], projects=new Set();
+  for(let i=0;i<18;i++) {
+    controls.field.parentElement.dispatch("keydown",{key:"n"});
+    displayFor(controls,500);
+    kinds.push(controls.api.state.effect);
+    projects.add(controls.document.querySelector("[data-scene-file]").textContent.split('/')[0]);
+    controls.entrance.dispatch("keydown",{key:"Escape"});
+    displayFor(controls,5100);
+  }
+  assert.ok(projects.size>=3,"exercise several source projects");
+  assert.ok(kinds.every((kind,i)=>!kinds.slice(Math.max(0,i-6),i).includes(kind)), JSON.stringify(kinds));
 });
 test("history discovery does not advance the source-effect rotation", () => {
   const controls = animation({paused:true});
@@ -699,4 +755,176 @@ test("the sketch selector is absent from the published entrance", async () => {
   const html = await readFile(new URL("../index.html",import.meta.url),"utf8");
   assert.equal(html.includes('scene-experiment'),false);
   assert.equal(source.includes('scene-experiment'),false);
+});
+
+test("ECDSA opens directly, renders all six stages, and announces verified arithmetic", () => {
+  const controls = animation();
+  const label = controls.document.querySelector("[data-ecdsa-step]");
+  const feedback = controls.document.querySelector("#scene-feedback");
+  assert.equal(controls.ecdsaControls.hidden, true);
+  controls.api.openECDSA();
+  assert.equal(controls.api.state.effect, "ecdsa");
+  assert.equal(controls.document.activeElement, controls.field.parentElement);
+  assert.equal(controls.ecdsaControls.hidden, false);
+  assert.equal(controls.ecdsaButtons.back.disabled, true);
+  const stages = ["the curve", "public key", "one-use nonce", "sign", "verify", "result"];
+  for (let step = 0; step < stages.length; step++) {
+    if (step) controls.ecdsaButtons.next.dispatch("click");
+    displayFor(controls, 500);
+    assert.equal(controls.api.state.ecdsaStep, step);
+    assert.equal(label.textContent, `${step + 1} / 6`);
+    assert.match(feedback.textContent, new RegExp(`ECDSA step ${step + 1} of 6`));
+    assert.ok(renderedText(controls).includes(`ECDSA/${stages[step]}`.replace(/\s/g, "")), stages[step]);
+  }
+  assert.equal(controls.ecdsaButtons.next.disabled, true);
+  assert.equal(controls.api.state.ecdsaPlaying, false);
+  assert.match(feedback.textContent, /Verified.*\(10, 6\).*r = 10/);
+  assert.ok(renderedText(controls).includes("10=10✓ACCEPT"));
+});
+
+test("ECDSA tampering and restoration update the actual verification and accessible result", () => {
+  const controls = animation({ paused: true });
+  const feedback = controls.document.querySelector("#scene-feedback");
+  controls.api.openECDSA();
+  controls.ecdsaButtons.tamper.dispatch("click");
+  assert.equal(controls.api.state.ecdsaStep, 5);
+  assert.equal(controls.api.state.ecdsaTampered, true);
+  assert.equal(controls.ecdsaButtons.tamper.getAttribute("aria-pressed"), "true");
+  assert.equal(controls.ecdsaButtons.tamper.textContent, "restore hash");
+  assert.match(feedback.textContent, /Rejected.*\(3, 16\).*does not match r = 10/);
+  assert.ok(renderedText(controls).includes("V=(3,16)"));
+  assert.ok(renderedText(controls).includes("3≠10×REJECT"));
+  controls.ecdsaButtons.back.dispatch("click");
+  assert.match(feedback.textContent, /Changed hash z = 12.*u1 = 11 and u2 = 6/);
+  controls.ecdsaButtons.tamper.dispatch("click");
+  assert.equal(controls.api.state.ecdsaTampered, false);
+  assert.equal(controls.ecdsaButtons.tamper.getAttribute("aria-pressed"), "false");
+  assert.match(feedback.textContent, /Verified.*\(10, 6\)/);
+  assert.ok(renderedText(controls).includes("10=10✓ACCEPT"));
+  assert.equal(controls.frames.size, 0);
+});
+
+test("reduced motion keeps ECDSA manual, keyboard operable, and free of animation frames", () => {
+  const controls = animation({ reduced: true });
+  controls.api.openECDSA();
+  assert.equal(controls.api.state.ecdsaPlaying, false);
+  assert.equal(controls.ecdsaButtons.play.disabled, true);
+  assert.equal(controls.frames.size, 0);
+  for (let step = 1; step <= 5; step++) {
+    const event = controls.field.parentElement.dispatch("keydown", { key: "ArrowRight" });
+    assert.equal(event.defaultPrevented, true);
+    assert.equal(controls.api.state.ecdsaStep, step);
+    assert.equal(controls.frames.size, 0);
+  }
+  controls.field.parentElement.dispatch("keydown", { key: "ArrowLeft" });
+  assert.equal(controls.api.state.ecdsaStep, 4);
+  controls.ecdsaButtons.play.dispatch("click");
+  controls.advance(60000);
+  controls.frame();
+  assert.equal(controls.api.state.ecdsaStep, 4);
+  assert.equal(controls.api.state.ecdsaPlaying, false);
+  assert.equal(controls.frames.size, 0);
+});
+
+test("global pause freezes ECDSA mid-step and resumes without consuming paused time", () => {
+  const controls = animation();
+  controls.api.openECDSA();
+  displayFor(controls, 3800);
+  assert.equal(controls.api.state.ecdsaStep, 1);
+  const rendered = JSON.stringify(controls.field.calls.text);
+  controls.root.dataset.motion = "paused";
+  controls.window.dispatch("portfolio:preferences");
+  assert.equal(controls.api.state.frozen, true);
+  assert.equal(controls.ecdsaButtons.play.disabled, true);
+  assert.equal(JSON.stringify(controls.field.calls.text), rendered, "pause preserves the in-progress point multiplication");
+  controls.advance(60000);
+  controls.window.dispatch("portfolio:preferences");
+  assert.equal(JSON.stringify(controls.field.calls.text), rendered);
+  assert.equal(controls.api.state.ecdsaStep, 1);
+  assert.equal(controls.frames.size, 0);
+  controls.root.dataset.motion = "running";
+  controls.window.dispatch("portfolio:preferences");
+  assert.equal(controls.ecdsaButtons.play.disabled, false);
+  displayFor(controls, 2800);
+  assert.equal(controls.api.state.ecdsaStep, 2);
+  assert.equal(controls.frames.size, 1);
+});
+
+test("local ECDSA pause preserves the current multiplication point through pause and resume", () => {
+  const controls = animation();
+  controls.api.openECDSA();
+  displayFor(controls, 4200);
+  assert.equal(controls.api.state.ecdsaStep, 1);
+  assert.ok(renderedText(controls).includes("2G=(6,3)"), "playback has reached the second multiple");
+  controls.ecdsaButtons.play.dispatch("click");
+  assert.equal(controls.api.state.ecdsaPlaying, false);
+  assert.ok(renderedText(controls).includes("2G=(6,3)"), "pause must not jump to the final public key");
+  assert.equal(renderedText(controls).includes("7G=(0,6)"), false);
+  controls.advance(60000);
+  displayFor(controls, 600);
+  assert.equal(controls.api.state.ecdsaStep, 1);
+  assert.ok(renderedText(controls).includes("2G=(6,3)"), "background frames cannot advance a locally paused stage");
+  controls.ecdsaButtons.play.dispatch("click");
+  assert.equal(controls.api.state.ecdsaPlaying, true);
+  assert.ok(renderedText(controls).includes("2G=(6,3)"), "resume begins at the same scalar and curve point");
+  displayFor(controls, 800);
+  assert.ok(renderedText(controls).includes("4G=(3,1)"), "resumed playback advances from the preserved point");
+});
+
+test("ECDSA playback completes once, remains inspectable, and can replay", () => {
+  const controls = animation();
+  controls.api.openECDSA();
+  displayFor(controls, 20000);
+  assert.equal(controls.api.state.ecdsaStep, 5);
+  assert.equal(controls.api.state.ecdsaPlaying, false);
+  assert.equal(controls.api.state.effect, "ecdsa");
+  assert.equal(controls.ecdsaButtons.play.textContent, "replay");
+  displayFor(controls, 10000);
+  assert.equal(controls.api.state.effect, "ecdsa", "the explanation has no automatic dismissal timer");
+  controls.ecdsaButtons.play.dispatch("click");
+  assert.equal(controls.api.state.ecdsaStep, 0);
+  assert.equal(controls.api.state.ecdsaPlaying, true);
+});
+
+test("closing ECDSA returns focus to the source surface without trapping hidden controls", () => {
+  for (const paused of [true, false]) {
+    const controls = animation({ paused });
+    controls.api.openECDSA();
+    controls.ecdsaButtons.close.focus();
+    controls.ecdsaButtons.close.dispatch("click");
+    assert.equal(controls.ecdsaControls.hidden, true);
+    assert.equal(controls.document.activeElement, controls.field.parentElement);
+    displayFor(controls, 900);
+    assert.equal(controls.api.state.effect, null);
+    assert.equal(controls.document.querySelector("#scene-feedback").textContent, "returned to source code.");
+  }
+});
+
+test("hiding the page or entering the workspace stops and clears ECDSA safely", () => {
+  for (const state of ["hidden", "workspace"]) {
+    const controls = animation();
+    controls.api.openECDSA();
+    displayFor(controls, 3500);
+    controls.ecdsaButtons.next.focus();
+    const change = disabled => {
+      if (state === "hidden") {
+        controls.document.hidden = disabled;
+        controls.document.dispatch("visibilitychange");
+      } else {
+        controls.root.dataset.view = disabled ? "workspace" : "entrance";
+        controls.window.dispatch("portfolio:view");
+      }
+    };
+    change(true);
+    assert.equal(controls.frames.size, 0, state);
+    assert.equal(controls.api.state.effect, null, state);
+    assert.equal(controls.ecdsaControls.hidden, true, state);
+    const clears = controls.field.calls.clears;
+    controls.advance(30000); controls.frame();
+    assert.equal(controls.field.calls.clears, clears, `${state} performs no background drawing`);
+    change(false);
+    assert.equal(controls.api.state.effect, null);
+    assert.equal(controls.ecdsaControls.hidden, true);
+    assert.equal(controls.frames.size, 1);
+  }
 });

@@ -100,11 +100,12 @@ function setup({ unlocked = false } = {}) {
     querySelector: selector => root.querySelector(selector),
     getElementById: id => root.querySelector(`#${id}`), createElement: tag => new Node(tag),
   });
-  const calls = { training: 0, summons: 0, themes: [] };
+  const calls = { training: 0, summons: 0, themes: [], ecdsa: [] };
   const window = new Node("window");
   Object.assign(window, { location: { hash: "" }, localStorage: { getItem: () => null, setItem() {} },
     matchMedia: () => ({ matches: false, addEventListener() {} }), scrollTo() {}, dispatchEvent() {},
     PortfolioTraining: { open: () => { calls.training++; } },
+    PortfolioAnimation: { openECDSA: () => calls.ecdsa.push({ dialogOpen: dialog.open, view: root.dataset.view, hash: window.location.hash }) },
     PortfolioRadar: { unlocked, summon: () => { calls.summons++; return unlocked; } },
     PortfolioThemes: { current: "blackmoney", label: "saiyan", names: ["blackmoney", "carbon"], labels: ["saiyan", "carbon"],
       apply: name => calls.themes.push(name), open: () => calls.themes.push("picker") },
@@ -144,7 +145,7 @@ test("prefixes, multiword queries, deterministic ranking, and arrow selection ch
 
 test("empty input retains ordinary buttons and deliberate arrow selection can be submitted", () => {
   const page = setup();
-  assert.equal(page.visible().length, 12);
+  assert.equal(page.visible().length, 13);
   assert.equal(page.results.dataset.searching, "false");
   assert.ok(page.visible().every(button => button.dataset.searchActive === "false"));
   page.key("ArrowDown"); page.submit();
@@ -212,7 +213,7 @@ test("native Tab order matches ranked search results and resets with the empty q
     page.visible().map(button => button.dataset.command));
   page.search("");
   assert.deepEqual(page.results.children.map(button => button.dataset.command), original);
-  assert.equal(page.results.children.length, 12, "existing buttons are moved, never duplicated");
+  assert.equal(page.results.children.length, 13, "existing buttons are moved, never duplicated");
 });
 
 test("native button focus synchronizes the highlighted and announced result without moving its DOM node", () => {
@@ -240,4 +241,22 @@ test("training and dragon wishes require exact secret commands and never enter t
   const unlocked = setup({ unlocked: true }); unlocked.search("shenron"); unlocked.submit();
   assert.equal(unlocked.calls.summons, 1); assert.equal(unlocked.window.location.hash, "#about");
   assert.equal(unlocked.document.activeElement, unlocked.summonButton);
+});
+
+test("ECDSA search and exact commands open the experiment only after dismissing the command dialog", () => {
+  for (const query of [":ecdsa", "elliptic curve", "signature"]) {
+    const page = setup();
+    page.root.dataset.view = "workspace";
+    page.window.location.hash = "#about";
+    page.search(query);
+    assert.equal(page.visible()[0].dataset.command, "ecdsa");
+    assert.equal(page.calls.ecdsa.length, 0, "searching alone does not open an animation");
+    page.submit();
+    assert.deepEqual(page.calls.ecdsa, [{ dialogOpen: false, view: "entrance", hash: "" }]);
+    assert.equal(page.dialog.open, false);
+  }
+  const clicked = setup();
+  clicked.visible().find(button => button.dataset.command === "ecdsa").emit("click");
+  assert.equal(clicked.calls.ecdsa.length, 1);
+  assert.equal(clicked.calls.ecdsa[0].dialogOpen, false);
 });

@@ -462,3 +462,17 @@ html.is-leaving .entrance-intro{opacity:0;transition:opacity .25s}
 .game-choice>span:nth-child(2){flex:1;min-width:0}.game-choice strong{display:block;font-size:13px;font-weight:400;color:#e9f8ff}.game-choice small{display:block;font-size:9px;line-height:1.6;margin-top:5px;color:#afc4d6}.game-choice>span:last-child{color:#8be9ee}
 #arcade-dialog[data-mode=choose]{padding-bottom:24px}
 #arcade-dialog #arcade-back{font-size:10px;padding-inline:0;border-color:transparent;color:#8be9ee}
+
+/* ECDSA stays part of the source surface; controls appear only while exploring it. */
+[data-view=entrance] .scene[data-effect]:not([data-effect=""]) .scene-body{min-height:260px}
+.ecdsa-controls{display:flex;align-items:center;gap:5px;flex-wrap:wrap;padding:4px 0 8px;color:var(--ink);font-size:10px}
+.ecdsa-controls>span{color:var(--accent);margin-right:auto;min-width:56px}
+.ecdsa-controls button{min-width:44px;min-height:44px;padding:6px 8px;border:1px solid var(--line);border-radius:3px}
+.ecdsa-controls button:hover,.ecdsa-controls button[aria-pressed=true]{border-color:var(--accent);color:var(--accent)}
+.ecdsa-controls button:disabled{opacity:.4}
+@media(max-height:740px){
+ [data-view=entrance]:has(.scene[data-effect]:not([data-effect=""])) .entrance{min-height:610px}
+ [data-view=entrance]:has(.scene[data-effect=ecdsa]) .entrance{min-height:680px}
+}
+@media(max-width:600px){.ecdsa-controls>span{width:100%}}
+@media(max-width:380px){.ecdsa-controls{gap:3px}.ecdsa-controls button{padding-inline:5px}.ecdsa-controls>span{width:100%}}
