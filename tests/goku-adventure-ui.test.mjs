@@ -3,26 +3,31 @@ import assert from "node:assert/strict";
 import vm from "node:vm";
 import { readFile } from "node:fs/promises";
 
-const uiSource = await readFile(new URL("../assets/goku-adventure.js", import.meta.url), "utf8");
-const storySource = await readFile(new URL("../assets/goku-story.js", import.meta.url), "utf8");
+const sources = await Promise.all(["goku-story", "goku-terminal", "goku-adventure"].map(name =>
+  readFile(new URL(`../assets/${name}.js`, import.meta.url), "utf8")));
 
-// Execute both production modules. This harness models browser event/focus
-// contracts; viewport and software-keyboard geometry still require browser QA.
+// Execute all three production modules. Only browser event/focus contracts are
+// mocked; software-keyboard and viewport geometry still require browser QA.
 function setup() {
-  let document;
+  let document, currentState;
   class Element {
     constructor(tag = "div", id = "") {
       this.tagName = tag.toUpperCase(); this.id = id; this.handlers = new Map();
       this.children = []; this.parentElement = null; this.dataset = {}; this.attributes = {};
       this._text = ""; this.open = false; this.hidden = false; this.disabled = false;
-      this.isConnected = true; this.value = ""; this.scrollTop = 0; this.scrollCalls = [];
+      this.isConnected = true; this.value = ""; this.scrollTop = 0; this.scrollHeight = 1200; this.scrollCalls = [];
     }
     get textContent() { return this._text + this.children.map(child => child.textContent).join(""); }
     set textContent(value) { this._text = String(value); this.replaceChildren(); }
+    get firstElementChild() { return this.children[0] || null; }
     append(...children) { for (const child of children) { child.parentElement = this; child.isConnected = this.isConnected; this.children.push(child); } }
     replaceChildren(...children) {
       for (const child of this.children) { child.parentElement = null; child.isConnected = false; }
       this.children = []; this.append(...children);
+    }
+    remove() {
+      if (this.parentElement) this.parentElement.children = this.parentElement.children.filter(child => child !== this);
+      this.parentElement = null; this.isConnected = false;
     }
     setAttribute(name, value) { this.attributes[name] = String(value); }
     getAttribute(name) { return this.attributes[name] ?? null; }
@@ -34,6 +39,7 @@ function setup() {
     }
     focus() { document.activeElement = this; }
     scrollIntoView(options) { this.scrollCalls.push({ ...options }); }
+    setSelectionRange(start, end) { this.selectionStart = start; this.selectionEnd = end; }
     addEventListener(type, callback) { if (!this.handlers.has(type)) this.handlers.set(type, []); this.handlers.get(type).push(callback); }
     emit(type, properties = {}) {
       const event = { type, target: this, defaultPrevented: false, propagationStopped: false,
@@ -50,10 +56,9 @@ function setup() {
   const root = add("html", "root"), body = add("body", "body"), opener = add("button", "opener");
   const fallback = add("button", "fallback"); root.append(body); body.append(opener, fallback);
   const dialog = add("dialog", "goku-dialog"); body.append(dialog);
-  for (const [tag, id] of [["h2", "goku-title"], ["button", "goku-close"], ["p", "goku-objective"], ["p", "goku-progress"],
-    ["div", "goku-scroll"], ["section", "goku-scene"], ["h3", "goku-scene-title"], ["div", "goku-prose"],
-    ["p", "goku-memory"], ["div", "goku-choices"], ["details", "goku-journal"], ["ol", "goku-history"],
-    ["p", "goku-status"], ["form", "goku-form"], ["input", "goku-input"], ["button", "goku-help"], ["button", "goku-restart"]]) dialog.append(add(tag, id));
+  for (const [tag, id] of [["h2", "goku-title"], ["button", "goku-close"], ["p", "goku-location"],
+    ["div", "goku-output"], ["div", "goku-transcript"], ["nav", "goku-choices"],
+    ["p", "goku-status"], ["form", "goku-form"], ["input", "goku-input"]]) dialog.append(add(tag, id));
   for (const id of ["training-dialog", "arcade-dialog", "theme-dialog"]) body.append(add("dialog", id));
   document = Object.assign(new Element("document"), { documentElement: root, body, activeElement: opener, hidden: false,
     getElementById: id => ids.get(id) || null, createElement: tag => new Element(tag),
@@ -65,122 +70,193 @@ function setup() {
   class CustomEvent { constructor(type, options) { this.type = type; this.detail = options.detail; } }
   const noSideEffect = () => { throw new Error("adventure must not start timers, storage, or network activity"); };
   const context = vm.createContext({ window, document, CustomEvent, setTimeout: noSideEffect, requestAnimationFrame: noSideEffect, fetch: noSideEffect });
-  vm.runInContext(storySource, context); vm.runInContext(uiSource, context);
+  vm.runInContext(sources[0], context);
+  // Observe the genuine state transitions without adding a production debug API.
+  const realStory = window.PortfolioGokuStory;
+  window.PortfolioGokuStory = { ...realStory,
+    create(...args) { currentState = realStory.create(...args); return currentState; },
+    choose(...args) { const result = realStory.choose(...args); currentState = result.state; return result; },
+  };
+  vm.runInContext(sources[1], context); vm.runInContext(sources[2], context);
   const get = id => ids.get(id), input = get("goku-input"), form = get("goku-form");
+  const output = get("goku-output"), transcript = get("goku-transcript");
   const buttons = () => get("goku-choices").children;
-  const button = command => buttons().find(node => node.children[0].textContent === command);
-  const click = command => { const node = button(command); assert.ok(node, `available choice ${command}`); node.emit("click"); };
+  const button = command => buttons().find(node => node.dataset.command === command);
+  const click = command => { const node = button(command); assert.ok(node, `available command ${command}`); node.emit("click"); };
+  const edit = value => { input.value = value; input.emit("input"); };
+  const key = (name, properties = {}) => input.emit("keydown", { key: name, ...properties });
   const type = (command, properties = {}) => {
-    input.focus(); input.value = command;
-    const event = input.emit("keydown", { key: "Enter", ...properties });
+    input.focus(); edit(command); const event = key("Enter", properties);
     if (!event.defaultPrevented) form.emit("submit", properties);
     return event;
   };
-  const snapshot = () => JSON.stringify({ title: get("goku-scene-title").textContent, prose: get("goku-prose").textContent,
-    memory: get("goku-memory").textContent, choices: buttons().map(node => node.textContent), history: get("goku-history").textContent,
-    progress: get("goku-progress").textContent });
-  return { get, document, window, root, opener, fallback, dialog, input, form, events, buttons, button, click, type, snapshot,
+  const state = () => JSON.parse(JSON.stringify(currentState));
+  const last = () => transcript.children.at(-1);
+  return { get, document, window, root, opener, fallback, dialog, input, form, events, output, transcript,
+    buttons, button, click, edit, key, type, state, last,
     open: trigger => window.PortfolioGoku.open(trigger ?? opener), close: () => window.PortfolioGoku.close() };
 }
 
-test("opening starts at an explicit begin choice, focuses the scene, and suspends site motion without timers", () => {
+test("opening shows a terminal scene with decorative ASCII, explicit begin, and no automatic input or timers", () => {
   const h = setup(); assert.equal(h.open(), true);
   assert.equal(h.dialog.open, true); assert.equal(h.root.dataset.training, "open");
-  assert.equal(h.document.activeElement, h.get("goku-scene"));
-  assert.ok(h.button("begin")); assert.equal(h.get("goku-progress").textContent, "0 / 3 decisions");
+  assert.equal(h.document.activeElement, h.output); assert.equal(h.state().revision, 0);
+  assert.ok(h.button("begin")); assert.ok(h.button("help"));
+  assert.match(h.transcript.textContent, /capsule corp.*You are Goku/s);
+  const art = h.last().children.find(node => node.className === "goku-ascii");
+  assert.equal(art.tagName, "PRE"); assert.equal(art.getAttribute("aria-hidden"), "true");
+  assert.ok(art.textContent.includes("\n"));
   assert.equal(h.events.at(-1).type, "portfolio:training"); assert.equal(h.events.at(-1).detail.open, true);
-  const before = h.snapshot(); h.open(); assert.equal(h.snapshot(), before, "opening twice never resets the episode");
+  const entries = [...h.transcript.children]; h.open(); assert.deepEqual(h.transcript.children, entries);
+  assert.equal(h.input.scrollCalls.length, 0);
 });
 
-test("typed commands and tap choices use the same production story and preserve the appropriate focus", () => {
+test("typed verbs and compact tappable commands apply identical decisions and append rather than replace prior output", () => {
   const typed = setup(), tapped = setup(); typed.open(); tapped.open();
-  typed.type(" :  BeGiN  "); tapped.click("begin");
-  assert.equal(typed.snapshot(), tapped.snapshot()); assert.equal(typed.document.activeElement, typed.input);
-  assert.equal(tapped.document.activeElement, tapped.get("goku-scene"));
-  typed.type("hold"); tapped.click("hold");
-  assert.equal(typed.snapshot(), tapped.snapshot()); assert.equal(typed.input.value, "");
-  assert.match(typed.get("goku-status").textContent, /pressure.*next:.*available: continue/i, "typed play announces the consequence and available action");
-  assert.equal(tapped.get("goku-journal").hidden, false); assert.ok(tapped.get("goku-history").textContent.length);
-  assert.equal(tapped.get("goku-scroll").scrollTop, 0);
+  const entries = [...typed.transcript.children]; typed.type(" :  BeGiN  "); tapped.click("begin");
+  assert.deepEqual(typed.state(), tapped.state()); assert.equal(typed.document.activeElement, typed.input);
+  assert.equal(tapped.document.activeElement, tapped.output);
+  assert.deepEqual(typed.transcript.children.slice(0, entries.length), entries);
+  assert.equal(typed.last().children[0].textContent, "> begin");
+  typed.type("brace gate"); tapped.click("brace gate");
+  assert.deepEqual(typed.state(), tapped.state()); assert.equal(typed.input.value, "");
+  assert.match(typed.last().textContent, /frame stops twisting.*still pounds/s);
+  assert.match(typed.get("goku-status").textContent, /available: continue/);
+  assert.deepEqual(typed.input.scrollCalls.at(-1), { block: "nearest", inline: "nearest", behavior: "instant" });
+  assert.equal(tapped.output.scrollTop, tapped.output.scrollHeight);
 });
 
-test("invalid input leaves the scene and history intact, while help lists only current actions and utilities", () => {
-  const h = setup(); h.open(); h.click("begin"); const before = h.snapshot();
-  h.type("<img src=x onerror=alert(1)>"); assert.equal(h.snapshot(), before);
-  assert.equal(h.input.value, "<img src=x onerror=alert(1)>");
-  h.type("help"); assert.equal(h.snapshot(), before);
-  assert.match(h.get("goku-status").textContent, /hold/); assert.match(h.get("goku-status").textContent, /drain/);
-  assert.match(h.get("goku-status").textContent, /exit.*restart/);
-  h.get("goku-help").emit("click"); assert.equal(h.snapshot(), before);
+test("inspection verbs append relevant replies while preserving every story choice and revision", () => {
+  const h = setup(); h.open(); h.type("begin"); h.type("brace gate"); const state = h.state();
+  for (const command of ["look", "look gate", "look rock", "look channel", "talk", "talk bulma", "map", "status", "read", "help"]) {
+    const count = h.transcript.children.length; h.type(command);
+    assert.deepEqual(h.state(), state, command); assert.equal(h.transcript.children.length, count + 1, command);
+    assert.equal(h.last().children[0].textContent, `> ${command}`); assert.ok(h.last().children.length > 1);
+  }
+  for (const command of ["look", "talk bulma", "map", "status", "read"]) assert.ok(h.button(command), `${command} becomes tappable through help`);
+  assert.match(h.last().textContent, /clear.*keep progress/);
 });
 
-test("detached choices and an empty repeated submit cannot advance another scene", () => {
+test("clear erases the display alone and redraws the current room without resetting preparations", () => {
+  const h = setup(); h.open(); h.type("begin"); h.type("clear channel"); h.type("continue");
+  const before = h.state(), previous = [...h.transcript.children]; h.type("clear");
+  assert.deepEqual(h.state(), before); assert.equal(h.transcript.children.length, 1);
+  assert.ok(previous.every(entry => !h.transcript.children.includes(entry)));
+  assert.equal(h.last().children[0].textContent, "> clear"); assert.ok(h.button("wait")); assert.ok(h.button("probe rock"));
+  h.type("status"); assert.match(h.last().textContent, /relieved pressure; unsupported frame/);
+  assert.deepEqual(h.state(), before);
+});
+
+test("map renders as one preformatted block so its branches and current-position marker keep their alignment", () => {
+  const h = setup(); h.open(); const before = h.state(); h.type("map");
+  const map = h.last().children.find(node => node.className === "goku-map");
+  assert.ok(map, "the ASCII map needs a preformatted block, not separately wrapped paragraphs");
+  assert.equal(map.tagName, "PRE"); assert.ok(map.textContent.startsWith("      [mountain reservoir]"));
+  assert.ok(map.textContent.split("\n").length >= 7); assert.match(map.textContent, /<- you/);
+  assert.deepEqual(h.state(), before);
+});
+
+test("invalid input is literal transcript text and preserves state while blank submits add no duplicate turn", () => {
+  const h = setup(); h.open(); h.click("begin"); const before = h.state();
+  h.type("<img src=x onerror=alert(1)>"); assert.deepEqual(h.state(), before);
+  assert.equal(h.last().children[0].textContent, "> <img src=x onerror=alert(1)>");
+  assert.ok(h.last().children.every(node => node.tagName !== "IMG")); assert.match(h.last().textContent, /try brace gate or clear channel/);
+  const count = h.transcript.children.length; h.form.emit("submit"); assert.equal(h.transcript.children.length, count);
+  assert.deepEqual(h.state(), before); assert.match(h.get("goku-status").textContent, /type a command/);
+});
+
+test("old command buttons cannot advance a new scene or a restarted story with the same revision", () => {
   const h = setup(); h.open(); const oldBegin = h.button("begin"); oldBegin.emit("click");
-  const banks = h.snapshot(); oldBegin.emit("click"); assert.equal(h.snapshot(), banks);
-  h.type("hold"); const after = h.snapshot(); h.form.emit("submit"); assert.equal(h.snapshot(), after);
-  const oldContinue = h.button("continue"); oldContinue.emit("click"); const survey = h.snapshot();
-  oldContinue.emit("click"); assert.equal(h.snapshot(), survey);
+  const banks = h.state(), count = h.transcript.children.length; oldBegin.emit("click");
+  assert.deepEqual(h.state(), banks); assert.equal(h.transcript.children.length, count);
+  h.type("brace gate"); const oldContinue = h.button("continue"); oldContinue.emit("click");
+  const survey = h.state(); oldContinue.emit("click"); assert.deepEqual(h.state(), survey);
+  h.type("restart"); h.click("confirm"); oldBegin.emit("click");
+  assert.equal(h.state().node, "arrival"); assert.equal(h.state().revision, 0);
+  const freshBegin = h.button("begin"); h.type("clear"); freshBegin.emit("click"); assert.equal(h.state().revision, 0);
 });
 
-test("scene changes reset both portrait reading scroll and the landscape dialog scroller", () => {
-  const h = setup(); h.open();
-  assert.equal(h.input.scrollCalls.length, 0, "opening never raises or scrolls to the software keyboard");
-  h.get("goku-scroll").scrollTop = 420; h.dialog.scrollTop = 560;
-  h.click("begin");
-  assert.equal(h.get("goku-scroll").scrollTop, 0); assert.equal(h.dialog.scrollTop, 0);
-  assert.equal(h.input.scrollCalls.length, 0, "tapping a choice starts reading the new scene");
-  h.get("goku-scroll").scrollTop = 320; h.dialog.scrollTop = 630;
-  h.type("hold");
-  assert.equal(h.get("goku-scroll").scrollTop, 0); assert.equal(h.dialog.scrollTop, 0);
-  assert.equal(h.document.activeElement, h.input, "scrolling must not summon or dismiss the keyboard by changing focus");
-  assert.deepEqual(h.input.scrollCalls, [{ block: "nearest", inline: "nearest", behavior: "instant" }],
-    "typed play requests the smallest immediate scroll that keeps its focused prompt visible");
+test("history preserves an unfinished draft, handles its boundaries and never executes recalled commands", () => {
+  const h = setup(); h.open(); h.type("begin"); h.type("look"); h.type("look"); h.edit("sta");
+  const before = h.state(), count = h.transcript.children.length;
+  assert.equal(h.key("ArrowUp").defaultPrevented, true); assert.equal(h.input.value, "look");
+  h.key("ArrowUp"); assert.equal(h.input.value, "begin", "consecutive duplicates occupy one history slot");
+  h.key("ArrowUp"); assert.equal(h.input.value, "begin");
+  h.key("ArrowDown"); assert.equal(h.input.value, "look");
+  h.key("ArrowDown"); assert.equal(h.input.value, "sta");
+  h.key("ArrowDown"); assert.equal(h.input.value, "sta");
+  assert.equal(h.input.selectionStart, 3); assert.equal(h.input.selectionEnd, 3);
+  assert.deepEqual(h.state(), before); assert.equal(h.transcript.children.length, count);
+  h.key("ArrowUp"); h.edit("look gate"); h.key("ArrowUp"); h.key("ArrowDown"); assert.equal(h.input.value, "look gate");
 });
 
-test("IME composition, modifier Enter and held Enter do not choose an action", () => {
-  const h = setup(); h.open(); const before = h.snapshot();
+test("command history and scrollback are bounded independently without changing story state", () => {
+  const h = setup(); h.open(); const before = h.state();
+  for (let index = 0; index < 95; index++) h.type(`unknown${index}`);
+  assert.equal(h.transcript.children.length, 80); assert.deepEqual(h.state(), before);
+  assert.match(h.transcript.children[0].textContent, /^> unknown15/); assert.match(h.last().textContent, /^> unknown94/);
+  for (let index = 0; index < 60; index++) h.key("ArrowUp");
+  assert.equal(h.input.value, "unknown45", "only the latest 50 commands remain recallable");
+});
+
+test("Tab completes unique prefixes and leaves native focus navigation for empty, ambiguous, complete or unknown commands", () => {
+  const h = setup(); h.open(); h.edit("beg");
+  assert.equal(h.key("Tab").defaultPrevented, true); assert.equal(h.input.value, "begin"); assert.equal(h.state().revision, 0);
+  for (const value of ["", "look", "loo", "begin", "nonsense"]) {
+    h.edit(value); assert.equal(h.key("Tab").defaultPrevented, false, value); assert.equal(h.input.value, value);
+  }
+  h.edit("beg"); assert.equal(h.key("Tab", { shiftKey: true }).defaultPrevented, false); assert.equal(h.input.value, "beg");
+  h.type("begin"); h.edit("brace"); assert.equal(h.key("Tab").defaultPrevented, true); assert.equal(h.input.value, "brace gate");
+});
+
+test("IME composition, modifiers and held Enter never execute, recall or complete a command", () => {
+  const h = setup(); h.open(); const before = h.state(), count = h.transcript.children.length;
   for (const property of ["repeat", "isComposing", "ctrlKey", "metaKey", "altKey", "shiftKey"]) {
     assert.equal(h.type("begin", { [property]: true }).defaultPrevented, true);
-    assert.equal(h.snapshot(), before);
+    assert.deepEqual(h.state(), before); assert.equal(h.transcript.children.length, count);
   }
   assert.equal(h.type("begin", { keyCode: 229 }).defaultPrevented, true);
-  h.input.emit("compositionstart"); h.form.emit("submit"); assert.equal(h.snapshot(), before);
-  assert.equal(h.type("begin").defaultPrevented, true);
-  h.input.emit("compositionend"); h.type("begin"); assert.notEqual(h.snapshot(), before);
+  h.input.emit("compositionstart"); h.form.emit("submit"); assert.deepEqual(h.state(), before);
+  h.edit("beg"); assert.equal(h.key("Tab").defaultPrevented, false); assert.equal(h.input.value, "beg");
+  h.input.emit("compositionend"); h.type("begin"); h.edit("sta");
+  assert.equal(h.key("ArrowUp", { altKey: true }).defaultPrevented, false); assert.equal(h.input.value, "sta");
+  assert.equal(h.key("ArrowUp", { repeat: true }).defaultPrevented, false); assert.equal(h.input.value, "sta");
 });
 
-test("restart keeps progress until confirmed and cancel restores the same scene", () => {
-  const h = setup(); h.open(); const originalBegin = h.button("begin"); h.click("begin"); h.click("hold"); const before = h.snapshot();
+test("restart requires confirmation; cancel and exit keep the story and inspection never bypasses the pending choice", () => {
+  const h = setup(); h.open(); h.type("begin"); h.type("brace gate"); const before = h.state();
   h.type("restart"); assert.ok(h.button("confirm")); assert.ok(h.button("cancel"));
-  const pending = h.snapshot(); h.type("continue"); assert.equal(h.snapshot(), pending);
-  h.type("cancel"); assert.equal(h.snapshot(), before);
-  h.get("goku-restart").emit("click"); h.click("confirm");
-  assert.ok(h.button("begin")); assert.equal(h.get("goku-journal").hidden, true);
-  assert.equal(h.get("goku-progress").textContent, "0 / 3 decisions");
-  const restarted = h.snapshot(); originalBegin.emit("click");
-  assert.equal(h.snapshot(), restarted, "an old button stays stale even after the story revision resets to zero");
+  h.type("continue"); assert.deepEqual(h.state(), before); assert.match(h.last().textContent, /restart is waiting/);
+  h.type("look"); assert.deepEqual(h.state(), before); assert.match(h.last().textContent, /restart is waiting/);
+  h.click("cancel"); assert.deepEqual(h.state(), before); assert.ok(h.button("continue"));
+  h.type("restart"); h.click("confirm"); assert.equal(h.state().node, "arrival"); assert.equal(h.state().revision, 0);
+  assert.equal(h.transcript.children.length, 1); assert.equal(h.last().children[0].textContent, "> restart");
+  h.edit("unsent"); assert.equal(h.key("ArrowUp").defaultPrevented, false, "restart resets input history deliberately");
 });
 
-test("exit during restart confirmation preserves progress and reopening cancels the pending restart", () => {
-  const h = setup(); h.open(); h.click("begin"); h.click("drain"); const before = h.snapshot();
-  h.type("restart"); h.type("exit"); assert.equal(h.dialog.open, false);
-  assert.equal(h.document.activeElement, h.opener); assert.equal(h.root.dataset.training, undefined);
-  assert.equal(h.events.at(-1).detail.open, false);
-  h.open(); assert.equal(h.snapshot(), before); assert.equal(h.document.activeElement, h.get("goku-scene"));
+test("closing and reopening retains state and transcript but cancels a pending restart", () => {
+  const h = setup(); h.open(); h.type("begin"); h.type("clear channel"); const before = h.state();
+  h.type("restart"); const entries = [...h.transcript.children]; h.type("exit");
+  assert.equal(h.dialog.open, false); assert.equal(h.document.activeElement, h.opener);
+  assert.equal(h.root.dataset.training, undefined); assert.equal(h.events.at(-1).detail.open, false);
+  h.open(); assert.deepEqual(h.state(), before); assert.equal(h.document.activeElement, h.output);
+  assert.deepEqual(h.transcript.children.slice(0, entries.length), entries); assert.match(h.last().textContent, /session resumed/);
+  assert.ok(h.button("continue")); assert.equal(h.button("confirm"), undefined);
 });
 
-test("all eight decision routes finish through the same interface with accessible ending actions", () => {
-  for (const approach of ["hold", "drain"]) for (const method of ["timing", "probe"]) for (const resolution of ["lift", "pulse"]) {
+test("all eight decision routes finish using the advertised terminal verbs", () => {
+  for (const approach of ["brace gate", "clear channel"]) for (const method of ["wait", "probe rock"]) for (const resolution of ["lift gate", "ki pulse"]) {
     const h = setup(); h.open();
     for (const command of ["begin", approach, "continue", method, "continue", resolution]) h.click(command);
-    assert.equal(h.get("goku-progress").textContent, "episode complete", `${approach}/${method}/${resolution}`);
-    assert.ok(h.get("goku-memory").textContent.length, "ending reflects earlier decisions");
-    h.type("help"); assert.match(h.get("goku-status").textContent, /exit.*restart/);
-    h.type("exit"); assert.equal(h.document.activeElement, h.opener);
+    assert.equal(h.state().node, "ending", `${approach}/${method}/${resolution}`); assert.equal(h.state().revision, 6);
+    assert.match(h.last().textContent, /Village saved/); assert.match(h.get("goku-location").textContent, /^@ village$/);
+    assert.ok(h.button("restart")); assert.ok(h.button("exit"));
+    h.type("status"); assert.match(h.last().textContent, /village: safe/);
+    h.click("exit"); assert.equal(h.document.activeElement, h.opener);
   }
 });
 
-test("native Escape and visible close restore a connected opener, with a fallback for detached triggers", () => {
+test("native Escape and visible exit restore a connected opener, with a fallback for detached triggers", () => {
   const h = setup(); h.open(); const event = h.dialog.emit("cancel");
   assert.equal(event.propagationStopped, true); assert.equal(event.defaultPrevented, false);
   assert.equal(h.dialog.open, false); assert.equal(h.document.activeElement, h.opener);
@@ -188,27 +264,28 @@ test("native Escape and visible close restore a connected opener, with a fallbac
   assert.equal(h.document.activeElement, h.fallback);
 });
 
-test("other game/theme modals are not stacked and a queued close cannot disrupt a reopened episode", () => {
+test("other modals are not stacked and a queued close cannot disrupt a reopened terminal", () => {
   const h = setup();
   for (const id of ["training-dialog", "arcade-dialog", "theme-dialog"]) {
     h.get(id).open = true; assert.equal(h.open(), false); assert.equal(h.dialog.open, false); h.get(id).open = false;
   }
-  h.open(); h.click("begin"); const before = h.snapshot();
+  h.open(); h.click("begin"); const before = h.state();
   h.dialog.open = false; h.open(); h.dialog.emit("close");
-  assert.equal(h.dialog.open, true); assert.equal(h.root.dataset.training, "open"); assert.equal(h.snapshot(), before);
-  assert.equal(h.document.activeElement, h.get("goku-scene"));
+  assert.equal(h.dialog.open, true); assert.equal(h.root.dataset.training, "open"); assert.deepEqual(h.state(), before);
+  assert.equal(h.document.activeElement, h.output);
 });
 
-test("a remaining game keeps motion suspended and receives no focus steal from Goku cleanup", () => {
+test("another remaining game keeps motion suspended and receives no focus steal", () => {
   const h = setup(); h.open(); h.get("training-dialog").open = true; h.get("training-dialog").focus(); h.close();
   assert.equal(h.root.dataset.training, "open"); assert.equal(h.events.at(-1).detail.open, true);
   assert.equal(h.document.activeElement, h.get("training-dialog"));
 });
 
-test("rotation, visibility and background events cannot advance or reset a deliberate story", () => {
-  const h = setup(); h.open(); h.click("begin"); h.click("hold"); const before = h.snapshot();
+test("rotation, visibility and backgrounding cannot advance or rewrite terminal history", () => {
+  const h = setup(); h.open(); h.click("begin"); h.click("brace gate");
+  const before = h.state(), entries = [...h.transcript.children];
   h.window.emit("resize"); h.document.hidden = true; h.document.emit("visibilitychange"); h.window.emit("pagehide");
   h.document.hidden = false; h.document.emit("visibilitychange"); h.window.emit("pageshow");
-  assert.equal(h.snapshot(), before); assert.equal(h.dialog.open, true);
-  h.window.emit("portfolio:view"); assert.equal(h.dialog.open, false); h.open(); assert.equal(h.snapshot(), before);
+  assert.deepEqual(h.state(), before); assert.deepEqual(h.transcript.children, entries); assert.equal(h.dialog.open, true);
+  h.window.emit("portfolio:view"); assert.equal(h.dialog.open, false); h.open(); assert.deepEqual(h.state(), before);
 });
