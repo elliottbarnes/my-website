@@ -30,11 +30,12 @@ test("each static project has one panel, selector, radar signal, command and val
 
 test("a metadata edit reaches every generated surface while preserving handwritten content", () => {
   const projects = structuredClone(PROJECTS);
-  projects[0].title = "compiler & inspector";
-  projects[0].displayName = "Compiler & Inspector";
-  projects[0].label = "inspector";
-  projects[0].search = "new compiler keywords";
-  projects[0].description = "Inspect <each> step.";
+  const glassbox = projects.find(project => project.id === "glassbox");
+  glassbox.title = "compiler & inspector";
+  glassbox.displayName = "Compiler & Inspector";
+  glassbox.label = "inspector";
+  glassbox.search = "new compiler keywords";
+  glassbox.description = "Inspect <each> step.";
   const changed = renderProjects(html, projects);
   assert.match(changed, /<span>inspector<\/span>/);
   assert.match(changed, /<span class="radar-tooltip">Compiler &amp; Inspector<\/span>/);

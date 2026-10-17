@@ -77,6 +77,10 @@ const snippets = [{"repo": "glassbox", "title": "source → WebAssembly", "path"
   const hudContext = inputHud.getContext("2d", { alpha: true });
   if (hudContext) scene.append(inputHud);
   const words = new Set("export function const let return if else for of in new throw true false null undefined class async await output".split(" "));
+  // Keep the opening source preview aligned with the featured project link.
+  const featuredRepo = document.querySelector("[data-enter]")?.getAttribute("href")?.slice(1);
+  const featuredIndex = snippets.findIndex(snippet => snippet.repo === featuredRepo);
+  if (featuredIndex > 0) snippets.unshift(...snippets.splice(featuredIndex, 1));
   const glyphs = snippets.map(snippet => snippet.code.replace(/\s+/g, " ")).join(" ");
   const cycleLength = 4800;
   const entryDuration = 420;

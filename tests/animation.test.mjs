@@ -15,7 +15,7 @@ const source = await readFile(new URL("../assets/animation.js", import.meta.url)
 // Exercise the shipped animation controller and its clock without a browser
 // dependency. These checks cover lifecycle and response time; visual quality
 // and actual frame cost still need a real browser.
-function animation({ reduced = false, paused = false, hidden = false, view = "entrance", density = 1, fieldWidth = 640 } = {}) {
+function animation({ reduced = false, paused = false, hidden = false, view = "entrance", density = 1, fieldWidth = 640, featured = "glassbox" } = {}) {
   let now = 100, nextId = 1;
   const frames = new Map(), timers = new Map(), images = [];
   function surface() {
@@ -105,6 +105,7 @@ function animation({ reduced = false, paused = false, hidden = false, view = "en
   root.dataset = { view, ...(paused ? { motion: "paused" } : {}) };
   const nodes = new Map([["#entrance", entrance], ["#code-field", field], ["#scene", scene], ["[data-pointer-readout]", readout]]);
   for (const selector of ["#code-wall", "[data-scene-file]", "[data-scene-path]", "#typed-command", "#entrance .mode", "#entrance .status-position", "#scene-feedback"]) nodes.set(selector, node());
+  const enter = node("a"); enter.setAttribute("href", `#${featured}`); nodes.set("[data-enter]", enter);
   const projectLinks = node("nav"), projectSource = node("a"), projectDemo = node("a"), projectTry = node("button");
   for (const child of [projectSource, projectDemo, projectTry]) child.parentElement = projectLinks;
   nodes.set(".scene-project-links", projectLinks);
@@ -945,12 +946,12 @@ test("hiding the page or entering the workspace stops and clears ECDSA safely", 
 
 
 test("source actions stay on the displayed project and open its related experiment", () => {
-  const controls = animation({ paused: true });
-  assert.match(controls.projectSource.getAttribute("href"), /glassbox\/blob\/.+docs\/core\.js/);
-  assert.equal(controls.projectDemo.getAttribute("href"), PROJECTS[0].demo.url);
+  const controls = animation({ paused: true, featured: "architecture-lab" });
+  assert.match(controls.projectSource.getAttribute("href"), /architecture-lab\/blob\/.+src\/framebuffer\.js/);
+  assert.equal(controls.projectDemo.getAttribute("href"), PROJECTS.find(project => project.id === "architecture-lab").demo.url);
   assert.equal(controls.projectTry.hidden, false);
   controls.projectTry.dispatch("click");
-  assert.equal(controls.api.state.effect, "tokens");
+  assert.equal(controls.api.state.effect, "object");
   assert.equal(controls.api.state.static, true);
   assert.equal(controls.document.activeElement, controls.field.parentElement);
 });
@@ -960,10 +961,10 @@ test("project links hold their destination while hovered or keyboard-focused", (
     const controls = animation();
     controls.projectLinks.dispatch(mode === "pointer" ? "pointerenter" : "focusin");
     for (let i = 0; i < 180; i++) controls.frame(40);
-    assert.equal(controls.projectDemo.getAttribute("href"), PROJECTS[0].demo.url, mode);
+    assert.equal(controls.projectDemo.getAttribute("href"), PROJECTS.find(project => project.id === "glassbox").demo.url, mode);
     controls.projectLinks.dispatch(mode === "pointer" ? "pointerleave" : "focusout", { relatedTarget: null });
     for (let i = 0; i < 180; i++) controls.frame(40);
-    assert.notEqual(controls.projectDemo.getAttribute("href"), PROJECTS[0].demo.url, mode);
+    assert.notEqual(controls.projectDemo.getAttribute("href"), PROJECTS.find(project => project.id === "glassbox").demo.url, mode);
     assert.match(controls.projectSource.getAttribute("href"), /github\.com\/elliottbarnes\//);
   }
 });

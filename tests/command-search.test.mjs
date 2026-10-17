@@ -283,13 +283,13 @@ test("goku is discoverable and exact normalized commands preserve the original o
 test("explore projects and the projects command open the featured project", async () => {
   const click = setup(); click.dialog.close(); click.enter.emit("click", { button: 0 });
   await new Promise(resolve => setImmediate(resolve));
-  assert.equal(click.window.location.hash, "#glassbox");
+  assert.equal(click.window.location.hash, "#architecture-lab");
   const keyboard = setup(); keyboard.dialog.close();
   keyboard.document.emit("keydown", { key: "Enter", target: keyboard.document.body });
   await new Promise(resolve => setImmediate(resolve));
-  assert.equal(keyboard.window.location.hash, "#glassbox");
+  assert.equal(keyboard.window.location.hash, "#architecture-lab");
   const command = setup(); command.search("projects"); command.submit();
-  assert.equal(command.window.location.hash, "#glassbox");
+  assert.equal(command.window.location.hash, "#architecture-lab");
 });
 
 test("arcade commands hand off to the lazy loader after closing the command menu", () => {

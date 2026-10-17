@@ -1,6 +1,39 @@
 // Public project copy. Generated HTML stays readable without JavaScript.
-export const FEATURED_PROJECT_ID = "glassbox";
+export const FEATURED_PROJECT_ID = "architecture-lab";
 export const PROJECTS = Object.freeze([
+  {
+    "id": "architecture-lab",
+    "label": "architecture",
+    "title": "architecture lab",
+    "displayName": "Architecture Lab",
+    "titleId": "architecture-title",
+    "kind": "Computer architecture",
+    "description": "Explore three generations of Mac hardware in interactive 3D.",
+    "aliases": [
+      "architecture"
+    ],
+    "search": "architecture mac macintosh hardware computer memory",
+    "image": {
+      "src": "/assets/projects/architecture-lab.jpg",
+      "width": 1000,
+      "height": 700,
+      "alt": "Architecture Lab live playground preview"
+    },
+    "demo": {
+      "url": "https://elliottbarnes.github.io/architecture-lab/",
+      "label": "open exhibit ↗",
+      "ariaLabel": "Open Architecture Lab live demo"
+    },
+    "source": "https://github.com/elliottbarnes/architecture-lab",
+    "preview": {
+      "label": "input → instructions → memory → display",
+      "html": "<span class=\"syntax-comment\">// look beneath the screen</span>\n\n01  explore the machine\n02  follow a signal\n03  inspect the memory\n04  connect the pieces"
+    },
+    "experiment": {
+      "kind": "object",
+      "label": "source field"
+    }
+  },
   {
     "id": "glassbox",
     "label": "glassbox",
@@ -63,39 +96,6 @@ export const PROJECTS = Object.freeze([
     "experiment": {
       "kind": "interference",
       "label": "interference field"
-    }
-  },
-  {
-    "id": "architecture-lab",
-    "label": "architecture",
-    "title": "architecture lab",
-    "displayName": "Architecture Lab",
-    "titleId": "architecture-title",
-    "kind": "Computer architecture",
-    "description": "Explore three generations of Mac hardware in interactive 3D.",
-    "aliases": [
-      "architecture"
-    ],
-    "search": "architecture mac macintosh hardware computer memory",
-    "image": {
-      "src": "/assets/projects/architecture-lab.jpg",
-      "width": 1000,
-      "height": 700,
-      "alt": "Architecture Lab live playground preview"
-    },
-    "demo": {
-      "url": "https://elliottbarnes.github.io/architecture-lab/",
-      "label": "open exhibit ↗",
-      "ariaLabel": "Open Architecture Lab live demo"
-    },
-    "source": "https://github.com/elliottbarnes/architecture-lab",
-    "preview": {
-      "label": "input → instructions → memory → display",
-      "html": "<span class=\"syntax-comment\">// look beneath the screen</span>\n\n01  explore the machine\n02  follow a signal\n03  inspect the memory\n04  connect the pieces"
-    },
-    "experiment": {
-      "kind": "object",
-      "label": "source field"
     }
   },
   {
