@@ -304,6 +304,11 @@
 
   function runCommand(raw) {
     const command = normalizeCommand(raw);
+    if (command === "goku") {
+      closeCommands(false);
+      window.PortfolioGoku?.open(dialogOpener);
+      return;
+    }
     if (command === "ecdsa") {
       closeCommands(false);
       navigate(null, false);
