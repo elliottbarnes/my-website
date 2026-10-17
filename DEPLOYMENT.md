@@ -1,8 +1,8 @@
 # Deployment
 
-The portfolio is a dependency-free static site hosted at https://elliottbarnes.ca through CloudFront and a private, versioned S3 bucket.
+The portfolio is a dependency-free static site at https://elliottbarnes.ca, served through CloudFront from a private, versioned S3 bucket. No application server runs for the portfolio or its games.
 
-## Check and preview
+## Build and preview
 
 Use Node.js 24:
 
@@ -13,76 +13,43 @@ node scripts/verify-site.mjs dist --source .
 node server.mjs --dir dist
 ```
 
-The build and verifier share the exact 21-file allowlist in `scripts/public-files.mjs`. Extra files, missing files, symlinks, broken local references, invalid metadata, and source/build differences fail validation. The preview serves only public files, including a real custom 404 response.
+`scripts/public-files.mjs` is the source publication allowlist. Build reads only those public files, generates project markup from `data/projects.mjs`, and rejects public-file symlinks. It writes:
 
-## GitHub Actions
+- `dist/`: the exact public artifact.
+- `dist.manifest.json`: a private mapping from source filenames to published paths and SHA-256 hashes. This sits outside the website and is not uploaded to S3.
 
-`.github/workflows/site.yml` runs read-only checks for pull requests. Successful pushes to `main` build an artifact once, then deploy that same artifact. A manual run is also available on `main`.
+`index.html`, `404.html`, `robots.txt`, `sitemap.xml`, and `site.webmanifest` keep their root URLs. CSS, JavaScript, fonts, images, and asset notices receive content-hashed names under `assets/`. Source files retain readable fixed names. A hash is calculated from the final published bytes, after rewriting dependencies, so changing a game updates its loader's filename and the HTML reference automatically. There is no manual `?v=` update step.
 
-The production job:
+Resource paths in HTML, CSS, and JavaScript use complete, root-relative literal URLs (or explicit `./` and `../` paths). Optional loaders list each script/style URL explicitly. Use explicit arrays for numbered images rather than constructing URLs with string interpolation. The build rejects dynamic asset templates and dependency cycles. It preserves external URLs and descriptive strings.
 
-1. Uses the `production` environment, configured to permit only the `main` branch.
-2. Serializes production deployments without interrupting an upload in progress.
-3. Refuses a commit that has already been superseded on `main`.
-4. Exchanges a GitHub OIDC token for temporary AWS role credentials. No AWS keys are stored in GitHub.
-5. Checks artifact hashes against the checked-out source and verifies bucket ownership/versioning.
-6. Records all existing object versions before uploading anything.
-7. Uploads non-HTML files first, then `404.html`, then `index.html`. It never deletes objects.
-8. Invalidates the website distribution and verifies all 21 HTTPS file hashes, the versioned CSS/JavaScript URLs, the apex homepage, HTTP/www redirects, and the custom 404.
+The verifier checks exact file membership, hashes, source-derived output, metadata, local links, project destinations, deferred eager scripts, and references to code loaded on demand. Rebuilding removes only obsolete local output paths from the validated preceding artifact; unexpected files stop the build before changes. The preview serves only source allowlisted files or the current built manifest, with a genuine custom 404. It refreshes the manifest after rebuilds.
 
-All Actions are pinned to full commit SHAs. The check job has only `contents: read`; only the production job can request an OIDC token.
+## GitHub Actions and AWS boundary
 
-## AWS publication boundary
+`.github/workflows/site.yml` runs read-only checks on pull requests. Successful `main` pushes build once and transfer `dist/` plus its private manifest to production as the same Actions artifact. The production job verifies both against the checked-out source; it does not rebuild or silently substitute a different release.
 
-The role `ElliottWebsiteGitHubDeploy` uses the complete reviewed policies in:
+The production environment permits `main`. Deployments are serialized without interrupting active uploads, and superseded commits are refused. Actions are pinned to full commit SHAs. Only the production job can exchange a GitHub OIDC token for temporary credentials; no permanent AWS keys are stored in GitHub.
 
-- [deploy-trust.json](.github/aws/deploy-trust.json): exact repository/environment subject, AWS STS audience, main ref, and immutable repository/owner IDs.
-- [deploy-policy.json](.github/aws/deploy-policy.json): inspect bucket versioning; read/write/recover the seven named root files and objects under this website's `assets/` prefix; list only asset-prefixed keys to establish whether a new asset exists; and invalidate/read invalidations for the one website distribution.
+The existing role policies remain in [deploy-trust.json](.github/aws/deploy-trust.json) and [deploy-policy.json](.github/aws/deploy-policy.json). They restrict deployment to this repository/environment, the existing seven root keys, the website's `assets/` prefix, and its CloudFront distribution. Hashed assets fit inside the existing prefix; this change needs no IAM expansion. The role has no delete, IAM administration, bucket-policy, or unrelated-bucket permissions.
 
-There are no delete, IAM administration, role-passing, bucket-policy, or unrelated-bucket permissions. GitHub's environment branch restriction also prevents untrusted PR deployments. AWS policy validation and allowed/denied object simulations are part of setup verification.
+## Publication and caching
 
-The role cannot list outside `assets/`. Existing objects must have version IDs. A new allowlisted asset needs no administrator bootstrap: after a failed HEAD lookup, the deployment checks an exact-key prefix listing (without requesting owner information). A denied, malformed, or contradictory response aborts before uploads. Proven-absent assets are recorded as `prior.exists: false` and uploaded with `If-None-Match: *`, so a concurrent creation causes failure rather than an overwrite. Missing root files still require administrator intervention.
+The deployment script verifies the requested Git commit, committed build inputs, AWS account, bucket ownership, and versioning before uploading. It snapshots every object first. A failed HEAD is never treated as proof of absence: an exact-key prefix listing must establish that a new asset does not exist. Missing root objects, denied listings, malformed responses, or unverifiable existing immutable assets abort before any upload.
 
-IAM's assets prefix does not automatically publish local files. Add each intended public asset to `scripts/public-files.mjs`, update the exact-count guards/tests, and commit it. The build still excludes everything outside that explicit allowlist. IAM changes, new root paths, other buckets, deletion, and account administration remain outside the workflow's authority. No permanent AWS credentials are stored in GitHub or added to the Mac.
+Hashed assets receive `Cache-Control: public,max-age=31536000,immutable`. The five root documents receive `no-cache,max-age=0,must-revalidate`. Existing content is reused only when S3's SHA-256 checksum, MIME type, and cache metadata all match. A reused object's version is preserved in the recovery record. Changed files are uploaded using the previous ETag as an `If-Match` precondition; new files require `If-None-Match: *`. A concurrent writer makes the operation fail rather than silently overwrite a changed object. An existing hashed URL with different or missing checksum evidence is never overwritten.
 
-Sources: [GitHub OIDC on AWS](https://docs.github.com/en/actions/how-tos/secure-your-work/security-harden-deployments/oidc-in-aws), [AWS GitHub OIDC condition keys](https://docs.aws.amazon.com/IAM/latest/UserGuide/reference_policies_iam-condition-keys.html), [S3 HeadObject permission behavior](https://docs.aws.amazon.com/AmazonS3/latest/API/API_HeadObject.html).
+Assets upload first, then `404.html`, then `index.html`. Old immutable assets remain available, so old pages and in-flight visitors retain the files they reference. New paths need no invalidation. Changed existing paths are invalidated, including `/` when `index.html` changes. An entirely unchanged deployment performs no uploads or invalidation. This preserves the current CloudFront configuration and compression settings.
 
-## Caching and verification
+After publication, `scripts/verify-live.mjs dist` checks every exact published URL, including games and styles loaded on demand, for matching bytes, MIME type, and cache headers. It also checks the apex homepage, HTTP/www redirects, and a custom 404 response. Requests are bounded and transient failures get at most three attempts.
 
-HTML, CSS, and JavaScript ask caches to revalidate; other assets use a five-minute cache lifetime. The HTML references CSS and JavaScript with a `?v=` query containing the first 12 characters of that file's SHA-256 hash. A new URL prevents a browser from reusing the old release's locally cached stylesheet or script. The verifier rejects missing or stale versions, and live checks request the exact versioned URLs as well as the fixed filenames.
+This sequence avoids mixing old HTML with new fixed-name code; it is not a transaction spanning all root documents. A failed run still requires an operator to inspect its record. Source tests and local previews do not establish production success.
 
-After editing a published CSS or JavaScript file, update all content-hash references in `index.html` before verifying:
+## Recovery
 
-```bash
-node scripts/version-assets.mjs
-```
+Every deployment writes `.deployments/run-.../deployment-record.json`, outside the public artifact. It records the source commit, all public hashes and paths, previous versions, reused objects, uploaded versions, invalidation, verification, and any failure stage. Actions retains the record for 90 days, including partial failures. Save important records before retention expires.
 
-This preserves the 21-object publication boundary. Query versions distinguish browser cache entries; they do not create immutable S3 objects or guarantee separate CloudFront cache entries. The CloudFront policy may impose its minimum TTL, so the workflow still invalidates the entire small site and waits for completion. HTTPS verification checks actual bytes, not only status codes. CloudFront invalidation alone does not clear copies already cached on visitors' devices. See [AWS's explanation of invalidation and browser caches](https://docs.aws.amazon.com/AmazonCloudFront/latest/DeveloperGuide/Invalidation.html).
+Prefer redeploying a reviewed source revision on `main`. For an explicitly authorized manual rollback, select a verified earlier deployment record, ensure its referenced immutable assets still exist, and restore that record's root-document S3 versions using `copy-object`. Restore `404.html` before `index.html`, invalidate changed root paths, and verify against the earlier artifact. Preserve exact recorded keys and versions. Do not delete assets or versions. New paths without a previous version are simply left unused by the restored HTML.
 
-This is not an atomic release: requests during an upload can briefly mix old HTML with new fixed-name assets. Keep file changes backward-compatible. Avoid manual uploads while an Actions deployment is running.
+No automatic rollback, remote deletion, or lifecycle/retention change is performed. Old fixed-name assets from releases before hashed publishing also remain until separately authorized cleanup. S3 storage growth can be measured before proposing a retention policy.
 
-```bash
-node scripts/verify-live.mjs dist
-```
-
-## Recovery records and rollback
-
-Each deployment writes `.deployments/run-.../deployment-record.json`, outside the public artifact. It records the source commit, hashes, previous/new S3 version IDs, run identity, invalidation, and final verification. GitHub retains the record artifact for 90 days, including partial failures. Download important records before that retention expires. The workflow does not delete S3 objects or versions.
-
-For an actual rollback, choose a verified earlier commit and its deployment record. Prefer redeploying a reviewed source change on `main`; otherwise an authorized operator can restore each record's `prior.version_id` as a new current version with `aws s3api copy-object`. Use the exact recorded key/version; do not delete current versions or add delete markers. Restore non-HTML files first, then 404 and index last, invalidate CloudFront, and verify against the chosen earlier artifact.
-
-For objects recorded with `prior.exists: false`, there is no prior version to restore. Rollback restores the old pages and references but leaves the newly added, unused public assets in S3. Removing those assets requires separately authorized cleanup; the deployment role has no delete permission. Post-deploy health checks remain automatic; rollback is deliberate, not an automatic destructive response to a transient failure.
-
-Example for one reviewed object. Every value below is a placeholder; replace it with the bucket, owner account, region, and recorded version for the deployment you are authorized to restore. This is not a complete rollback.
-
-```bash
-aws s3api copy-object \
-  --bucket 'YOUR_WEBSITE_BUCKET' --key index.html \
-  --copy-source 'YOUR_WEBSITE_BUCKET/index.html?versionId=RECORDED_VERSION_ID' \
-  --expected-bucket-owner 'YOUR_AWS_ACCOUNT_ID' \
-  --region 'YOUR_AWS_REGION'
-```
-
-Keep credentials and deployment records out of source control. AWS account IDs, bucket names, role ARNs, and distribution IDs identify resources; they do not grant access by themselves. The checked-in workflow, IAM policies, and deployment script intentionally bind deployment to this website. Their real identifiers must remain consistent with the configured AWS resources; illustrative commands and test fixtures should use placeholders.
-
-A failed deployment record indicates which objects were uploaded. Resolve the failure or restore the complete consistent prior set before treating the release as recovered. No automatic rollback or deletion is performed.
+Official references: [CloudFront file versioning](https://docs.aws.amazon.com/AmazonCloudFront/latest/DeveloperGuide/UpdatingExistingObjects.html), [S3 conditional writes](https://docs.aws.amazon.com/AmazonS3/latest/userguide/conditional-writes.html), [GitHub OIDC on AWS](https://docs.github.com/en/actions/how-tos/secure-your-work/security-harden-deployments/oidc-in-aws).

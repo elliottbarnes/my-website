@@ -2,6 +2,7 @@ import assert from "node:assert/strict";
 import { readFile } from "node:fs/promises";
 import test from "node:test";
 import vm from "node:vm";
+import { PROJECTS } from "../data/projects.mjs";
 import { PUBLIC_FILES } from "../scripts/public-files.mjs";
 
 const effectsSource = await readFile(new URL("../assets/entrance-effects.js", import.meta.url), "utf8");
@@ -104,6 +105,19 @@ function animation({ reduced = false, paused = false, hidden = false, view = "en
   root.dataset = { view, ...(paused ? { motion: "paused" } : {}) };
   const nodes = new Map([["#entrance", entrance], ["#code-field", field], ["#scene", scene], ["[data-pointer-readout]", readout]]);
   for (const selector of ["#code-wall", "[data-scene-file]", "[data-scene-path]", "#typed-command", "#entrance .mode", "#entrance .status-position", "#scene-feedback"]) nodes.set(selector, node());
+  const projectLinks = node("nav"), projectSource = node("a"), projectDemo = node("a"), projectTry = node("button");
+  for (const child of [projectSource, projectDemo, projectTry]) child.parentElement = projectLinks;
+  nodes.set(".scene-project-links", projectLinks);
+  nodes.set("[data-scene-source]", projectSource);
+  nodes.set("[data-scene-demo]", projectDemo);
+  nodes.set("[data-scene-try]", projectTry);
+  for (const project of PROJECTS) {
+    const panel = node("article"), demo = node("a");
+    panel.dataset = { experiment: project.experiment?.kind, experimentLabel: project.experiment?.label };
+    demo.setAttribute("href", project.demo.url); demo.setAttribute("aria-label", project.demo.ariaLabel); demo.textContent = project.demo.label;
+    panel.querySelector = selector => selector === "[data-demo]" ? demo : null;
+    nodes.set(`#${project.id}`, panel);
+  }
   const ecdsaControls = node(), ecdsaButtons = {};
   ecdsaControls.hidden = true;
   ecdsaControls.parentElement = scene;
@@ -148,7 +162,7 @@ function animation({ reduced = false, paused = false, hidden = false, view = "en
     clearTimeout: (id) => timers.delete(id),
   });
   return {
-    root, entrance, scene, field, readout, document, motion, window, frames, timers, images, node, ecdsaControls, ecdsaButtons,
+    root, entrance, scene, field, readout, document, motion, window, frames, timers, images, node, ecdsaControls, ecdsaButtons, projectLinks, projectSource, projectDemo, projectTry,
     api: window.PortfolioAnimation,
     frame(ms = 16) {
       now += ms;
@@ -927,4 +941,39 @@ test("hiding the page or entering the workspace stops and clears ECDSA safely", 
     assert.equal(controls.ecdsaControls.hidden, true);
     assert.equal(controls.frames.size, 1);
   }
+});
+
+
+test("source actions stay on the displayed project and open its related experiment", () => {
+  const controls = animation({ paused: true });
+  assert.match(controls.projectSource.getAttribute("href"), /glassbox\/blob\/.+docs\/core\.js/);
+  assert.equal(controls.projectDemo.getAttribute("href"), PROJECTS[0].demo.url);
+  assert.equal(controls.projectTry.hidden, false);
+  controls.projectTry.dispatch("click");
+  assert.equal(controls.api.state.effect, "tokens");
+  assert.equal(controls.api.state.static, true);
+  assert.equal(controls.document.activeElement, controls.field.parentElement);
+});
+
+test("project links hold their destination while hovered or keyboard-focused", () => {
+  for (const mode of ["pointer", "keyboard"]) {
+    const controls = animation();
+    controls.projectLinks.dispatch(mode === "pointer" ? "pointerenter" : "focusin");
+    for (let i = 0; i < 180; i++) controls.frame(40);
+    assert.equal(controls.projectDemo.getAttribute("href"), PROJECTS[0].demo.url, mode);
+    controls.projectLinks.dispatch(mode === "pointer" ? "pointerleave" : "focusout", { relatedTarget: null });
+    for (let i = 0; i < 180; i++) controls.frame(40);
+    assert.notEqual(controls.projectDemo.getAttribute("href"), PROJECTS[0].demo.url, mode);
+    assert.match(controls.projectSource.getAttribute("href"), /github\.com\/elliottbarnes\//);
+  }
+});
+
+test("lazy arcade loading and every game stop entrance frames until the handoff closes", () => {
+  const controls = animation();
+  controls.root.dataset.training = "open";
+  controls.window.dispatch("portfolio:training");
+  assert.equal(controls.frames.size, 0);
+  delete controls.root.dataset.training;
+  controls.window.dispatch("portfolio:training");
+  assert.equal(controls.frames.size, 1);
 });

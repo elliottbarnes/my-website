@@ -132,7 +132,7 @@
   const signals = Array.from(radar.querySelectorAll("[data-radar-route]"));
   const summonButton = document.querySelector("[data-radar-summon]");
   const radarFeedback = document.querySelector("[data-radar-feedback]");
-  const projectRoutes = new Set(["glassbox", "pixel-language", "architecture-lab", "automata-lab", "ellmiott", "batchline", "evaldeck"]);
+  const projectRoutes = new Set(signals.map(signal => signal.dataset.radarRoute));
   const visitKey = "elliott:radar-signals:v1";
   let visited;
   try {
@@ -145,7 +145,7 @@
   let ink = "#c9b798", muted = "#969082", accent = ink;
   let centerX = 0, centerY = 0, radius = 0, selected = -1, energyAnimation, pulseAt = -Infinity;
   let summoned = null, dragonImage = null, dragonPoints = [], dragonMask = null, maskAccent = "", completionAnnounced = false;
-  const active = () => workspaceVisible() && !about.hidden && !document.querySelector("#training-dialog[open]") && !document.querySelector("#arcade-dialog[open]") && !document.querySelector("#goku-dialog[open]");
+  const active = () => workspaceVisible() && !about.hidden && root.dataset.training !== "open";
   const tau = Math.PI * 2;
   const ease = value => { const t = Math.max(0, Math.min(1, value)); return t * t * (3 - 2 * t); };
   const summonProgress = () => summoned ? (summoned.static ? 1 : ease((elapsed - summoned.started) / 1200)) : 0;
@@ -389,7 +389,7 @@
   function refresh() {
     if (frame) cancelAnimationFrame(frame);
     frame = 0; lastFrame = 0;
-    if (quiet() || document.hidden) energyAnimation?.cancel();
+    if (quiet() || !active()) energyAnimation?.cancel();
     colors(); resize();
     if (active() && !quiet()) frame = requestAnimationFrame(tick);
   }

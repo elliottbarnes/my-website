@@ -1,8 +1,9 @@
 import { createHash, randomUUID } from "node:crypto";
 import { resolve } from "node:path";
 import { fileURLToPath } from "node:url";
-import { PUBLIC_FILES, VERSIONED_FILES, contentType } from "./public-files.mjs";
+import { contentType } from "./public-files.mjs";
 import { verifySite } from "./verify-site.mjs";
+import { cacheControl, readArtifactManifest } from "./artifact.mjs";
 
 const ORIGIN = "https://elliottbarnes.ca";
 const REDIRECT_STARTS = [
@@ -15,7 +16,9 @@ const delay = (milliseconds) => new Promise((done) => setTimeout(done, milliseco
 
 export async function verifyLive(directory, { fetchImpl = fetch, attempts = 3, delayMs = 1000 } = {}) {
   const root = resolve(directory);
+  await readArtifactManifest(root);
   const artifact = await verifySite(root);
+  const published = Object.keys(artifact.sha256);
   if (!Number.isInteger(attempts) || attempts < 1 || attempts > 3) {
     throw new Error("Verification attempts must be between one and three.");
   }
@@ -36,7 +39,7 @@ export async function verifyLive(directory, { fetchImpl = fetch, attempts = 3, d
     }
     throw new Error(`${label}: ${last?.message ?? last}`);
   }
-  async function verifyBytes(url, expectedStatus, expectedHash, expectedType) {
+  async function verifyBytes(url, expectedStatus, expectedHash, expectedType, expectedCache) {
     const response = await request(url);
     if (response.status !== expectedStatus) {
       await response.body?.cancel();
@@ -47,6 +50,10 @@ export async function verifyLive(directory, { fetchImpl = fetch, attempts = 3, d
       await response.body?.cancel();
       throw new Error(`Unexpected content type: ${actualType || "missing"}`);
     }
+    if (expectedCache && response.headers.get("cache-control") !== expectedCache) {
+      await response.body?.cancel();
+      throw new Error(`Unexpected cache policy: ${response.headers.get("cache-control") || "missing"}`);
+    }
     const actualHash = hash(Buffer.from(await response.arrayBuffer()));
     if (actualHash !== expectedHash) {
       throw new Error(`Byte hash differs: expected ${expectedHash}, received ${actualHash}`);
@@ -56,23 +63,15 @@ export async function verifyLive(directory, { fetchImpl = fetch, attempts = 3, d
 
   const hashes = {};
   // Bounded parallel requests keep this check small and make failures attributable to exact keys.
-  for (let offset = 0; offset < PUBLIC_FILES.length; offset += 4) {
-    const batch = PUBLIC_FILES.slice(offset, offset + 4);
+  for (let offset = 0; offset < published.length; offset += 4) {
+    const batch = published.slice(offset, offset + 4);
     await Promise.all(batch.map(async (key) => {
       hashes[key] = await retry(key, () => verifyBytes(
-        `${ORIGIN}/${key}`, 200, artifact.sha256[key], contentType(key),
+        `${ORIGIN}/${key}`, 200, artifact.sha256[key], contentType(key), cacheControl(key),
       ));
     }));
   }
-  // verifySite has already required these exact, content-versioned references in HTML.
-  // Also check their actual public responses, not just the underlying S3 filenames.
-  const versionedAssets = {};
-  for (const key of VERSIONED_FILES) {
-    const path = `/${key}?v=${artifact.sha256[key].slice(0, 12)}`;
-    versionedAssets[path] = await retry(path, () => verifyBytes(
-      `${ORIGIN}${path}`, 200, artifact.sha256[key], contentType(key),
-    ));
-  }
+  const versionedAssets = Object.fromEntries(published.filter(key => key.startsWith("assets/")).map(key => [`/${key}`, hashes[key]]));
   await retry("Apex homepage", () => verifyBytes(
     `${ORIGIN}/`, 200, artifact.sha256["index.html"], contentType("index.html"),
   ));
@@ -116,7 +115,7 @@ export async function verifyLive(directory, { fetchImpl = fetch, attempts = 3, d
   ));
   return {
     origin: ORIGIN,
-    files: PUBLIC_FILES.length,
+    files: published.length,
     sha256: hashes,
     versioned_assets: versionedAssets,
     redirects,
@@ -136,7 +135,7 @@ if (process.argv[1] && resolve(process.argv[1]) === fileURLToPath(import.meta.ur
     try {
       const result = await verifyLive(paths[0] ?? "dist");
       console.log(json ? JSON.stringify(result) :
-        `Verified ${result.files} HTTPS file hashes, versioned CSS/JS, canonical redirects and the custom 404.`);
+        `Verified ${result.files} HTTPS file hashes, immutable assets, canonical redirects and the custom 404.`);
     } catch (error) {
       console.error(`Live verification failed: ${error.message}`);
       process.exitCode = 1;

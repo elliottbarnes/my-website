@@ -4,9 +4,9 @@
 snapshot_public_object() {
   local key="$1" head listing
   if head="$(aws s3api head-object --bucket "$bucket" --key "$key" \
-      --expected-bucket-owner "$account" --region "$region" --output json)"; then
+      --expected-bucket-owner "$account" --region "$region" --checksum-mode ENABLED --output json)"; then
     jq -e '.VersionId | type == "string" and length > 0 and . != "null"' <<<"$head" >/dev/null || return 1
-    jq '{exists:true, version_id:.VersionId, etag:.ETag, last_modified:.LastModified}' <<<"$head"
+    jq '{exists:true, version_id:.VersionId, etag:.ETag, last_modified:.LastModified, checksum_sha256:.ChecksumSHA256, content_type:.ContentType, cache_control:.CacheControl}' <<<"$head"
     return
   fi
   [[ "$key" == assets/* ]] || { echo "Cannot snapshot existing entrypoint: $key" >&2; return 1; }

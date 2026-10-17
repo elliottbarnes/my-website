@@ -4,9 +4,13 @@ import { fileURLToPath } from "node:url";
 import { readFile } from "node:fs/promises";
 import { PUBLIC_FILES, assertRegularPublicFile, contentType } from "./scripts/public-files.mjs";
 
+import { readArtifactManifest } from "./scripts/artifact.mjs";
+
 const projectRoot = fileURLToPath(new URL(".", import.meta.url));
 
 export function createPreviewServer({ root = projectRoot } = {}) {
+  const publication = () => readArtifactManifest(root, { optional: true }).then(manifest =>
+    manifest ? Object.values(manifest.assets).map(entry => entry.path) : PUBLIC_FILES);
   return createServer(async (request, response) => {
     function send(status, body, type, headers = {}) {
       response.writeHead(status, {
@@ -33,7 +37,7 @@ export function createPreviewServer({ root = projectRoot } = {}) {
     }
     try {
       // Serve only the publication allowlist, even in source-preview mode.
-      await assertRegularPublicFile(root, file);
+      await assertRegularPublicFile(root, file, await publication());
       send(200, await readFile(join(root, file)), contentType(file));
     } catch {
       try {
@@ -53,7 +57,9 @@ if (process.argv[1] && resolve(process.argv[1]) === fileURLToPath(import.meta.ur
       throw new Error("Usage: node server.mjs [--dir dist]");
     }
     const root = args.length ? resolve(args[1]) : projectRoot;
-    for (const file of PUBLIC_FILES) await assertRegularPublicFile(root, file);
+    const manifest = await readArtifactManifest(root, { optional: true });
+    const files = manifest ? Object.values(manifest.assets).map(entry => entry.path) : PUBLIC_FILES;
+    for (const file of files) await assertRegularPublicFile(root, file, files);
     const port = Number(process.env.PORT || 4173);
     if (!Number.isInteger(port) || port < 0 || port > 65535) throw new Error("PORT must be an integer from 0 to 65535");
     const host = process.env.HOST || "127.0.0.1";

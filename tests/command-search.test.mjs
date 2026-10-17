@@ -69,12 +69,15 @@ function setup({ unlocked = false } = {}) {
   }
   const root = new Node("html"), body = new Node("body"); root.append(body);
   const entrance = new Node("section", { id: "entrance" });
-  const enter = new Node("a", { dataset: { enter: "" } }); entrance.append(enter);
+  const enter = new Node("a", { dataset: { enter: "" } });
+  enter.setAttribute("href", html.match(/data-enter href="([^"]+)"/)[1]); entrance.append(enter);
   const workspace = new Node("section", { id: "workspace" });
   workspace.append(new Node("div", { className: "terminal" }));
   body.append(entrance, workspace);
   for (const match of html.matchAll(/<article\b[^>]*data-panel="([^"]+)"[^>]*>([\s\S]*?)<\/article>/g)) {
-    const panel = new Node("article", { dataset: { panel: match[1] } });
+    const attributes = match[0].slice(0, match[0].indexOf(">"));
+    const dataset = Object.fromEntries([...attributes.matchAll(/data-([\w-]+)="([^"]*)"/g)].map(([, key, value]) => [key.replace(/-([a-z])/g, (_, letter) => letter.toUpperCase()), value]));
+    const panel = new Node("article", { dataset });
     const title = match[2].match(/<h2[^>]*>([\s\S]*?)<\/h2>/)?.[1];
     if (title) panel.append(new Node("h2", { textContent: text(title) }));
     for (const className of ["project-kind", "project-description", "about-text"]) {
@@ -100,13 +103,14 @@ function setup({ unlocked = false } = {}) {
     querySelector: selector => root.querySelector(selector),
     getElementById: id => root.querySelector(`#${id}`), createElement: tag => new Node(tag),
   });
-  const calls = { training: 0, goku: [], summons: 0, themes: [], ecdsa: [] };
+  const calls = { training: 0, goku: [], games: [], summons: 0, themes: [], ecdsa: [] };
   const window = new Node("window");
   Object.assign(window, { location: { hash: "" }, localStorage: { getItem: () => null, setItem() {} },
     matchMedia: () => ({ matches: false, addEventListener() {} }), scrollTo() {}, dispatchEvent() {},
     PortfolioGoku: { open: trigger => calls.goku.push(trigger) },
+    PortfolioGames: { run: (mode, trigger) => { calls.games.push({ mode, trigger, dialogOpen: dialog.open }); return Promise.resolve(true); } },
     PortfolioTraining: { open: () => { calls.training++; } },
-    PortfolioAnimation: { openECDSA: () => calls.ecdsa.push({ dialogOpen: dialog.open, view: root.dataset.view, hash: window.location.hash }) },
+    PortfolioAnimation: { enter: async () => {}, openECDSA: () => calls.ecdsa.push({ dialogOpen: dialog.open, view: root.dataset.view, hash: window.location.hash }) },
     PortfolioRadar: { unlocked, summon: () => { calls.summons++; return unlocked; } },
     PortfolioThemes: { current: "blackmoney", label: "saiyan", names: ["blackmoney", "carbon"], labels: ["saiyan", "carbon"],
       apply: name => calls.themes.push(name), open: () => calls.themes.push("picker") },
@@ -119,7 +123,7 @@ function setup({ unlocked = false } = {}) {
   const key = (value, properties) => input.emit("keydown", { key: value, ...properties });
   const escape = () => { document.emit("keydown", { key: "Escape", target: input }); dialog.emit("cancel"); };
   opener.emit("click");
-  return { root, window, document, opener, input, dialog, results, feedback, calls, summonButton, search, visible, submit, key, escape };
+  return { root, window, document, enter, opener, input, dialog, results, feedback, calls, summonButton, search, visible, submit, key, escape };
 }
 
 test("project ideas find genuine projects using current public descriptions without navigating while typing", () => {
@@ -146,7 +150,7 @@ test("prefixes, multiword queries, deterministic ranking, and arrow selection ch
 
 test("empty input retains ordinary buttons and deliberate arrow selection can be submitted", () => {
   const page = setup();
-  assert.equal(page.visible().length, 14);
+  assert.equal(page.visible().length, 17);
   assert.equal(page.results.dataset.searching, "false");
   assert.ok(page.visible().every(button => button.dataset.searchActive === "false"));
   page.key("ArrowDown"); page.submit();
@@ -214,7 +218,7 @@ test("native Tab order matches ranked search results and resets with the empty q
     page.visible().map(button => button.dataset.command));
   page.search("");
   assert.deepEqual(page.results.children.map(button => button.dataset.command), original);
-  assert.equal(page.results.children.length, 14, "existing buttons are moved, never duplicated");
+  assert.equal(page.results.children.length, 17, "existing buttons are moved, never duplicated");
 });
 
 test("native button focus synchronizes the highlighted and announced result without moving its DOM node", () => {
@@ -235,7 +239,7 @@ test("native button focus synchronizes the highlighted and announced result with
 test("training and dragon wishes require exact secret commands and never enter the result list", () => {
   const training = setup(); training.search("tra");
   assert.ok(training.visible().every(button => !["training", "breaker", "kamehameha", "wish", "shenron"].includes(button.dataset.command)));
-  training.search("/kamehameha"); training.submit(); assert.equal(training.calls.training, 1);
+  training.search("/kamehameha"); training.submit(); assert.equal(training.calls.games[0].mode, "breaker"); assert.equal(training.calls.training, 0);
   const locked = setup(); locked.search(":wish"); locked.submit();
   assert.equal(locked.calls.summons, 0); assert.equal(locked.window.location.hash, "");
   assert.equal(locked.feedback.textContent, "follow all seven project signals first.");
@@ -266,11 +270,35 @@ test("goku is discoverable and exact normalized commands preserve the original o
   for (const command of ["goku", ":GOKU", "/goku"]) {
     const page = setup(); page.search(command); page.submit();
     assert.equal(page.dialog.open, false);
-    assert.deepEqual(page.calls.goku, [page.opener]);
+    assert.equal(page.calls.games[0].mode, "goku"); assert.equal(page.calls.games[0].trigger, page.opener); assert.equal(page.calls.goku.length, 0);
     assert.equal(page.window.location.hash, "");
   }
   const page = setup(); page.search("adventure");
   assert.equal(page.visible()[0].dataset.command, "goku");
-  page.visible()[0].emit("click"); assert.deepEqual(page.calls.goku, [page.opener]);
+  page.visible()[0].emit("click"); assert.equal(page.calls.games[0].mode, "goku"); assert.equal(page.calls.games[0].trigger, page.opener); assert.equal(page.calls.goku.length, 0);
   const help = setup(); help.search("help"); help.submit(); assert.match(help.feedback.textContent, /goku/);
+});
+
+
+test("explore projects and the projects command open the featured project", async () => {
+  const click = setup(); click.dialog.close(); click.enter.emit("click", { button: 0 });
+  await new Promise(resolve => setImmediate(resolve));
+  assert.equal(click.window.location.hash, "#glassbox");
+  const keyboard = setup(); keyboard.dialog.close();
+  keyboard.document.emit("keydown", { key: "Enter", target: keyboard.document.body });
+  await new Promise(resolve => setImmediate(resolve));
+  assert.equal(keyboard.window.location.hash, "#glassbox");
+  const command = setup(); command.search("projects"); command.submit();
+  assert.equal(command.window.location.hash, "#glassbox");
+});
+
+test("arcade commands hand off to the lazy loader after closing the command menu", () => {
+  for (const [command, mode] of Object.entries({ arcade: "choose", blocks: "blocks", platformer: "platformer", goku: "goku", kamehameha: "breaker", training: "breaker", breaker: "breaker", ki: "ki", charge: "ki", radar: "radar", hunt: "radar" })) {
+    const page = setup(); page.search(command); page.submit();
+    assert.equal(page.dialog.open, false);
+    assert.equal(page.calls.games.length, 1);
+    assert.equal(page.calls.games[0].mode, mode);
+    assert.equal(page.calls.games[0].dialogOpen, false);
+    assert.equal(page.calls.games[0].trigger, page.opener);
+  }
 });

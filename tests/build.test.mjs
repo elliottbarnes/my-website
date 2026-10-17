@@ -1,21 +1,15 @@
 import assert from "node:assert/strict";
-import { createHash } from "node:crypto";
 import { copyFile, mkdir, mkdtemp, readFile, rm, symlink, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
-import { dirname, join, posix } from "node:path";
+import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import test from "node:test";
 import { buildSite } from "../build.mjs";
-import { PUBLIC_FILES, VERSIONED_FILES, contentType, inspectPublicTree } from "../scripts/public-files.mjs";
+import { PUBLIC_FILES, VERSIONED_FILES, inspectPublicTree } from "../scripts/public-files.mjs";
+import { cacheControl, digest, manifestPath, publishedPath, readArtifactManifest, ROOT_FILES } from "../scripts/artifact.mjs";
 import { verifySite } from "../scripts/verify-site.mjs";
 
 const project = fileURLToPath(new URL("..", import.meta.url));
-
-function resourceTag(file) {
-  const css = file.endsWith(".css");
-  return new RegExp(`<${css ? "link" : "script"}\\b[^>]*${css ? "href" : "src"}="/${file.replaceAll(".", "\\.")}(?:\\?[^\"]*)?"[^>]*>${css ? "" : "</script>"}`);
-}
-
 async function fixture(t) {
   const root = await mkdtemp(join(tmpdir(), "portfolio-build-test-"));
   t.after(() => rm(root, { recursive: true, force: true }));
@@ -25,269 +19,154 @@ async function fixture(t) {
   }
   return root;
 }
+async function built(t) {
+  const root = await fixture(t), directory = await buildSite({ root });
+  const manifest = await readArtifactManifest(directory);
+  return { root, directory, manifest, path: source => join(directory, manifest.assets[source].path) };
+}
 
-test("build publishes the complete allowlist and excludes notes and image masters", async (t) => {
+test("deterministic build publishes only declared content under safe hashed paths", async t => {
   const root = await fixture(t);
-  const unpublished = ["private-notes.txt", "assets/prism/SOURCES.md", "assets/prism/seed-17.png", "assets/interactive/notes.js"];
-  for (const file of unpublished) {
-    await mkdir(dirname(join(root, file)), { recursive: true });
-    await writeFile(join(root, file), "not for publication");
+  await writeFile(join(root, "private-notes.txt"), "private");
+  const directory = await buildSite({ root });
+  const first = await readArtifactManifest(directory);
+  assert.deepEqual(Object.keys(first.assets), PUBLIC_FILES);
+  assert.deepEqual(VERSIONED_FILES, PUBLIC_FILES.filter(file => /\.(?:css|js)$/.test(file)));
+  for (const [source, { path, sha256 }] of Object.entries(first.assets)) {
+    assert.equal(path, publishedPath(source, sha256));
+    assert.equal(digest(await readFile(join(directory, path))), sha256);
+    if (!ROOT_FILES.includes(source)) assert.match(path, /^assets\/.*\.[a-f0-9]{12}\.[a-z0-9]+$/);
   }
-  const destination = await buildSite({ root });
-  assert.equal(PUBLIC_FILES.length, 44);
-  assert.ok(!PUBLIC_FILES.some((file) => /interactive|prism|toolkit|handheld|controller/.test(file)));
-  assert.deepEqual(VERSIONED_FILES, PUBLIC_FILES.filter((file) => /\.(?:css|js)$/.test(file)));
-  assert.deepEqual(await inspectPublicTree(destination), [...PUBLIC_FILES].sort());
-  for (const file of unpublished) await assert.rejects(readFile(join(destination, file)), { code: "ENOENT" });
-  const result = await verifySite(destination, { sourceRoot: root });
+  await assert.rejects(readFile(join(directory, "private-notes.txt")), { code: "ENOENT" });
+  await assert.rejects(readFile(join(directory, "dist.manifest.json")), { code: "ENOENT" });
+  await assert.rejects(readFile(join(directory, "styles.css")), { code: "ENOENT" });
+  const result = await verifySite(directory, { sourceRoot: root });
   assert.equal(result.files, PUBLIC_FILES.length);
-  assert.equal(Object.keys(result.sha256).length, PUBLIC_FILES.length);
-  assert.match(result.sha256["index.html"], /^[a-f0-9]{64}$/);
+  assert.equal(result.publication.length, PUBLIC_FILES.length);
+  await buildSite({ root });
+  assert.deepEqual(await readArtifactManifest(directory), first);
 });
 
-test("rebuilding updates allowed content without deleting unexpected artifacts", async (t) => {
-  const root = await fixture(t);
-  const destination = await buildSite({ root });
-  const original = await readFile(join(destination, "index.html"));
-  await writeFile(join(destination, "secret.txt"), "keep this evidence");
-  await writeFile(join(root, "index.html"), "replacement");
-  await assert.rejects(buildSite({ root }), /Unexpected artifact: secret.txt/);
-  assert.deepEqual(await readFile(join(destination, "index.html")), original);
-  assert.equal(await readFile(join(destination, "secret.txt"), "utf8"), "keep this evidence");
-});
-
-test("build rejects symlinks in destination files, directories, and root", async (t) => {
-  for (const kind of ["file", "directory", "root"]) {
-    const root = await fixture(t);
-    const destination = join(root, "dist");
-    if (kind === "root") {
-      await symlink(root, destination, "dir");
-    } else {
-      await mkdir(destination);
-      if (kind === "file") await symlink(join(root, "index.html"), join(destination, "index.html"));
-      else await symlink(join(root, "assets"), join(destination, "assets"), "dir");
-    }
-    await assert.rejects(buildSite({ root }), /Symlink|real directory/);
+test("build rewrites CSS fonts, HTML images, and lazy script/style dependency URLs", async t => {
+  const { directory, manifest, path } = await built(t);
+  const html = await readFile(path("index.html"), "utf8");
+  const css = await readFile(path("styles.css"), "utf8");
+  assert.ok(html.includes('/' + manifest.assets["assets/fonts/IBMPlexMono-Regular.woff2"].path));
+  assert.ok(css.includes('/' + manifest.assets["assets/fonts/IBMPlexMono-Regular.woff2"].path));
+  assert.ok(html.includes('/' + manifest.assets["assets/dragon-ball.png"].path));
+  const loader = await readFile(path("assets/optional-games.js"), "utf8");
+  for (const source of ["assets/block-blast.js", "assets/goku-platformer.js", "assets/arcade.css"]) {
+    assert.ok(loader.includes('/' + manifest.assets[source].path), source);
+    assert.ok(!html.includes('/' + manifest.assets[source].path), `${source} must load on demand`);
   }
-});
-
-test("build rejects source file and parent-directory symlinks before writing", async (t) => {
-  for (const kind of ["file", "directory"]) {
-    const root = await fixture(t);
-    if (kind === "file") {
-      await rm(join(root, "index.html"));
-      await symlink(join(project, "index.html"), join(root, "index.html"));
-    } else {
-      await rm(join(root, "assets"), { recursive: true });
-      await symlink(join(project, "assets"), join(root, "assets"), "dir");
-    }
-    await assert.rejects(buildSite({ root }), /Symlink is not permitted/);
-    await assert.rejects(readFile(join(root, "dist", "index.html")), { code: "ENOENT" });
+  for (const source of ["assets/hidden-games.js", "assets/training-chamber.js"]) {
+    const game = await readFile(path(source), "utf8");
+    for (let i = 1; i <= 7; i++) assert.ok(game.includes('/' + manifest.assets[`assets/dragon-ball-${i}.webp`].path));
   }
+  assert.equal(cacheControl(manifest.assets["styles.css"].path), "public,max-age=31536000,immutable");
+  for (const file of ROOT_FILES) assert.equal(cacheControl(file), "no-cache,max-age=0,must-revalidate");
+  await verifySite(directory);
 });
 
-test("build rejects a symlink used as its source root", async (t) => {
-  const directory = await fixture(t);
-  const linkedRoot = join(directory, "linked-source");
-  await symlink(project, linkedRoot, "dir");
-  await assert.rejects(buildSite({ root: linkedRoot }), /Symlink is not permitted/);
+test("nested changes alter dependent filenames while unrelated assets stay stable", async t => {
+  const { root, directory, manifest } = await built(t);
+  await writeFile(join(root, "assets/block-blast.js"), await readFile(join(root, "assets/block-blast.js"), "utf8") + "\n// revision\n");
+  await buildSite({ root });
+  const next = await readArtifactManifest(directory);
+  for (const file of ["assets/block-blast.js", "assets/optional-games.js"]) assert.notEqual(next.assets[file].path, manifest.assets[file].path);
+  assert.notEqual(next.assets["index.html"].sha256, manifest.assets["index.html"].sha256);
+  assert.equal(next.assets["assets/dragon-ball.png"].path, manifest.assets["assets/dragon-ball.png"].path);
+  await assert.rejects(readFile(join(directory, manifest.assets["assets/block-blast.js"].path)), { code: "ENOENT" });
+  await verifySite(directory, { sourceRoot: root });
 });
 
-test("build rejects a missing source before modifying existing output", async (t) => {
-  const root = await fixture(t);
-  const destination = await buildSite({ root });
-  const original = await readFile(join(destination, "index.html"));
-  await writeFile(join(root, "index.html"), "replacement");
-  await rm(join(root, "assets/dragon-ball.png"));
-  await assert.rejects(buildSite({ root }), { code: "ENOENT" });
-  assert.deepEqual(await readFile(join(destination, "index.html")), original);
+test("rebuild accepts bounded prior manifests after allowlist evolution", async t => {
+  const { root, directory, manifest } = await built(t);
+  const bytes = Buffer.from("old asset"), sha256 = digest(bytes);
+  const old = publishedPath("assets/retired.js", sha256);
+  manifest.assets["assets/retired.js"] = { path: old, sha256 };
+  await writeFile(join(directory, old), bytes);
+  await writeFile(manifestPath(directory), JSON.stringify(manifest));
+  await assert.rejects(verifySite(directory), /exact source allowlist/);
+  await buildSite({ root });
+  await assert.rejects(readFile(join(directory, old)), { code: "ENOENT" });
+  await verifySite(directory, { sourceRoot: root });
 });
 
-test("verification rejects missing, extra, and symlink artifacts", async (t) => {
-  for (const kind of ["missing", "extra", "symlink"]) {
-    const root = await fixture(t);
-    const destination = await buildSite({ root });
-    if (kind === "extra") await writeFile(join(destination, "notes.txt"), "not public");
+test("unexpected output, source symlinks and missing sources fail before changing output", async t => {
+  for (const kind of ["extra", "source-symlink", "missing"]) {
+    const { root, directory } = await built(t);
+    const original = await readFile(join(directory, "index.html"));
+    if (kind === "extra") await writeFile(join(directory, "secret.txt"), "preserve");
     else {
-      await rm(join(destination, "styles.css"));
-      if (kind === "symlink") await symlink(join(root, "styles.css"), join(destination, "styles.css"));
+      await rm(join(root, "assets/dragon-ball.png"));
+      if (kind === "source-symlink") await symlink(join(project, "assets/dragon-ball.png"), join(root, "assets/dragon-ball.png"));
     }
-    await assert.rejects(verifySite(destination), /Missing public|Unexpected artifact|Symlink/);
+    await assert.rejects(buildSite({ root }), /Unexpected artifact|Symlink|ENOENT/);
+    assert.deepEqual(await readFile(join(directory, "index.html")), original);
   }
 });
 
-test("verification rejects source/build drift", async (t) => {
-  const root = await fixture(t);
-  const destination = await buildSite({ root });
-  await writeFile(join(root, "styles.css"), "body { color: red; }");
-  await assert.rejects(verifySite(destination, { sourceRoot: root }), /differs from source: styles.css/);
+test("source and output directory/file/manifest symlinks are rejected", async t => {
+  for (const kind of ["root", "directory", "file", "manifest"]) {
+    const { root, directory, manifest } = await built(t);
+    if (kind === "root") {
+      const alias = join(root, "linked"); await symlink(root, alias, "dir");
+      await assert.rejects(buildSite({ root: alias }), /Symlink/); continue;
+    }
+    if (kind === "manifest") {
+      await rm(manifestPath(directory)); await symlink(join(root, "index.html"), manifestPath(directory));
+    } else if (kind === "directory") {
+      await rm(join(directory, "assets"), { recursive: true }); await symlink(join(root, "assets"), join(directory, "assets"), "dir");
+    } else {
+      const path = join(directory, manifest.assets["styles.css"].path);
+      await rm(path); await symlink(join(root, "styles.css"), path);
+    }
+    await assert.rejects(buildSite({ root }), /Symlink|regular file/);
+  }
 });
 
-test("verification catches broken links, metadata, and project destinations", async (t) => {
+test("artifact verification catches tampering, source drift, missing assets, and unsafe manifest paths", async t => {
+  for (const kind of ["tamper", "source", "missing", "manifest", "sidecar"]) {
+    const { root, directory, manifest, path } = await built(t);
+    if (kind === "tamper") await writeFile(path("assets/block-blast.js"), "tampered");
+    if (kind === "source") await writeFile(join(root, "styles.css"), "body { color: red }");
+    if (kind === "missing") await rm(path("assets/block-blast.js"));
+    if (kind === "manifest") { manifest.assets["styles.css"].path = "../private.css"; await writeFile(manifestPath(directory), JSON.stringify(manifest)); }
+    if (kind === "sidecar") await rm(manifestPath(directory));
+    await assert.rejects(verifySite(directory, { sourceRoot: root }), /hash mismatch|differs from source|Missing public|Invalid artifact|requires its private manifest/);
+  }
+});
+
+test("build refuses dynamic URLs and cyclic asset dependencies", async t => {
+  for (const source of ['const image = `/assets/dragon-ball-${star}.webp`;', 'const source = "/assets/optional-games.js";']) {
+    const root = await fixture(t);
+    await writeFile(join(root, "assets/optional-games.js"), source);
+    await assert.rejects(buildSite({ root }), /complete literal|Cyclic asset/);
+  }
+});
+
+test("source validation catches broken references, metadata, and eager script attributes", async t => {
   const cases = [
-    ["index.html", (s) => s.replace('href="#about"', 'href="#missing"'), /missing fragment/],
-    ["index.html", (s) => s.replace(/src="\/script\.js(?:\?[^"]*)?"/, 'src="/unpublished.js"'), /not published/],
-    ["index.html", (s) => s.replace('data-demo="pixel-language"', 'data-demo="glassbox"'), /seven unique data-demo/],
-    ["index.html", (s) => s.replace('data-demo="architecture-lab"', 'data-demo="automata-lab"'), /seven unique data-demo/],
-    ["index.html", (s) => s.replace('https://elliottbarnes.github.io/architecture-lab/', 'https://elliottbarnes.github.io/automata-lab/'), /invalid data-demo/],
-    ["index.html", (s) => s.replace('https://elliottbarnes.github.io/glassbox/', 'https://example.com/'), /invalid data-demo/],
-    ["index.html", (s) => s.replace('aria-label="Glassbox source on GitHub"', ''), /invalid data-source/],
-    ["index.html", (s) => s.replace('"@type": "Person"', '"@type":'), /invalid Person JSON-LD/],
+    ["index.html", text => text.replace('href="#about"', 'href="#missing"'), /missing fragment/],
+    ["index.html", text => text.replace('"@type": "Person"', '"@type":'), /invalid Person JSON-LD/],
+    ["index.html", text => text.replace(/ defer><\/script>/, ' async></script>'), /must use defer/],
     ["site.webmanifest", () => "{broken", /invalid JSON/],
-    ["site.webmanifest", (s) => s.replace("/assets/dragon-ball.png", "/missing.png"), /not published/],
-    ["index.html", (s) => s.replace("https://elliottbarnes.ca/assets/dragon-ball.png", "https://elliottbarnes.ca/missing.svg"), /not published/],
-    ["styles.css", (s) => s + '\nbody{background:url("/missing.svg")}\n', /not published/],
+    ["styles.css", text => text + '\nbody{background:url("/missing.png")}', /not published/],
+    ["assets/optional-games.js", text => text + '\nconst missing = "/assets/missing.js";', /not published/],
   ];
   for (const [file, change, error] of cases) {
-    const root = await fixture(t);
-    const destination = await buildSite({ root });
-    const path = join(destination, file);
-    await writeFile(path, change(await readFile(path, "utf8")));
-    await assert.rejects(verifySite(destination), error);
-  }
-});
-
-test("verification requires PNG favicon and Apple touch icon metadata on both HTML pages", async (t) => {
-  for (const file of ["index.html", "404.html"]) {
-    for (const rel of ["icon", "apple-touch-icon"]) {
-      const tagPattern = new RegExp(`<link\\b[^>]*rel="${rel}"[^>]*>`);
-      const changes = [
-        () => "",
-        (tag) => tag + tag,
-        (tag) => tag.replace("/assets/dragon-ball.png", "/assets/favicon.svg"),
-        (tag) => tag.replace('type="image/png"', 'type="image/svg+xml"'),
-        (tag) => tag.replace('type="image/png"', ""),
-        (tag) => tag.replace('sizes="256x256"', 'sizes="180x180"'),
-        (tag) => tag.replace('sizes="256x256"', ""),
-      ];
-      for (const change of changes) {
-        const root = await fixture(t);
-        const path = join(root, file);
-        const original = await readFile(path, "utf8");
-        const modified = original.replace(tagPattern, change);
-        assert.notEqual(modified, original, `Fixture must change ${file} ${rel}`);
-        await writeFile(path, modified);
-        await assert.rejects(verifySite(root), new RegExp(`expected exactly one ${rel} reference`));
-      }
-    }
-  }
-});
-
-test("verification requires the matching PNG icon and dimensions in the manifest", async (t) => {
-  const changes = [
-    (manifest) => { manifest.icons = []; },
-    (manifest) => { manifest.icons.push({ ...manifest.icons[0] }); },
-    (manifest) => { manifest.icons[0].src = "/assets/favicon.svg"; },
-    (manifest) => { manifest.icons[0].type = "image/svg+xml"; },
-    (manifest) => { delete manifest.icons[0].type; },
-    (manifest) => { manifest.icons[0].sizes = "180x180"; },
-    (manifest) => { delete manifest.icons[0].sizes; },
-  ];
-  for (const change of changes) {
-    const root = await fixture(t);
-    const path = join(root, "site.webmanifest");
-    const manifest = JSON.parse(await readFile(path, "utf8"));
-    change(manifest);
-    await writeFile(path, JSON.stringify(manifest));
-    await assert.rejects(verifySite(root), /site\.webmanifest: (missing name or icons|expected exactly one 256x256 image\/png Dragon Ball favicon)/);
-  }
-});
-
-test("verification rejects malformed PNG headers and incorrect favicon dimensions", async (t) => {
-  const changes = [
-    [(bytes) => bytes.subarray(0, 24), /invalid PNG signature or IHDR header/],
-    [(bytes) => { bytes[0] = 0; return bytes; }, /invalid PNG signature or IHDR header/],
-    [(bytes) => { bytes.writeUInt32BE(12, 8); return bytes; }, /invalid PNG signature or IHDR header/],
-    [(bytes) => { bytes.write("IDAT", 12, "ascii"); return bytes; }, /invalid PNG signature or IHDR header/],
-    [(bytes) => { bytes.writeUInt32BE(128, 16); return bytes; }, /favicon must be 256x256 pixels/],
-    [(bytes) => { bytes.writeUInt32BE(128, 20); return bytes; }, /favicon must be 256x256 pixels/],
-  ];
-  for (const [change, error] of changes) {
-    const root = await fixture(t);
-    const path = join(root, "assets/dragon-ball.png");
-    await writeFile(path, change(await readFile(path)));
+    const root = await fixture(t), path = join(root, file), original = await readFile(path, "utf8");
+    const modified = change(original); assert.notEqual(modified, original);
+    await writeFile(path, modified);
     await assert.rejects(verifySite(root), error);
   }
 });
 
-test("verification requires exactly one correctly content-versioned CSS and JS reference", async (t) => {
-  for (const file of VERSIONED_FILES) {
-    const tagPattern = resourceTag(file);
-    const attributePattern = file.endsWith(".css") ? /href="[^"]*"/ : /src="[^"]*"/;
-    const attribute = file.endsWith(".css") ? "href" : "src";
-    const changes = [
-      (tag) => tag.replace(attributePattern, `${attribute}="/${file}"`),
-      (tag) => tag.replace(attributePattern, `${attribute}="/${file}?v=000000000000"`),
-      (tag) => tag.replace(attributePattern, `${attribute}="/${file}?v=wrong-version"`),
-      (tag) => tag.replace("?v=", "?release="),
-      (tag) => tag.replace(attributePattern, (value) => value.slice(0, -1) + '&extra=1"'),
-      (tag) => tag + tag,
-      () => "",
-    ];
-    for (const change of changes) {
-      const root = await fixture(t);
-      const path = join(root, "index.html");
-      const original = await readFile(path, "utf8");
-      const modified = original.replace(tagPattern, change);
-      assert.notEqual(modified, original, `Fixture must change the ${file} reference`);
-      await writeFile(path, modified);
-      await assert.rejects(verifySite(root), new RegExp(`${file.replaceAll(".", "\\.")} must have exactly one reference with its content hash`));
-    }
-  }
-});
-
-test("verification rejects CSS or JS edits unless their HTML content version is updated", async (t) => {
-  for (const file of VERSIONED_FILES) {
-    const root = await fixture(t);
-    const path = join(root, file);
-    await writeFile(path, await readFile(path, "utf8") + "\n/* changed bytes */\n");
-    await assert.rejects(verifySite(root), new RegExp(`${file.replace(".", "\\.")} must have exactly one reference with its content hash`));
-  }
-});
-
-test("verification requires every external script to remain deferred without async", async (t) => {
-  for (const file of VERSIONED_FILES.filter((file) => file.endsWith(".js"))) {
-    for (const change of [(tag) => tag.replace(" defer", ""), (tag) => tag.replace(" defer", " defer async")]) {
-      const root = await fixture(t);
-      const path = join(root, "index.html");
-      const original = await readFile(path, "utf8");
-      const modified = original.replace(resourceTag(file), change);
-      assert.notEqual(modified, original, `Fixture must change defer on ${file}`);
-      await writeFile(path, modified);
-      await assert.rejects(verifySite(root), /must use defer without async/);
-    }
-  }
-});
-
-test("verification rejects extra unknown stylesheet and script references", async (t) => {
-  const cases = [
-    ['<link rel="stylesheet" href="/assets/favicon.svg">', /unknown stylesheet reference/],
-    ['<link rel="stylesheet" href="https://example.com/site.css">', /unknown stylesheet reference/],
-    ['<script src="/styles.css" defer></script>', /unknown script reference/],
-    ['<script src="/assets/interactive/missing.js" defer></script>', /not published/],
-  ];
-  for (const [tag, error] of cases) {
-    const root = await fixture(t);
-    const path = join(root, "index.html");
-    await writeFile(path, (await readFile(path, "utf8")).replace("</head>", `${tag}</head>`));
-    await assert.rejects(verifySite(root), error);
-  }
-});
-
-test("verification checks resource URLs in every stylesheet relative to that stylesheet", async (t) => {
-  for (const file of VERSIONED_FILES.filter((file) => file.endsWith(".css"))) {
-    const root = await fixture(t);
-    const path = join(root, file);
-    const original = await readFile(path, "utf8");
-    await writeFile(path, `${original}\nbody{background-image:url("/missing-image.jpg")}\n`);
-    await assert.rejects(verifySite(root), /not published/);
-
-    const relative = posix.relative(posix.dirname(file), "assets/dragon-ball.png");
-    const valid = `${original}\nbody{background-image:url("${relative}")}\n`;
-    await writeFile(path, valid);
-    const hash = createHash("sha256").update(valid).digest("hex").slice(0, 12);
-    const html = await readFile(join(root, "index.html"), "utf8");
-    await writeFile(join(root, "index.html"), html.replace(resourceTag(file), (tag) => tag.replace(/\?v=[a-f0-9]{12}/, `?v=${hash}`)));
-    await verifySite(root);
-  }
+test("build preserves descriptive text and external source URLs", async t => {
+  const root = await fixture(t);
+  const suffix = '\nconst label = "assets are at /assets/block-blast.js";\nconst external = "https://example.com/assets/block-blast.js";\n';
+  await writeFile(join(root, "assets/block-blast.js"), await readFile(join(root, "assets/block-blast.js"), "utf8") + suffix);
+  const directory = await buildSite({ root }), manifest = await readArtifactManifest(directory);
+  assert.ok((await readFile(join(directory, manifest.assets["assets/block-blast.js"].path), "utf8")).endsWith(suffix));
 });

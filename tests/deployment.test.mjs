@@ -27,7 +27,7 @@ function snapshot(overrides = {}, objectKey = key) {
 test("snapshot preserves an existing object's version without needing a listing", () => {
   const result = snapshot({ TEST_HEAD_STATUS: "0", TEST_HEAD: JSON.stringify({VersionId:"v1",ETag:"etag",LastModified:"date"}), TEST_LIST_STATUS: "1" });
   assert.equal(result.status, 0, result.stderr);
-  assert.deepEqual(JSON.parse(result.stdout), {exists:true,version_id:"v1",etag:"etag",last_modified:"date"});
+  assert.deepEqual(JSON.parse(result.stdout), {exists:true,version_id:"v1",etag:"etag",last_modified:"date",checksum_sha256:null,content_type:null,cache_control:null});
 });
 test("snapshot permits a new asset only after a successful absence check", () => {
   for (const contents of [[], [{Key:key+".backup"}]]) {
@@ -61,4 +61,64 @@ test("deployment policy permits only known entrypoints and the website assets pr
   const script = readFileSync(new URL("../scripts/deploy.sh", import.meta.url), "utf8");
   assert.match(script, /create_only=\(--if-none-match '\*'\)/);
   assert.match(script, /"\$\{create_only\[@\]\}"/);
+});
+
+// Exercise the actual deploy shell with an isolated Git repository and a strict
+// fake AWS executable. No AWS calls or credentials are used by these tests.
+const { deployFixture } = await import("./helpers/deploy-fixture.mjs");
+test("unchanged release reuses all S3 versions without uploads or invalidation", async t => {
+  const result = await deployFixture(t);
+  assert.equal(result.status, 0, result.stderr + result.stdout);
+  assert.equal(result.record.status, "verified");
+  assert.ok(result.record.objects.every(object => object.skipped && object.uploaded === null));
+  assert.equal(result.record.invalidation, null);
+  assert.ok(!result.state.events.some(event => ["put-object", "create-invalidation"].includes(event.op)));
+  assert.ok(result.state.events.filter(event => event.op === "head-object").every(event => event.args.includes("--checksum-mode")));
+});
+
+test("changed bytes and cache metadata upload conditionally with exact invalidation", async t => {
+  const result = await deployFixture(t, (state, manifest) => {
+    state.objects["index.html"].ChecksumSHA256 = Buffer.from("older index").toString("base64");
+    state.objects[manifest.assets["styles.css"].path].CacheControl = "max-age=300";
+  });
+  assert.equal(result.status, 0, result.stderr + result.stdout);
+  const uploads = result.state.events.filter(event => event.op === "put-object");
+  assert.deepEqual(uploads.map(event => event.key), [result.manifest.assets["styles.css"].path, "index.html"]);
+  assert.ok(uploads.every(event => event.args.includes("--if-match")));
+  assert.ok(result.record.objects.filter(object => !object.skipped).every(object => object.prior.version_id && object.uploaded.version_id));
+  const invalidation = result.state.events.find(event => event.op === "create-invalidation");
+  for (const path of ["/", "/index.html", "/" + result.manifest.assets["styles.css"].path]) assert.ok(invalidation.args.includes(path));
+});
+
+test("new immutable paths require confirmed absence and create-only writes", async t => {
+  const result = await deployFixture(t, (state, manifest) => { delete state.objects[manifest.assets["assets/block-blast.js"].path]; });
+  assert.equal(result.status, 0, result.stderr + result.stdout);
+  const uploads = result.state.events.filter(event => event.op === "put-object");
+  assert.equal(uploads.length, 1); assert.ok(uploads[0].args.includes("--if-none-match"));
+  assert.ok(result.state.events.some(event => event.op === "list-objects-v2"));
+  assert.equal(result.record.invalidation, null);
+  const object = result.record.objects.find(object => !object.skipped);
+  assert.equal(object.prior.exists, false); assert.ok(object.uploaded.version_id);
+});
+
+test("immutable checksum conflicts abort during snapshot before any upload", async t => {
+  const result = await deployFixture(t, (state, manifest) => { state.objects[manifest.assets["assets/block-blast.js"].path].ChecksumSHA256 = "different"; });
+  assert.notEqual(result.status, 0);
+  assert.match(result.stderr, /Refusing mismatched or unverifiable immutable asset/);
+  assert.ok(!result.state.events.some(event => event.op === "put-object"));
+  assert.equal(result.record.status, "failed"); assert.equal(result.record.failure.stage, "snapshotting");
+});
+
+test("partial failures retain prior and successfully uploaded versions for recovery", async t => {
+  const result = await deployFixture(t, (state, manifest) => {
+    state.objects[manifest.assets["styles.css"].path].ContentType = "text/plain";
+    state.objects["index.html"].ChecksumSHA256 = "older"; state.failKey = "index.html";
+  });
+  assert.notEqual(result.status, 0);
+  assert.equal(result.record.failure.stage, "uploading"); assert.equal(result.record.failure.key, "index.html");
+  const css = result.record.objects.find(object => object.key === result.manifest.assets["styles.css"].path);
+  assert.ok(css.prior.version_id); assert.ok(css.uploaded.version_id);
+  const index = result.record.objects.find(object => object.key === "index.html");
+  assert.ok(index.prior.version_id); assert.equal(index.uploaded, null);
+  assert.ok(!result.state.events.some(event => event.op === "create-invalidation"));
 });

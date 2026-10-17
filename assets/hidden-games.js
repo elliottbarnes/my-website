@@ -1,5 +1,6 @@
 // Small, deterministic rules shared by the UI and tests. No storage or network.
 (() => {
+  const orbPaths = ['/assets/dragon-ball-1.webp', '/assets/dragon-ball-2.webp', '/assets/dragon-ball-3.webp', '/assets/dragon-ball-4.webp', '/assets/dragon-ball-5.webp', '/assets/dragon-ball-6.webp', '/assets/dragon-ball-7.webp'];
   const bands = [[56, 78], [42, 61], [68, 84], [49, 63], [73, 85]];
   const level = elapsed => Math.min(100, Math.max(0, elapsed / 22));
   function release(round, elapsed) {
@@ -102,7 +103,7 @@
       button.dataset.signal = match >= 0 ? 'found' : signal?.distance <= 1 ? 'hot' : signal?.distance <= 2 ? 'warm' : signal ? 'cold' : '';
       button.textContent = match >= 0 ? '★' : signal ? signal.distance <= 1 ? '!' : signal.distance <= 2 ? '+' : '·' : '·';
       if (match >= 0) {
-        const orb = document.createElement('img'); orb.src = `/assets/dragon-ball-${match + 1}.webp`; orb.alt = ''; orb.width = 32; orb.height = 32; button.replaceChildren(orb);
+        const orb = document.createElement('img'); orb.src = orbPaths[match]; orb.alt = ''; orb.width = 32; orb.height = 32; button.replaceChildren(orb);
       }
       button.setAttribute('aria-label', `${String.fromCharCode(65 + Math.floor(index / 6))}${index % 6 + 1}${match >= 0 ? ', ball found' : signal ? `, ${signal.label}` : ', scan'}`);
       button.setAttribute('aria-disabled', String(match >= 0 || found.length === 7));
@@ -138,7 +139,7 @@
     ki.hidden = mode !== 'ki'; radar.hidden = mode !== 'radar'; picker.hidden = !choosing;
     back.hidden = choosing; score.hidden = choosing; status.hidden = choosing;
     document.getElementById('arcade-reset').hidden = choosing;
-    title.textContent = choosing ? 'training chamber' : mode === 'ki' ? 'ki control' : 'dragon radar hunt';
+    title.textContent = choosing ? 'capsule arcade' : mode === 'ki' ? 'ki control' : 'dragon radar hunt';
     dialog.dataset.mode = mode;
     if (choosing) { stop(); announce('Choose a training game.'); } else reset();
   }
@@ -149,11 +150,11 @@
     window.dispatchEvent(new CustomEvent('portfolio:training', { detail: { open: true } }));
     focusGame();
   }
-  function focusGame() { (mode === 'choose' ? document.getElementById('game-pick-breaker') : mode === 'ki' ? action : grid.children[0]).focus(); }
-  for (const game of ['breaker', 'ki', 'radar']) document.getElementById(`game-pick-${game}`).addEventListener('click', () => {
-    if (game === 'breaker') {
-      const trigger = opener;
-      dialog.close(); window.PortfolioTraining?.open(trigger);
+  function focusGame() { (mode === 'choose' ? (document.getElementById('game-pick-blocks') || document.getElementById('game-pick-breaker')) : mode === 'ki' ? action : grid.children[0]).focus(); }
+  for (const game of ['breaker', 'blocks', 'platformer', 'ki', 'radar']) document.getElementById(`game-pick-${game}`)?.addEventListener('click', () => {
+    if (['breaker', 'blocks', 'platformer'].includes(game)) {
+      if (window.PortfolioGames) window.PortfolioGames.run(game, opener);
+      else if (game === 'breaker') { const trigger = opener; dialog.close(); window.PortfolioTraining?.open(trigger); }
     } else { select(game); focusGame(); }
   });
   back.addEventListener('click', () => { select('choose'); focusGame(); });
@@ -170,15 +171,17 @@
     if (started !== null) finish(); else begin();
   });
   action.addEventListener('blur', () => cancelCharge('Charge cancelled when focus moved. No round lost.'));
-  document.querySelectorAll('[data-arcade-open]').forEach(button => button.addEventListener('click', () => open(button.dataset.arcadeOpen)));
+  if (!window.PortfolioGames) document.querySelectorAll('[data-arcade-open]').forEach(button => button.addEventListener('click', () => open(button.dataset.arcadeOpen)));
   document.getElementById('arcade-reset').addEventListener('click', reset);
   document.getElementById('arcade-close').addEventListener('click', () => dialog.close());
   dialog.addEventListener('close', () => {
-    stop(); const trainingOpen = Boolean(document.getElementById('training-dialog')?.open);
+    if (dialog.open) return;
+    stop(); const trainingOpen = ['training-dialog', 'blocks-dialog', 'platformer-dialog', 'goku-dialog', 'game-loading-dialog'].some(id => document.getElementById(id)?.open);
     if (!trainingOpen) delete root.dataset.training;
     window.dispatchEvent(new CustomEvent('portfolio:training', { detail: { open: trainingOpen } }));
     if (!trainingOpen && opener?.isConnected) opener.focus({ preventScroll: true });
   });
+  dialog.addEventListener('cancel', event => { if (mode !== 'choose') { event.preventDefault(); select('choose'); focusGame(); } event.stopPropagation(); });
   document.addEventListener('visibilitychange', () => { if (document.hidden) { cancelCharge('Charge cancelled while away. No round lost.'); cancelAnimationFrame(frame); frame = 0; } });
   window.addEventListener('blur', () => cancelCharge('Charge cancelled while away. No round lost.'));
   reduced.addEventListener('change', () => draw());

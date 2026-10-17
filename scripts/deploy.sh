@@ -33,10 +33,7 @@ git diff --quiet "$commit_sha" -- || {
 verified="$(node scripts/verify-site.mjs "$artifact_dir" --source "$repo_root" --json)"
 file_count="$(node --input-type=module -e 'import { PUBLIC_FILES } from "./scripts/public-files.mjs"; console.log(PUBLIC_FILES.length)')"
 jq -e --argjson count "$file_count" '.files == $count and (.sha256 | length == $count)' <<<"$verified" >/dev/null
-public_files="$(node --input-type=module -e '
-  import { PUBLIC_FILES, contentType } from "./scripts/public-files.mjs";
-  console.log(JSON.stringify(PUBLIC_FILES.map(path => ({path, content_type: contentType(path)}))));
-')"
+public_files="$(jq -c '.publication' <<<"$verified")"
 jq -e --argjson count "$file_count" 'length == $count and ([.[].path] | unique | length == $count)
   and all(.[]; (.path | test("^[a-zA-Z0-9_./-]+$"))
     and (.path | startswith("/") | not)
@@ -47,9 +44,13 @@ while IFS= read -r key; do
   git cat-file -e "$commit_sha:$key" || {
     echo "Refusing deployment: public file is not in the requested commit: $key" >&2; exit 1;
   }
-  jq -e --arg key "$key" '.sha256[$key] | type == "string" and test("^[0-9a-f]{64}$")' \
-    <<<"$verified" >/dev/null
-done < <(jq -r '.[].path' <<<"$public_files")
+done < <(jq -r '.[].source' <<<"$public_files")
+
+# Private build inputs must be committed too; an untracked catalog or generator
+# must never influence a production artifact tied to an otherwise clean commit.
+for source in data/projects.mjs scripts/generate-projects.mjs scripts/artifact.mjs scripts/public-files.mjs; do
+  git cat-file -e "$commit_sha:$source" || { echo "Uncommitted build input: $source" >&2; exit 1; }
+done
 
 caller="$(aws sts get-caller-identity --output json)"
 [[ "$(jq -r '.Account' <<<"$caller")" == "$account" ]] || {
@@ -96,9 +97,19 @@ while IFS= read -r key; do
   }
   content_type="$(jq -r --arg key "$key" '.[] | select(.path == $key) | .content_type' <<<"$public_files")"
   sha256="$(jq -r --arg key "$key" '.sha256[$key]' <<<"$verified")"
-  jq --arg key "$key" --arg type "$content_type" --arg sha "$sha256" --argjson prior "$prior" \
-    '.objects += [{key:$key, content_type:$type, sha256:$sha, prior:$prior, uploaded:null}]' \
-    "$record" > "$record.tmp"
+  cache_control="$(jq -r --arg key "$key" '.[] | select(.path == $key) | .cache_control' <<<"$public_files")"
+  checksum="$(node -e 'process.stdout.write(Buffer.from(process.argv[1],"hex").toString("base64"))' "$sha256")"
+  # Never overwrite a content-addressed URL with different bytes, even after a collision.
+  if [[ "$key" == assets/* ]] && jq -e '.exists' <<<"$prior" >/dev/null; then
+    [[ "$(jq -r '.checksum_sha256' <<<"$prior")" == "$checksum" ]] || {
+      echo "Refusing mismatched or unverifiable immutable asset: $key" >&2; exit 1;
+    }
+  fi
+  jq --arg key "$key" --arg type "$content_type" --arg sha "$sha256" --arg cache "$cache_control" \
+    --arg checksum "$checksum" --argjson prior "$prior" \
+    '.objects += [{key:$key, content_type:$type, cache_control:$cache, sha256:$sha, prior:$prior,
+      skipped:($prior.exists and $prior.checksum_sha256 == $checksum and $prior.content_type == $type and $prior.cache_control == $cache),
+      uploaded:null}]' "$record" > "$record.tmp"
   mv "$record.tmp" "$record"
 done < <(jq -r '.[].path' <<<"$public_files")
 
@@ -110,21 +121,24 @@ stage="uploading"
 jq '.status = "uploading"' "$record" > "$record.tmp"
 mv "$record.tmp" "$record"
 
-# HTML and fixed-name code must revalidate; versioned URLs bypass older browser entries.
-# Other assets get short cache lifetimes. HTML entrypoints are uploaded last.
+# Immutable assets first; HTML entrypoints last. Reuse exact bytes and metadata.
+# Existing files use If-Match so a concurrent writer cannot invalidate the snapshot.
 while IFS= read -r key; do
   current_key="$key"
   content_type="$(jq -r --arg key "$key" '.objects[] | select(.key==$key) | .content_type' "$record")"
   sha256="$(jq -r --arg key "$key" '.objects[] | select(.key==$key) | .sha256' "$record")"
   checksum="$(node -e 'process.stdout.write(Buffer.from(process.argv[1],"hex").toString("base64"))' "$sha256")"
-  cache_control="public,max-age=300,must-revalidate"
-  if [[ "$key" == "index.html" || "$key" == "404.html" || "$key" == *.css || "$key" == *.js ]]; then
-    cache_control="no-cache,max-age=0,must-revalidate"
+  cache_control="$(jq -r --arg key "$key" '.objects[] | select(.key==$key) | .cache_control' "$record")"
+  if jq -e --arg key "$key" '.objects[] | select(.key==$key) | .skipped' "$record" >/dev/null; then
+    echo "Reusing unchanged $key"
+    continue
   fi
   echo "Uploading $key"
   create_only=()
   if jq -e --arg key "$key" '.objects[] | select(.key==$key) | .prior.exists == false' "$record" >/dev/null; then
     create_only=(--if-none-match '*')
+  else
+    create_only=(--if-match "$(jq -r --arg key "$key" '.objects[] | select(.key==$key) | .prior.etag' "$record")")
   fi
   aws s3api put-object --bucket "$bucket" --key "$key" --body "$artifact_dir/$key" \
     "${create_only[@]}" \
@@ -143,17 +157,27 @@ while IFS= read -r key; do
 done < <(jq -r '.[] | select(.path != "404.html" and .path != "index.html") | .path' <<<"$public_files"
   printf '%s\n' '404.html' 'index.html')
 
-stage="invalidating"
-current_key=""
-aws cloudfront create-invalidation --distribution-id "$distribution" --paths '/*' \
-  --region us-east-1 --output json > "$record_dir/invalidation.json"
-invalidation_id="$(jq -er '.Invalidation.Id | select(type == "string" and length > 0)' "$record_dir/invalidation.json")"
-jq --arg id "$invalidation_id" '.status="invalidating" | .invalidation={id:$id,status:"InProgress"}' \
-  "$record" > "$record.tmp"
-mv "$record.tmp" "$record"
-aws cloudfront wait invalidation-completed --distribution-id "$distribution" \
-  --id "$invalidation_id" --region us-east-1
-jq '.invalidation.status="Completed" | .status="verifying"' "$record" > "$record.tmp"
+# New hashed paths are never cached under an old release. Invalidate only changed
+# existing paths, plus the homepage alias if index changed. No remote files are deleted.
+invalidation_paths=()
+while IFS= read -r path; do invalidation_paths+=("$path"); done < <(
+  jq -r '[.objects[] | select(.skipped == false and .prior.exists == true) | ("/" + .key), (if .key == "index.html" then "/" else empty end)] | unique[]' "$record"
+)
+if [[ ${#invalidation_paths[@]} -gt 0 ]]; then
+  stage="invalidating"
+  current_key=""
+  aws cloudfront create-invalidation --distribution-id "$distribution" --paths "${invalidation_paths[@]}" \
+    --region us-east-1 --output json > "$record_dir/invalidation.json"
+  invalidation_id="$(jq -er '.Invalidation.Id | select(type == "string" and length > 0)' "$record_dir/invalidation.json")"
+  jq --arg id "$invalidation_id" '.status="invalidating" | .invalidation={id:$id,status:"InProgress"}' \
+    "$record" > "$record.tmp"
+  mv "$record.tmp" "$record"
+  aws cloudfront wait invalidation-completed --distribution-id "$distribution" \
+    --id "$invalidation_id" --region us-east-1
+  jq '.invalidation.status="Completed"' "$record" > "$record.tmp"
+  mv "$record.tmp" "$record"
+fi
+jq '.status="verifying"' "$record" > "$record.tmp"
 mv "$record.tmp" "$record"
 
 stage="verifying"

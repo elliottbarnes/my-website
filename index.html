@@ -24,7 +24,7 @@
     <link rel="icon" href="/assets/dragon-ball.png" type="image/png" sizes="256x256">
     <link rel="apple-touch-icon" href="/assets/dragon-ball.png" type="image/png" sizes="256x256">
     <link rel="manifest" href="/site.webmanifest">
-    <link rel="preload" href="/assets/fonts/IBMPlexMono-Regular.ttf" as="font" type="font/ttf" crossorigin>
+    <link rel="preload" href="/assets/fonts/IBMPlexMono-Regular.woff2" as="font" type="font/woff2" crossorigin>
     <link rel="stylesheet" href="/styles.css?v=a9779f8de83c">
     <link rel="stylesheet" href="/assets/themes.css?v=07412e345894">
     <script type="application/ld+json">
@@ -74,6 +74,13 @@
               <button type="button" data-ecdsa-tamper aria-pressed="false">tamper hash</button>
               <button type="button" data-ecdsa-close aria-label="Close ECDSA animation">esc</button>
             </div>
+            <!-- projects:scene-links -->
+<nav class="scene-project-links" aria-label="Explore the current source project">
+              <a data-scene-source href="https://github.com/elliottbarnes/glassbox">source ↗</a>
+              <button type="button" data-scene-try hidden>try compile sketch</button>
+              <a data-scene-demo href="https://elliottbarnes.github.io/glassbox/" aria-label="Open Glassbox live demo">open playground ↗</a>
+            </nav>
+<!-- /projects:scene-links -->
             <p id="scene-instructions" class="visually-hidden">Tap a line to explore it; each new activation reveals another source experiment. With a keyboard, use up and down to choose a line, Space to reveal its graphic, N to discover the next experiment, and Escape to return to code. In Git history, left and right select commits. Drag a graphic to pull it. In ECDSA, left and right step through signing and verification; use the controls to play or change the message hash.</p>
             <p id="scene-feedback" class="visually-hidden" role="status" aria-live="polite" aria-atomic="true"></p>
             <div class="editor-status" aria-hidden="true"><span class="mode">NORMAL</span><span class="file-path" data-scene-path>~/Projects/glassbox/docs/core.js</span><span class="status-position">1:1&nbsp; All</span></div>
@@ -82,7 +89,9 @@
           <p class="entrance-hint visually-hidden">Press Enter to explore projects. Use the theme button to select a colour scheme.</p>
           <div class="entrance-footer">
             <p>// “a computer can be a bicycle for the mind”</p>
-            <div class="entrance-controls"><button type="button" data-motion-toggle aria-label="Pause animation">:pause</button><button type="button" data-theme-toggle aria-label="Change theme">:theme</button><a class="enter-link" data-enter href="#about">explore projects <span aria-hidden="true">↵</span></a></div>
+            <div class="entrance-controls"><button type="button" data-motion-toggle aria-label="Pause animation">:pause</button><button type="button" data-theme-toggle aria-label="Change theme">:theme</button><!-- projects:featured -->
+<a class="enter-link" data-enter href="#glassbox">explore projects <span aria-hidden="true">↵</span></a>
+<!-- /projects:featured --></div>
           </div>
         </section>
         <section id="workspace" class="workspace" aria-label="Elliott’s terminal portfolio">
@@ -90,14 +99,16 @@
             <h2>~/elliott/</h2>
             <nav class="file-list" aria-label="Explore portfolio">
               <button type="button" data-select="about" aria-pressed="true"><img src="/assets/memoji-saiyan.webp" width="512" height="512" alt="" loading="lazy" decoding="async"><span class="file-index">00</span><span>whoami</span><span class="file-extension">.md</span></button>
-              <button type="button" data-select="glassbox" aria-pressed="false"><img src="/assets/projects/glassbox.jpg" width="1000" height="700" alt="" loading="lazy" decoding="async"><span class="file-index">01</span><span>glassbox</span><span class="file-extension">/</span></button>
+<!-- projects:navigation -->
+<button type="button" data-select="glassbox" aria-pressed="false"><img src="/assets/projects/glassbox.jpg" width="1000" height="700" alt="" loading="lazy" decoding="async"><span class="file-index">01</span><span>glassbox</span><span class="file-extension">/</span></button>
               <button type="button" data-select="pixel-language" aria-pressed="false"><img src="/assets/projects/pixel-language.jpg" width="1000" height="700" alt="" loading="lazy" decoding="async"><span class="file-index">02</span><span>pixel</span><span class="file-extension">/</span></button>
               <button type="button" data-select="architecture-lab" aria-pressed="false"><img src="/assets/projects/architecture-lab.jpg" width="1000" height="700" alt="" loading="lazy" decoding="async"><span class="file-index">03</span><span>architecture</span><span class="file-extension">/</span></button>
               <button type="button" data-select="automata-lab" aria-pressed="false"><img src="/assets/projects/automata-lab.jpg" width="1000" height="700" alt="" loading="lazy" decoding="async"><span class="file-index">04</span><span>automata</span><span class="file-extension">/</span></button>
-<button type="button" data-select="ellmiott" aria-pressed="false"><img src="/assets/projects/ellmiott.jpg" width="1280" height="720" alt="" loading="lazy" decoding="async"><span>ellmiott</span></button>
-<button type="button" data-select="batchline" aria-pressed="false"><img src="/assets/projects/batchline.jpg" width="1280" height="720" alt="" loading="lazy" decoding="async"><span>batchline</span></button>
-<button type="button" data-select="evaldeck" aria-pressed="false"><img src="/assets/projects/evaldeck.jpg" width="1280" height="720" alt="" loading="lazy" decoding="async"><span>evaldeck</span></button>
-              <button type="button" data-select="connect" aria-pressed="false"><span class="links-preview" aria-hidden="true">github<br>linkedin</span><span class="file-index">05</span><span>links</span><span class="file-extension">/</span></button>
+              <button type="button" data-select="ellmiott" aria-pressed="false"><img src="/assets/projects/ellmiott.jpg" width="1280" height="720" alt="" loading="lazy" decoding="async"><span class="file-index">05</span><span>ellmiott</span><span class="file-extension">/</span></button>
+              <button type="button" data-select="batchline" aria-pressed="false"><img src="/assets/projects/batchline.jpg" width="1280" height="720" alt="" loading="lazy" decoding="async"><span class="file-index">06</span><span>batchline</span><span class="file-extension">/</span></button>
+              <button type="button" data-select="evaldeck" aria-pressed="false"><img src="/assets/projects/evaldeck.jpg" width="1280" height="720" alt="" loading="lazy" decoding="async"><span class="file-index">07</span><span>evaldeck</span><span class="file-extension">/</span></button>
+<!-- /projects:navigation -->
+              <button type="button" data-select="connect" aria-pressed="false"><span class="links-preview" aria-hidden="true">github<br>linkedin</span><span class="file-index">08</span><span>links</span><span class="file-extension">/</span></button>
             </nav>
             <div class="wheel-controls" aria-label="Wheel controls">
               <span class="wheel-position" data-wheel-position aria-label="Section 1 of 9">01 / 09</span>
@@ -112,14 +123,18 @@
                 <div class="plot-caption">dragon radar <span>7 project signals</span><button type="button" data-radar-summon aria-label="Summon the eternal dragon" aria-pressed="false" hidden>summon</button></div>
                 <div class="radar-stage">
                   <canvas id="profile-plot" aria-hidden="true"></canvas>
-                  <a class="radar-signal" data-radar-route="glassbox" href="#glassbox" aria-label="1-star dragon ball: open Glassbox"><img src="/assets/dragon-ball-1.webp" width="128" height="128" alt="" loading="lazy" decoding="async"><span class="radar-tooltip">Glassbox</span></a>
+<!-- projects:radar -->
+<a class="radar-signal" data-radar-route="glassbox" href="#glassbox" aria-label="1-star dragon ball: open Glassbox"><img src="/assets/dragon-ball-1.webp" width="128" height="128" alt="" loading="lazy" decoding="async"><span class="radar-tooltip">Glassbox</span></a>
                   <a class="radar-signal" data-radar-route="pixel-language" href="#pixel-language" aria-label="2-star dragon ball: open Pixel Language"><img src="/assets/dragon-ball-2.webp" width="128" height="128" alt="" loading="lazy" decoding="async"><span class="radar-tooltip">Pixel Language</span></a>
                   <a class="radar-signal" data-radar-route="architecture-lab" href="#architecture-lab" aria-label="3-star dragon ball: open Architecture Lab"><img src="/assets/dragon-ball-3.webp" width="128" height="128" alt="" loading="lazy" decoding="async"><span class="radar-tooltip">Architecture Lab</span></a>
                   <a class="radar-signal" data-radar-route="automata-lab" href="#automata-lab" aria-label="4-star dragon ball: open Automata Lab"><img src="/assets/dragon-ball-4.webp" width="128" height="128" alt="" loading="lazy" decoding="async"><span class="radar-tooltip">Automata Lab</span></a>
-<a class="radar-signal" data-radar-route="ellmiott" href="#ellmiott" aria-label="5-star dragon ball: open ellmiott"><img src="/assets/dragon-ball-5.webp" width="128" height="128" alt="" loading="lazy" decoding="async"><span class="radar-tooltip">ellmiott</span></a>
-<a class="radar-signal" data-radar-route="batchline" href="#batchline" aria-label="6-star dragon ball: open batchline"><img src="/assets/dragon-ball-6.webp" width="128" height="128" alt="" loading="lazy" decoding="async"><span class="radar-tooltip">batchline</span></a>
-<a class="radar-signal" data-radar-route="evaldeck" href="#evaldeck" aria-label="7-star dragon ball: open evaldeck"><img src="/assets/dragon-ball-7.webp" width="128" height="128" alt="" loading="lazy" decoding="async"><span class="radar-tooltip">evaldeck</span></a>
-                  <div class="radar-legend" aria-hidden="true"><span>project signals</span><p>glassbox</p><p>pixel language</p><p>architecture lab</p><p>automata lab</p><p>ellmiott</p><p>batchline</p><p>evaldeck</p><small>select a dragon ball</small></div>
+                  <a class="radar-signal" data-radar-route="ellmiott" href="#ellmiott" aria-label="5-star dragon ball: open ellmiott"><img src="/assets/dragon-ball-5.webp" width="128" height="128" alt="" loading="lazy" decoding="async"><span class="radar-tooltip">ellmiott</span></a>
+                  <a class="radar-signal" data-radar-route="batchline" href="#batchline" aria-label="6-star dragon ball: open batchline"><img src="/assets/dragon-ball-6.webp" width="128" height="128" alt="" loading="lazy" decoding="async"><span class="radar-tooltip">batchline</span></a>
+                  <a class="radar-signal" data-radar-route="evaldeck" href="#evaldeck" aria-label="7-star dragon ball: open evaldeck"><img src="/assets/dragon-ball-7.webp" width="128" height="128" alt="" loading="lazy" decoding="async"><span class="radar-tooltip">evaldeck</span></a>
+<!-- /projects:radar -->
+                  <!-- projects:legend -->
+<div class="radar-legend" aria-hidden="true"><span>project signals</span><p>glassbox</p><p>pixel language</p><p>architecture lab</p><p>automata lab</p><p>ellmiott</p><p>batchline</p><p>evaldeck</p><small>select a dragon ball</small></div>
+<!-- /projects:legend -->
                 </div>
               </div><p class="prompt"><span>elliott@dev</span> ~ <span class="prompt-command">› whoami</span></p>
               <h2 id="about-title">elliott<span class="text-cursor" aria-hidden="true">_</span></h2>
@@ -128,10 +143,13 @@
               <p class="about-text">Compilers, interactive systems, and small worlds you can take apart.</p>
               <p class="prompt"><span>elliott@dev</span> ~ <span class="prompt-command">› ls projects/</span></p>
               <p class="about-text">Type a little code. Follow a signal. See what happens inside.</p>
-              <div class="about-projects"><a href="#glassbox">glassbox/</a><a href="#pixel-language">pixel-language/</a><a href="#architecture-lab">architecture-lab/</a><a href="#automata-lab">automata/</a><a href="#ellmiott">ellmiott/</a><a href="#batchline">batchline/</a><a href="#evaldeck">evaldeck/</a></div>
+              <!-- projects:links -->
+<div class="about-projects"><a href="#glassbox">glassbox/</a><a href="#pixel-language">pixel-language/</a><a href="#architecture-lab">architecture-lab/</a><a href="#automata-lab">automata-lab/</a><a href="#ellmiott">ellmiott/</a><a href="#batchline">batchline/</a><a href="#evaldeck">evaldeck/</a></div>
+<!-- /projects:links -->
               <p class="prompt idle-prompt" aria-hidden="true"><span>elliott@dev</span> ~ › <span class="cursor">▌</span></p>
             </article>
-            <article id="glassbox" class="terminal-panel" data-panel="glassbox" tabindex="-1" aria-labelledby="glassbox-title">
+<!-- projects:panels -->
+<article id="glassbox" class="terminal-panel" data-panel="glassbox" data-project-label="glassbox" data-project-aliases="" data-project-search="compiler compilers webassembly wasm typed language" data-experiment="tokens" data-experiment-label="compile sketch" tabindex="-1" aria-labelledby="glassbox-title">
               <p class="prompt"><span>elliott@dev</span> ~/projects <span class="prompt-command">› open glassbox</span></p><p class="project-kind">01 / WebAssembly compiler</p><h2 id="glassbox-title">glassbox</h2><p class="project-description">A typed WebAssembly compiler with differential execution checks.</p>
               <div class="project-actions"><a data-demo="glassbox" href="https://elliottbarnes.github.io/glassbox/" aria-label="Open Glassbox live demo">open playground ↗</a><a data-source="glassbox" href="https://github.com/elliottbarnes/glassbox" aria-label="Glassbox source on GitHub">source ↗</a></div>
               <img class="project-screenshot" src="/assets/projects/glassbox.jpg" width="1000" height="700" alt="Glassbox live playground preview" loading="lazy" decoding="async"><div class="code-preview"><div>compiler / docs/core.js</div><pre><code>export function compile(source, { optimized = true } = {}) {
@@ -141,7 +159,7 @@
   return { ast, ir, optimizedIr: optimization.ir, changes: optimization.changes, wasm, tokens: tokens.length - 1, resultType: ir.functions[ir.entry].result };
 }</code></pre></div>
             </article>
-            <article id="pixel-language" class="terminal-panel" data-panel="pixel-language" tabindex="-1" aria-labelledby="pixel-title">
+            <article id="pixel-language" class="terminal-panel" data-panel="pixel-language" data-project-label="pixel" data-project-aliases="pixel" data-project-search="pixel graphics shader shaders glsl language compiler" data-experiment="interference" data-experiment-label="interference field" tabindex="-1" aria-labelledby="pixel-title">
               <p class="prompt"><span>elliott@dev</span> ~/projects <span class="prompt-command">› open pixel-language</span></p><p class="project-kind">02 / Graphics language</p><h2 id="pixel-title">pixel language</h2><p class="project-description">A typed graphics language that emits inspectable GLSL.</p>
               <div class="project-actions"><a data-demo="pixel-language" href="https://elliottbarnes.github.io/pixel-language/" aria-label="Open Pixel Language live demo">open playground ↗</a><a data-source="pixel-language" href="https://github.com/elliottbarnes/pixel-language" aria-label="Pixel Language source on GitHub">source ↗</a></div>
               <img class="project-screenshot" src="/assets/projects/pixel-language.jpg" width="1000" height="700" alt="Pixel Language live playground preview" loading="lazy" decoding="async"><div class="code-preview"><div>interference.pixel / docs/presets.js</div><pre><code>// Interference · a field of phase-shifted waves
@@ -156,7 +174,7 @@ let color = 0.5 + 0.5 * cos(phase);
 let glow = pow(1 - abs(field), 3);
 output color * (0.35 + 0.65 * glow);</code></pre></div>
             </article>
-            <article id="architecture-lab" class="terminal-panel" data-panel="architecture-lab" tabindex="-1" aria-labelledby="architecture-title">
+            <article id="architecture-lab" class="terminal-panel" data-panel="architecture-lab" data-project-label="architecture" data-project-aliases="architecture" data-project-search="architecture mac macintosh hardware computer memory" data-experiment="object" data-experiment-label="source field" tabindex="-1" aria-labelledby="architecture-title">
               <p class="prompt"><span>elliott@dev</span> ~/projects <span class="prompt-command">› open architecture-lab</span></p><p class="project-kind">03 / Computer architecture</p><h2 id="architecture-title">architecture lab</h2><p class="project-description">Explore three generations of Mac hardware in interactive 3D.</p>
               <div class="project-actions"><a data-demo="architecture-lab" href="https://elliottbarnes.github.io/architecture-lab/" aria-label="Open Architecture Lab live demo">open exhibit ↗</a><a data-source="architecture-lab" href="https://github.com/elliottbarnes/architecture-lab" aria-label="Architecture Lab source on GitHub">source ↗</a></div>
               <img class="project-screenshot" src="/assets/projects/architecture-lab.jpg" width="1000" height="700" alt="Architecture Lab live playground preview" loading="lazy" decoding="async"><div class="code-preview"><div>input → instructions → memory → display</div><pre><code><span class="syntax-comment">// look beneath the screen</span>
@@ -166,7 +184,7 @@ output color * (0.35 + 0.65 * glow);</code></pre></div>
 03  inspect the memory
 04  connect the pieces</code></pre></div>
             </article>
-            <article id="automata-lab" class="terminal-panel" data-panel="automata-lab" tabindex="-1" aria-labelledby="automata-title">
+            <article id="automata-lab" class="terminal-panel" data-panel="automata-lab" data-project-label="automata" data-project-aliases="automata" data-project-search="automata regex regular expression pattern dfa nfa matching compiler" data-experiment="graph" data-experiment-label="breadth-first search" tabindex="-1" aria-labelledby="automata-title">
               <p class="prompt"><span>elliott@dev</span> ~/projects <span class="prompt-command">› open automata-lab</span></p><p class="project-kind">04 / Regular expression engine</p><h2 id="automata-title">automata lab</h2><p class="project-description">Bounded regex compilation with independently checked minimization.</p>
               <div class="project-actions"><a data-demo="automata-lab" href="https://elliottbarnes.github.io/automata-lab/" aria-label="Open Automata Lab live demo">open playground ↗</a><a data-source="automata-lab" href="https://github.com/elliottbarnes/automata-lab" aria-label="Automata Lab source on GitHub">source ↗</a></div>
               <img class="project-screenshot" src="/assets/projects/automata-lab.jpg" width="1000" height="700" alt="Automata Lab live playground preview" loading="lazy" decoding="async"><div class="code-preview"><div>regular expression → NFA → DFA → minimization</div><pre><code><span class="syntax-value">(a|b)*abb</span>
@@ -175,34 +193,37 @@ output color * (0.35 + 0.65 * glow);</code></pre></div>
 <span class="syntax-comment">// step through a string</span>
 <span class="syntax-comment">// see exactly why it matches</span></code></pre></div>
             </article>
-<article id="ellmiott" class="terminal-panel" data-panel="ellmiott" tabindex="-1" aria-labelledby="ellmiott-title">
- <p class="prompt"><span>elliott@dev</span> ~/projects <span class="prompt-command">› open ellmiott</span></p><p class="project-kind">05 / language-model lab</p><h2 id="ellmiott-title">ellmiott</h2><p class="project-description">Build a small GPT and inspect tokens, attention, and next-character predictions.</p>
- <div class="project-actions"><a data-demo="ellmiott" href="https://elliottbarnes.github.io/ellmiott/" aria-label="Open ellmiott browser demo">inspect the model ↗</a><a data-source="ellmiott" href="https://github.com/elliottbarnes/ellmiott" aria-label="ellmiott source on GitHub">source ↗</a></div>
- <img class="project-screenshot" src="/assets/projects/ellmiott.jpg" width="1280" height="720" alt="ellmiott interactive browser demo" loading="lazy" decoding="async"><div class="code-preview"><div>text → tokens → attention → prediction</div></div>
- </article>
-<article id="batchline" class="terminal-panel" data-panel="batchline" tabindex="-1" aria-labelledby="batchline-title">
- <p class="prompt"><span>elliott@dev</span> ~/projects <span class="prompt-command">› open batchline</span></p><p class="project-kind">06 / inference infrastructure</p><h2 id="batchline-title">batchline</h2><p class="project-description">Explore dynamic batching, bounded queues, and backpressure in a deterministic scheduling demo.</p>
- <div class="project-actions"><a data-demo="batchline" href="https://elliottbarnes.github.io/batchline/" aria-label="Open batchline browser demo">shape the traffic ↗</a><a data-source="batchline" href="https://github.com/elliottbarnes/batchline" aria-label="batchline source on GitHub">source ↗</a></div>
- <img class="project-screenshot" src="/assets/projects/batchline.jpg" width="1280" height="720" alt="batchline interactive browser demo" loading="lazy" decoding="async"><div class="code-preview"><div>arrivals → queue → batch → response</div></div>
- </article>
-<article id="evaldeck" class="terminal-panel" data-panel="evaldeck" tabindex="-1" aria-labelledby="evaldeck-title">
- <p class="prompt"><span>elliott@dev</span> ~/projects <span class="prompt-command">› open evaldeck</span></p><p class="project-kind">07 / output contracts</p><h2 id="evaldeck-title">evaldeck</h2><p class="project-description">Replay saved AI answers, inspect contract checks, and compare regressions against a baseline.</p>
- <div class="project-actions"><a data-demo="evaldeck" href="https://elliottbarnes.github.io/evaldeck/" aria-label="Open evaldeck browser demo">inspect the checks ↗</a><a data-source="evaldeck" href="https://github.com/elliottbarnes/evaldeck" aria-label="evaldeck source on GitHub">source ↗</a></div>
- <img class="project-screenshot" src="/assets/projects/evaldeck.jpg" width="1280" height="720" alt="evaldeck interactive browser demo" loading="lazy" decoding="async"><div class="code-preview"><div>fixtures → checks → baseline → regression</div></div>
- </article>
+            <article id="ellmiott" class="terminal-panel" data-panel="ellmiott" data-project-label="ellmiott" data-project-aliases="" data-project-search="attention gpt model tokens prediction transformer ai" tabindex="-1" aria-labelledby="ellmiott-title">
+              <p class="prompt"><span>elliott@dev</span> ~/projects <span class="prompt-command">› open ellmiott</span></p><p class="project-kind">05 / language-model lab</p><h2 id="ellmiott-title">ellmiott</h2><p class="project-description">Build a small GPT and inspect tokens, attention, and next-character predictions.</p>
+              <div class="project-actions"><a data-demo="ellmiott" href="https://elliottbarnes.github.io/ellmiott/" aria-label="Open ellmiott browser demo">inspect the model ↗</a><a data-source="ellmiott" href="https://github.com/elliottbarnes/ellmiott" aria-label="ellmiott source on GitHub">source ↗</a></div>
+              <img class="project-screenshot" src="/assets/projects/ellmiott.jpg" width="1280" height="720" alt="ellmiott interactive browser demo" loading="lazy" decoding="async"><div class="code-preview"><div>text → tokens → attention → prediction</div></div>
+            </article>
+            <article id="batchline" class="terminal-panel" data-panel="batchline" data-project-label="batchline" data-project-aliases="" data-project-search="batch batching queue backpressure inference scheduling" tabindex="-1" aria-labelledby="batchline-title">
+              <p class="prompt"><span>elliott@dev</span> ~/projects <span class="prompt-command">› open batchline</span></p><p class="project-kind">06 / inference infrastructure</p><h2 id="batchline-title">batchline</h2><p class="project-description">Explore dynamic batching, bounded queues, and backpressure in a deterministic scheduling demo.</p>
+              <div class="project-actions"><a data-demo="batchline" href="https://elliottbarnes.github.io/batchline/" aria-label="Open batchline browser demo">shape the traffic ↗</a><a data-source="batchline" href="https://github.com/elliottbarnes/batchline" aria-label="batchline source on GitHub">source ↗</a></div>
+              <img class="project-screenshot" src="/assets/projects/batchline.jpg" width="1280" height="720" alt="batchline interactive browser demo" loading="lazy" decoding="async"><div class="code-preview"><div>arrivals → queue → batch → response</div></div>
+            </article>
+            <article id="evaldeck" class="terminal-panel" data-panel="evaldeck" data-project-label="evaldeck" data-project-aliases="" data-project-search="evaluation eval contracts checks regressions baseline answers ai" tabindex="-1" aria-labelledby="evaldeck-title">
+              <p class="prompt"><span>elliott@dev</span> ~/projects <span class="prompt-command">› open evaldeck</span></p><p class="project-kind">07 / output contracts</p><h2 id="evaldeck-title">evaldeck</h2><p class="project-description">Replay saved AI answers, inspect contract checks, and compare regressions against a baseline.</p>
+              <div class="project-actions"><a data-demo="evaldeck" href="https://elliottbarnes.github.io/evaldeck/" aria-label="Open evaldeck browser demo">inspect the checks ↗</a><a data-source="evaldeck" href="https://github.com/elliottbarnes/evaldeck" aria-label="evaldeck source on GitHub">source ↗</a></div>
+              <img class="project-screenshot" src="/assets/projects/evaldeck.jpg" width="1280" height="720" alt="evaldeck interactive browser demo" loading="lazy" decoding="async"><div class="code-preview"><div>fixtures → checks → baseline → regression</div></div>
+            </article>
+<!-- /projects:panels -->
             <article id="connect" class="terminal-panel" data-panel="connect" tabindex="-1" aria-labelledby="connect-title">
               <p class="prompt"><span>elliott@dev</span> ~ <span class="prompt-command">› ls links/</span></p><h2 id="connect-title">elsewhere.</h2><p class="project-description">Code, experiments, and a way to connect.</p><div class="connect-links"><a href="https://github.com/elliottbarnes" rel="me"><span>github</span><span>elliottbarnes ↗</span></a><a href="https://www.linkedin.com/in/elliottbarnes1/" rel="me"><span>linkedin</span><span>elliott barnes ↗</span></a></div>
             </article>
           </div>
-          <aside class="workspace-avatar" aria-hidden="true"><p class="scouter-title">scouter / EB</p><img src="/assets/memoji-saiyan.webp" width="512" height="512" alt="" loading="lazy" decoding="async"><p>cursor <span data-workspace-pointer>0.500, 0.500</span><br>input / local<br>mode / explore</p></aside><div class="workspace-status"><span><span class="mode">NORMAL</span> <span id="status-view">whoami</span></span><span id="keyboard-help">↑↓ wheel · j/k browse</span><span class="github-stat" title="Public GitHub snapshot · 11 October 2026"><small>REPOS</small>42</span><span class="github-stat" title="Public GitHub snapshot · 11 October 2026"><small>STARS</small>4</span><span class="github-stat" title="Public GitHub snapshot · 11 October 2026"><small>FOLLOWERS</small>15</span><div><button class="command-access" type="button" data-command-open aria-label="Open command menu">:cmd</button><button type="button" data-motion-toggle aria-label="Pause animation">:pause</button><button type="button" data-theme-toggle aria-label="Change theme">:theme</button><a data-home href="#">:home</a></div></div>
+          <aside class="workspace-avatar" aria-hidden="true"><p class="scouter-title">scouter / EB</p><img src="/assets/memoji-saiyan.webp" width="512" height="512" alt="" loading="lazy" decoding="async"><p>cursor <span data-workspace-pointer>0.500, 0.500</span><br>input / local<br>mode / explore</p></aside><div class="workspace-status"><span><span class="mode">NORMAL</span> <span id="status-view">whoami</span></span><span id="keyboard-help">↑↓ wheel · j/k browse</span><div><button class="command-access" type="button" data-command-open aria-label="Open command menu">:cmd</button><button type="button" data-motion-toggle aria-label="Pause animation">:pause</button><button type="button" data-theme-toggle aria-label="Change theme">:theme</button><a data-home href="#">:home</a></div></div>
         </section>
       </main>
       <p class="visually-hidden" data-radar-feedback role="status" aria-live="polite" aria-atomic="true"></p>
-      <footer class="colophon"><button class="training-trigger" type="button" data-game-trigger data-arcade-open="choose" aria-label="Choose a training game" title="training chamber"><img src="/assets/dragon-ball-7.webp" width="128" height="128" alt="" loading="lazy" decoding="async"></button><p>© <span data-current-year>2026</span> elliott</p><p>Icon: <a href="https://www.iconarchive.com/show/dragon-ballz-icons-by-musett/Dragon-Ball-icon.html">Musett</a> / <a href="https://creativecommons.org/licenses/by-nc-nd/4.0/">CC BY-NC-ND</a></p></footer>
+      <footer class="colophon"><button class="training-trigger" type="button" data-game-trigger data-arcade-open="choose" aria-label="Open Capsule Arcade" title="capsule arcade"><img src="/assets/dragon-ball-7.webp" width="128" height="128" alt="" loading="lazy" decoding="async"></button><p>© <span data-current-year>2026</span> elliott</p><p>Icon: <a href="https://www.iconarchive.com/show/dragon-ballz-icons-by-musett/Dragon-Ball-icon.html">Musett</a> / <a href="https://creativecommons.org/licenses/by-nc-nd/4.0/">CC BY-NC-ND</a></p></footer>
     </div>
-    <dialog id="command-dialog" aria-labelledby="command-title"><div class="dialog-heading"><h2 id="command-title">command</h2><button type="button" data-command-close aria-label="Close command menu">esc</button></div><form id="command-form"><label for="command-input">find a project or run a command</label><div class="command-input-row"><span aria-hidden="true">:</span><input id="command-input" type="text" autocomplete="off" spellcheck="false" placeholder="compiler, regex, theme…"><button type="submit">run ↵</button></div></form><div class="command-options"><button type="button" data-command="about">whoami</button><button type="button" data-command="glassbox">glassbox</button><button type="button" data-command="pixel-language">pixel language</button><button type="button" data-command="architecture-lab">architecture lab</button><button type="button" data-command="automata-lab">automata lab</button><button type="button" data-command="ellmiott">ellmiott</button><button type="button" data-command="batchline">batchline</button><button type="button" data-command="evaldeck">evaldeck</button><button type="button" data-command="connect">links</button><button type="button" data-command="theme">theme</button><button type="button" data-command="motion">motion</button><button type="button" data-command="ecdsa">ecdsa</button><button type="button" data-command="goku">goku</button><button type="button" data-command="help">help</button></div><p id="command-feedback" role="status">A small set of shortcuts. Try “help”.</p></dialog>
+    <dialog id="command-dialog" aria-labelledby="command-title"><div class="dialog-heading"><h2 id="command-title">command</h2><button type="button" data-command-close aria-label="Close command menu">esc</button></div><form id="command-form"><label for="command-input">find a project or run a command</label><div class="command-input-row"><span aria-hidden="true">:</span><input id="command-input" type="text" autocomplete="off" spellcheck="false" placeholder="compiler, regex, theme…"><button type="submit">run ↵</button></div></form><div class="command-options"><button type="button" data-command="about">whoami</button><!-- projects:commands -->
+<button type="button" data-command="glassbox">glassbox</button><button type="button" data-command="pixel-language">pixel language</button><button type="button" data-command="architecture-lab">architecture lab</button><button type="button" data-command="automata-lab">automata lab</button><button type="button" data-command="ellmiott">ellmiott</button><button type="button" data-command="batchline">batchline</button><button type="button" data-command="evaldeck">evaldeck</button>
+<!-- /projects:commands --><button type="button" data-command="connect">links</button><button type="button" data-command="theme">theme</button><button type="button" data-command="motion">motion</button><button type="button" data-command="ecdsa">ecdsa</button><button type="button" data-command="arcade">arcade</button><button type="button" data-command="blocks">blocks</button><button type="button" data-command="platformer">platformer</button><button type="button" data-command="goku">goku</button><button type="button" data-command="help">help</button></div><p id="command-feedback" role="status">A small set of shortcuts. Try “help”.</p></dialog>
     <dialog id="training-dialog" aria-labelledby="training-title">
-      <div class="training-heading"><img src="/assets/memoji-saiyan.webp" width="512" height="512" alt="" loading="lazy" decoding="async" aria-hidden="true"><h2 id="training-title">training chamber</h2><button type="button" data-training-close aria-label="Close training chamber">esc</button></div>
+      <div class="training-heading"><img src="/assets/memoji-saiyan.webp" width="512" height="512" alt="" loading="lazy" decoding="async" aria-hidden="true"><h2 id="training-title">brick breaker</h2><button type="button" data-training-close aria-label="Close training chamber">esc</button></div>
       <div class="training-hud"><span>power <strong id="training-score">0</strong></span><span>lives <strong id="training-lives">3</strong></span></div>
       <div class="training-stage"><canvas id="training-canvas" width="360" height="480" tabindex="0" aria-label="Dragon Ball brick breaker" aria-describedby="training-instructions training-status"></canvas></div>
       <p id="training-status" role="status" aria-live="polite">ready to train</p>
@@ -211,13 +232,13 @@ output color * (0.35 + 0.65 * glow);</code></pre></div>
       <p id="training-instructions">drag anywhere to guide · arrows or a/d · space to launch · esc to leave</p>
     </dialog>
     <dialog id="arcade-dialog" aria-labelledby="arcade-title">
-      <div class="arcade-heading"><span class="arcade-eyebrow">CAPSULE / TRAINING SYSTEMS</span><button id="arcade-close" type="button" aria-label="Close hidden arcade">esc</button></div>
+      <div class="arcade-heading"><span class="arcade-eyebrow">CAPSULE / POCKET ARCADE</span><button id="arcade-close" type="button" aria-label="Close hidden arcade">esc</button></div>
       <h2 id="arcade-title">ki control</h2>
       <section id="arcade-picker" aria-label="Choose a training game" hidden>
-        <p class="arcade-picker-intro">Three small challenges. Pick your training.</p>
-        <button id="game-pick-breaker" class="game-choice" type="button"><img src="/assets/dragon-ball-1.webp" width="128" height="128" alt="" loading="lazy"><span><strong>brick breaker</strong><small>Guide your ki. Break every shield.</small></span><span aria-hidden="true">↗</span></button>
-        <button id="game-pick-ki" class="game-choice" type="button"><img src="/assets/dragon-ball-4.webp" width="128" height="128" alt="" loading="lazy"><span><strong>ki control</strong><small>Charge, then release at the right moment.</small></span><span aria-hidden="true">↗</span></button>
-        <button id="game-pick-radar" class="game-choice" type="button"><img src="/assets/dragon-ball-7.webp" width="128" height="128" alt="" loading="lazy"><span><strong>radar hunt</strong><small>Follow the clues. Find all seven balls.</small></span><span aria-hidden="true">↗</span></button>
+        <p class="arcade-picker-intro">Pick a cartridge. Play a little.</p>
+        <button id="game-pick-blocks" class="game-choice" data-game="blocks" type="button"><span class="cartridge-art cartridge-blocks" aria-hidden="true"></span><span><strong>block blast</strong><small>Fit the pieces. Clear the lines.</small></span><span aria-hidden="true">↗</span></button>
+        <button id="game-pick-platformer" class="game-choice" data-game="platformer" type="button"><span class="cartridge-art cartridge-platformer" aria-hidden="true"></span><span><strong>goku platformer</strong><small>Run, jump, and follow the Dragon Balls.</small></span><span aria-hidden="true">↗</span></button>
+        <button id="game-pick-breaker" class="game-choice" data-game="breaker" type="button"><span class="cartridge-art cartridge-breaker" aria-hidden="true"></span><span><strong>brick breaker</strong><small>Guide your ki. Break every shield.</small></span><span aria-hidden="true">↗</span></button>
       </section>
       <button id="arcade-back" type="button" hidden>← choose a game</button>
       <p id="arcade-score"></p>
@@ -236,6 +257,8 @@ output color * (0.35 + 0.65 * glow);</code></pre></div>
       <p id="arcade-status" role="status" aria-live="polite" aria-atomic="true"></p>
       <button id="arcade-reset" type="button">start fresh ↻</button>
     </dialog>
+    <dialog id="blocks-dialog" class="console-dialog" aria-labelledby="blocks-title"></dialog>
+    <dialog id="platformer-dialog" class="console-dialog" aria-labelledby="platformer-title"></dialog>
     <dialog id="goku-dialog" aria-labelledby="goku-title">
       <div class="goku-heading"><h2 id="goku-title">goku / the quiet current</h2><button type="button" id="goku-close" aria-label="exit adventure">exit <span aria-hidden="true">[esc]</span></button></div>
       <p id="goku-location"></p>
@@ -245,12 +268,7 @@ output color * (0.35 + 0.65 * glow);</code></pre></div>
       <p id="goku-hint">help · ↑↓ history · tab complete · esc exit</p>
       <p id="goku-status" class="visually-hidden" role="status" aria-live="polite" aria-atomic="true"></p>
     </dialog>
-    <script src="/assets/goku-story.js?v=3fb518d7a5aa" defer></script>
-    <script src="/assets/goku-terminal.js?v=37db70c64821" defer></script>
-    <script src="/assets/goku-adventure.js?v=684f50b0a9ba" defer></script>
-    <script src="/assets/hidden-games.js?v=0cbdd23ca560" defer></script>
-    <script src="/assets/brick-breaker.js?v=e26d59223cc2" defer></script>
-    <script src="/assets/training-chamber.js?v=8f59223fb8e3" defer></script>
+    <script src="/assets/optional-games.js" defer></script>
     <script src="/assets/themes.js?v=b674fe50a97d" defer></script>
     <script src="/script.js?v=191075ebca4d" defer></script>
     <script src="/assets/workspace.js?v=6d177572a449" defer></script>

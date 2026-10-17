@@ -6,7 +6,8 @@
   const entrance = document.getElementById("entrance");
   const workspace = document.getElementById("workspace");
   const panels = new Map(Array.from(document.querySelectorAll("[data-panel]"), (panel) => [panel.dataset.panel, panel]));
-  const routes = ["about", "glassbox", "pixel-language", "architecture-lab", "automata-lab", "ellmiott", "batchline", "evaldeck", "connect"].filter((id) => panels.has(id));
+  const routes = [...panels.keys()];
+  const featuredRoute = entrance?.querySelector("[data-enter]")?.getAttribute("href")?.slice(1);
   const selectors = Array.from(document.querySelectorAll("[data-select]"));
   const themes = ["carbon", "parchment", "phosphor"];
   const dialog = document.getElementById("command-dialog");
@@ -18,22 +19,23 @@
   let navigationRevision = 0;
   let dialogOpener;
   let restoreDialogFocus = true;
-  const aliases = { whoami: "about", links: "connect", projects: "glassbox", pixel: "pixel-language", architecture: "architecture-lab", automata: "automata-lab" };
+  const gameCommands = new Map(Object.entries({ arcade: "choose", blocks: "blocks", platformer: "platformer", goku: "goku",
+    kamehameha: "breaker", training: "breaker", breaker: "breaker", ki: "ki", charge: "ki", radar: "radar", hunt: "radar" }));
+  const aliases = { whoami: "about", links: "connect", projects: featuredRoute };
+  for (const [id, panel] of panels) {
+    for (const alias of (panel.dataset.projectAliases || "").split(" ").filter(Boolean)) aliases[alias] = id;
+  }
   const searchAliases = {
     about: "whoami about elliott profile developer",
-    glassbox: "compiler compilers webassembly wasm typed language",
-    "pixel-language": "pixel graphics shader shaders glsl language compiler",
-    "architecture-lab": "architecture mac macintosh hardware computer memory",
-    "automata-lab": "automata regex regular expression pattern dfa nfa matching compiler",
-    ellmiott: "attention gpt model tokens prediction transformer ai",
-    batchline: "batch batching queue backpressure inference scheduling",
-    evaldeck: "evaluation eval contracts checks regressions baseline answers ai",
     connect: "links github linkedin contact",
     theme: "theme themes colour color colours colors palette",
     motion: "motion animation pause resume",
     ecdsa: "ecdsa elliptic curve signature signing cryptography verification",
     help: "help commands shortcuts keyboard",
     goku: "goku dragon ball adventure story episode",
+    arcade: "arcade games play training",
+    blocks: "blocks block blast puzzle grid",
+    platformer: "platformer goku jump run",
   };
   const normalizeCommand = value => String(value).trim().toLowerCase().replace(/^[:/]\s*/, "").replace(/\s+/g, " ");
   const searchWords = value => normalizeCommand(value).replace(/[^a-z0-9]+/g, " ").trim();
@@ -42,7 +44,7 @@
   const commandRecords = commandButtons.map((button, index) => {
     const command = button.dataset.command;
     const panel = panels.get(command);
-    const label = ({ "pixel-language": "pixel", "architecture-lab": "architecture", "automata-lab": "automata" })[command]
+    const label = panel?.dataset.projectLabel
       || button.textContent.trim().toLowerCase();
     const title = panel?.querySelector("h2")?.textContent.replace(/_$/, "").trim() || label;
     const kind = panel?.querySelector(".project-kind")?.textContent.replace(/^\d+\s*\/\s*/, "").trim().toLowerCase() || "";
@@ -57,7 +59,7 @@
       button.setAttribute("aria-label", `${label}, ${kind}`);
     }
     return { button, command, label, kind, index, title: searchWords(title),
-      names: searchWords(`${command} ${label} ${searchAliases[command] || ""}`),
+      names: searchWords(`${command} ${label} ${panel?.dataset.projectSearch || searchAliases[command] || ""}`),
       details: searchWords(`${kind} ${description}`) };
   });
   let searchResults = commandRecords, activeResult = -1, composingCommand = false;
@@ -77,7 +79,7 @@
 
   function exactCommand(command) {
     return routes.includes(aliases[command] || command) || themeCommands().includes(command)
-      || ["home", "exit", "motion", "ecdsa", "goku", "help", "?", "kamehameha", "training", "breaker", "ki", "charge", "radar", "hunt", "wish", "shenron"].includes(command);
+      || gameCommands.has(command) || ["home", "exit", "motion", "ecdsa", "help", "?", "wish", "shenron"].includes(command);
   }
 
   function rankCommand(record, query) {
@@ -198,7 +200,7 @@
 
   function routeFromHash() {
     const id = window.location.hash.slice(1);
-    if (id === "projects" && routes.includes("about")) return "about";
+    if (id === "projects" && routes.includes(featuredRoute)) return featuredRoute;
     return routes.includes(id) ? id : null;
   }
 
@@ -239,7 +241,7 @@
       if (announcement) announcement.textContent = `${title}, section ${routes.indexOf(id) + 1} of ${routes.length}`;
     }
     const status = document.getElementById("status-view");
-    if (status) { status.textContent = ({ "pixel-language": "pixel", "architecture-lab": "architecture", "automata-lab": "automata" })[id] || id || "entrance"; status.title = id || "entrance"; }
+    if (status) { status.textContent = panels.get(id)?.dataset.projectLabel || id || "entrance"; status.title = id || "entrance"; }
     if (changed) {
       const terminal = workspace.querySelector(".terminal");
       if (terminal) terminal.scrollTop = 0;
@@ -263,7 +265,7 @@
     const startingHash = window.location.hash;
     try {
       await window.PortfolioAnimation?.enter();
-      if (navigationRevision === revision && window.location.hash === startingHash && !activeRoute) navigate("about");
+      if (navigationRevision === revision && window.location.hash === startingHash && !activeRoute) navigate(featuredRoute);
     }
     finally { entering = false; }
   }
@@ -304,9 +306,11 @@
 
   function runCommand(raw) {
     const command = normalizeCommand(raw);
-    if (command === "goku") {
+    if (gameCommands.has(command)) {
       closeCommands(false);
-      window.PortfolioGoku?.open(dialogOpener);
+      // The shared loader owns retries and preserves the original opener even
+      // after a cartridge has replaced its lazy API with the real game API.
+      window.PortfolioGames?.run(gameCommands.get(command), dialogOpener);
       return;
     }
     if (command === "ecdsa") {
@@ -325,16 +329,6 @@
       navigate("about");
       window.PortfolioRadar.summon();
       document.querySelector("[data-radar-summon]")?.focus({ preventScroll: true });
-      return;
-    }
-    if (["kamehameha", "training", "breaker"].includes(command)) {
-      closeCommands(false);
-      window.PortfolioTraining?.open();
-      return;
-    }
-    if (["ki", "charge", "radar", "hunt"].includes(command)) {
-      closeCommands(false);
-      window.PortfolioArcade?.open(["radar", "hunt"].includes(command) ? "radar" : "ki", dialogOpener);
       return;
     }
     const route = Object.hasOwn(aliases, command) ? aliases[command] : command;
@@ -365,7 +359,7 @@
       say(`Animation ${motion === "paused" ? "paused" : "running"}.`);
     } else if (command === "help" || command === "?") {
       if (help) help.hidden = !help.hidden;
-      say("Commands: about, projects, glassbox, pixel, architecture, automata, ellmiott, batchline, evaldeck, connect, home, theme, light, dark, motion, ecdsa, goku, help. Use arrow keys on the wheel or j/k to browse sections; Home/End select its first/last item. Escape returns home.");
+      say(`Commands: projects, ${routes.join(", ")}, home, theme, light, dark, motion, ecdsa, arcade, blocks, platformer, goku, help. Use arrow keys on the wheel or j/k to browse sections; Home/End select its first/last item. Escape returns home.`);
     } else {
       say(command ? "Unknown command. Type help to see the available commands." : "Enter a command, such as about or theme.");
     }
@@ -431,10 +425,10 @@
   }));
   document.querySelectorAll("[data-enter], [data-home]").forEach((link) => link.addEventListener("click", (event) => {
     if (event.button !== 0 || event.metaKey || event.ctrlKey || event.shiftKey || event.altKey) return;
-    const id = link.hasAttribute("data-home") ? null : "about";
+    const id = link.hasAttribute("data-home") ? null : featuredRoute;
     if (id && !routes.includes(id)) return;
     event.preventDefault();
-    if (id === "about" && !activeRoute) enterWorkspace();
+    if (id === featuredRoute && !activeRoute) enterWorkspace();
     else navigate(id);
   }));
 
@@ -452,7 +446,7 @@
   });
   document.addEventListener("keydown", (event) => {
     if (event.defaultPrevented || event.isComposing || event.ctrlKey || event.metaKey || event.altKey) return;
-    if (document.getElementById("theme-dialog")?.open || document.getElementById("training-dialog")?.open || document.getElementById("arcade-dialog")?.open || document.getElementById("goku-dialog")?.open) return;
+    if (document.querySelector("dialog[open]") && !dialog?.open) return;
     if (dialog?.open) {
       if (event.key === "Escape" && typeof dialog.close !== "function") {
         event.preventDefault();
