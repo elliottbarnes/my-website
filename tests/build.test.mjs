@@ -34,7 +34,7 @@ test("build publishes the complete allowlist and excludes notes and image master
     await writeFile(join(root, file), "not for publication");
   }
   const destination = await buildSite({ root });
-  assert.equal(PUBLIC_FILES.length, 41);
+  assert.equal(PUBLIC_FILES.length, 43);
   assert.ok(!PUBLIC_FILES.some((file) => /interactive|prism|toolkit|handheld|controller/.test(file)));
   assert.deepEqual(VERSIONED_FILES, PUBLIC_FILES.filter((file) => /\.(?:css|js)$/.test(file)));
   assert.deepEqual(await inspectPublicTree(destination), [...PUBLIC_FILES].sort());

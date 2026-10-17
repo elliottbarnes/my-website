@@ -100,10 +100,11 @@ function setup({ unlocked = false } = {}) {
     querySelector: selector => root.querySelector(selector),
     getElementById: id => root.querySelector(`#${id}`), createElement: tag => new Node(tag),
   });
-  const calls = { training: 0, summons: 0, themes: [], ecdsa: [] };
+  const calls = { training: 0, goku: [], summons: 0, themes: [], ecdsa: [] };
   const window = new Node("window");
   Object.assign(window, { location: { hash: "" }, localStorage: { getItem: () => null, setItem() {} },
     matchMedia: () => ({ matches: false, addEventListener() {} }), scrollTo() {}, dispatchEvent() {},
+    PortfolioGoku: { open: trigger => calls.goku.push(trigger) },
     PortfolioTraining: { open: () => { calls.training++; } },
     PortfolioAnimation: { openECDSA: () => calls.ecdsa.push({ dialogOpen: dialog.open, view: root.dataset.view, hash: window.location.hash }) },
     PortfolioRadar: { unlocked, summon: () => { calls.summons++; return unlocked; } },
@@ -145,7 +146,7 @@ test("prefixes, multiword queries, deterministic ranking, and arrow selection ch
 
 test("empty input retains ordinary buttons and deliberate arrow selection can be submitted", () => {
   const page = setup();
-  assert.equal(page.visible().length, 13);
+  assert.equal(page.visible().length, 14);
   assert.equal(page.results.dataset.searching, "false");
   assert.ok(page.visible().every(button => button.dataset.searchActive === "false"));
   page.key("ArrowDown"); page.submit();
@@ -213,7 +214,7 @@ test("native Tab order matches ranked search results and resets with the empty q
     page.visible().map(button => button.dataset.command));
   page.search("");
   assert.deepEqual(page.results.children.map(button => button.dataset.command), original);
-  assert.equal(page.results.children.length, 13, "existing buttons are moved, never duplicated");
+  assert.equal(page.results.children.length, 14, "existing buttons are moved, never duplicated");
 });
 
 test("native button focus synchronizes the highlighted and announced result without moving its DOM node", () => {
@@ -259,4 +260,17 @@ test("ECDSA search and exact commands open the experiment only after dismissing 
   clicked.visible().find(button => button.dataset.command === "ecdsa").emit("click");
   assert.equal(clicked.calls.ecdsa.length, 1);
   assert.equal(clicked.calls.ecdsa[0].dialogOpen, false);
+});
+
+test("goku is discoverable and exact normalized commands preserve the original opener", () => {
+  for (const command of ["goku", ":GOKU", "/goku"]) {
+    const page = setup(); page.search(command); page.submit();
+    assert.equal(page.dialog.open, false);
+    assert.deepEqual(page.calls.goku, [page.opener]);
+    assert.equal(page.window.location.hash, "");
+  }
+  const page = setup(); page.search("adventure");
+  assert.equal(page.visible()[0].dataset.command, "goku");
+  page.visible()[0].emit("click"); assert.deepEqual(page.calls.goku, [page.opener]);
+  const help = setup(); help.search("help"); help.submit(); assert.match(help.feedback.textContent, /goku/);
 });
