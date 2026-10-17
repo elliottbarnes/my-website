@@ -91,7 +91,7 @@ test("changed bytes and cache metadata upload conditionally with exact invalidat
 });
 
 test("new immutable paths require confirmed absence and create-only writes", async t => {
-  const result = await deployFixture(t, (state, manifest) => { delete state.objects[manifest.assets["assets/block-blast.js"].path]; });
+  const result = await deployFixture(t, (state, manifest) => { delete state.objects[manifest.assets["assets/piccolo-lookout.js"].path]; });
   assert.equal(result.status, 0, result.stderr + result.stdout);
   const uploads = result.state.events.filter(event => event.op === "put-object");
   assert.equal(uploads.length, 1); assert.ok(uploads[0].args.includes("--if-none-match"));
@@ -102,7 +102,7 @@ test("new immutable paths require confirmed absence and create-only writes", asy
 });
 
 test("immutable checksum conflicts abort during snapshot before any upload", async t => {
-  const result = await deployFixture(t, (state, manifest) => { state.objects[manifest.assets["assets/block-blast.js"].path].ChecksumSHA256 = "different"; });
+  const result = await deployFixture(t, (state, manifest) => { state.objects[manifest.assets["assets/piccolo-lookout.js"].path].ChecksumSHA256 = "different"; });
   assert.notEqual(result.status, 0);
   assert.match(result.stderr, /Refusing mismatched or unverifiable immutable asset/);
   assert.ok(!result.state.events.some(event => event.op === "put-object"));

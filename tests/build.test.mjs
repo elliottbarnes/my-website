@@ -55,7 +55,7 @@ test("build rewrites CSS fonts, HTML images, and lazy script/style dependency UR
   assert.ok(css.includes('/' + manifest.assets["assets/fonts/IBMPlexMono-Regular.woff2"].path));
   assert.ok(html.includes('/' + manifest.assets["assets/dragon-ball.png"].path));
   const loader = await readFile(path("assets/optional-games.js"), "utf8");
-  for (const source of ["assets/block-blast.js", "assets/goku-platformer.js", "assets/arcade.css"]) {
+  for (const source of ["assets/piccolo-lookout.js", "assets/piccolo.css", "assets/goku-platformer.js", "assets/goku-platformer.css", "assets/arcade.css"]) {
     assert.ok(loader.includes('/' + manifest.assets[source].path), source);
     assert.ok(!html.includes('/' + manifest.assets[source].path), `${source} must load on demand`);
   }
@@ -70,13 +70,13 @@ test("build rewrites CSS fonts, HTML images, and lazy script/style dependency UR
 
 test("nested changes alter dependent filenames while unrelated assets stay stable", async t => {
   const { root, directory, manifest } = await built(t);
-  await writeFile(join(root, "assets/block-blast.js"), await readFile(join(root, "assets/block-blast.js"), "utf8") + "\n// revision\n");
+  await writeFile(join(root, "assets/piccolo-lookout.js"), await readFile(join(root, "assets/piccolo-lookout.js"), "utf8") + "\n// revision\n");
   await buildSite({ root });
   const next = await readArtifactManifest(directory);
-  for (const file of ["assets/block-blast.js", "assets/optional-games.js"]) assert.notEqual(next.assets[file].path, manifest.assets[file].path);
+  for (const file of ["assets/piccolo-lookout.js", "assets/optional-games.js"]) assert.notEqual(next.assets[file].path, manifest.assets[file].path);
   assert.notEqual(next.assets["index.html"].sha256, manifest.assets["index.html"].sha256);
   assert.equal(next.assets["assets/dragon-ball.png"].path, manifest.assets["assets/dragon-ball.png"].path);
-  await assert.rejects(readFile(join(directory, manifest.assets["assets/block-blast.js"].path)), { code: "ENOENT" });
+  await assert.rejects(readFile(join(directory, manifest.assets["assets/piccolo-lookout.js"].path)), { code: "ENOENT" });
   await verifySite(directory, { sourceRoot: root });
 });
 
@@ -129,9 +129,9 @@ test("source and output directory/file/manifest symlinks are rejected", async t 
 test("artifact verification catches tampering, source drift, missing assets, and unsafe manifest paths", async t => {
   for (const kind of ["tamper", "source", "missing", "manifest", "sidecar"]) {
     const { root, directory, manifest, path } = await built(t);
-    if (kind === "tamper") await writeFile(path("assets/block-blast.js"), "tampered");
+    if (kind === "tamper") await writeFile(path("assets/piccolo-lookout.js"), "tampered");
     if (kind === "source") await writeFile(join(root, "styles.css"), "body { color: red }");
-    if (kind === "missing") await rm(path("assets/block-blast.js"));
+    if (kind === "missing") await rm(path("assets/piccolo-lookout.js"));
     if (kind === "manifest") { manifest.assets["styles.css"].path = "../private.css"; await writeFile(manifestPath(directory), JSON.stringify(manifest)); }
     if (kind === "sidecar") await rm(manifestPath(directory));
     await assert.rejects(verifySite(directory, { sourceRoot: root }), /hash mismatch|differs from source|Missing public|Invalid artifact|requires its private manifest/);
@@ -165,8 +165,23 @@ test("source validation catches broken references, metadata, and eager script at
 
 test("build preserves descriptive text and external source URLs", async t => {
   const root = await fixture(t);
-  const suffix = '\nconst label = "assets are at /assets/block-blast.js";\nconst external = "https://example.com/assets/block-blast.js";\n';
-  await writeFile(join(root, "assets/block-blast.js"), await readFile(join(root, "assets/block-blast.js"), "utf8") + suffix);
+  const suffix = '\nconst label = "assets are at /assets/piccolo-lookout.js";\nconst external = "https://example.com/assets/piccolo-lookout.js";\n';
+  await writeFile(join(root, "assets/piccolo-lookout.js"), await readFile(join(root, "assets/piccolo-lookout.js"), "utf8") + suffix);
   const directory = await buildSite({ root }), manifest = await readArtifactManifest(directory);
-  assert.ok((await readFile(join(directory, manifest.assets["assets/block-blast.js"].path), "utf8")).endsWith(suffix));
+  assert.ok((await readFile(join(directory, manifest.assets["assets/piccolo-lookout.js"].path), "utf8")).endsWith(suffix));
+});
+
+test("changing a cartridge stylesheet updates its lazy loader and entrypoint without changing other games", async t => {
+  const { root, directory, manifest } = await built(t);
+  const css = "assets/piccolo.css";
+  await writeFile(join(root, css), await readFile(join(root, css), "utf8") + "\n/* cartridge revision */\n");
+  await buildSite({ root });
+  const next = await readArtifactManifest(directory);
+  assert.notEqual(next.assets[css].path, manifest.assets[css].path);
+  assert.notEqual(next.assets["assets/optional-games.js"].path, manifest.assets["assets/optional-games.js"].path);
+  assert.notEqual(next.assets["index.html"].sha256, manifest.assets["index.html"].sha256);
+  for (const source of ["assets/piccolo-lookout.js", "assets/goku-platformer.js", "assets/goku-platformer.css", "assets/brick-breaker.js", "assets/training-chamber.js"]) {
+    assert.equal(next.assets[source].path, manifest.assets[source].path, source);
+  }
+  await verifySite(directory, { sourceRoot: root });
 });

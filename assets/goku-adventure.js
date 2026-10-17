@@ -13,7 +13,7 @@
   const form = document.getElementById("goku-form");
   let state = story.create(), opener = null, composing = false, confirming = false;
   let renderRevision = 0, started = false, history = [], historyIndex = 0, draft = "", inspection = false;
-  const otherGameOpen = () => ["training-dialog", "arcade-dialog", "blocks-dialog", "platformer-dialog", "game-loading-dialog"].some(id => document.getElementById(id)?.open);
+  const otherGameOpen = () => ["training-dialog", "arcade-dialog", "piccolo-dialog", "platformer-dialog", "game-loading-dialog"].some(id => document.getElementById(id)?.open);
   const announce = text => { status.textContent = text; };
   const element = (tag, text, className) => {
     const node = document.createElement(tag); node.textContent = text;

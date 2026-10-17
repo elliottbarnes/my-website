@@ -511,7 +511,7 @@
   function cleanup() {
     stop(); keys.clear(); releasePointer(); clearEffects();
     if (dialog.open) return;
-    const arcadeOpen = ["arcade-dialog", "blocks-dialog", "platformer-dialog", "goku-dialog", "game-loading-dialog"].some(id => document.getElementById(id)?.open);
+    const arcadeOpen = ["arcade-dialog", "piccolo-dialog", "platformer-dialog", "goku-dialog", "game-loading-dialog"].some(id => document.getElementById(id)?.open);
     if (!arcadeOpen) opener?.focus?.({ preventScroll: true });
     opener = null;
     if (!arcadeOpen) delete root.dataset.training;

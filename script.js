@@ -19,7 +19,7 @@
   let navigationRevision = 0;
   let dialogOpener;
   let restoreDialogFocus = true;
-  const gameCommands = new Map(Object.entries({ arcade: "choose", blocks: "blocks", platformer: "platformer", goku: "goku",
+  const gameCommands = new Map(Object.entries({ arcade: "choose", piccolo: "piccolo", platformer: "platformer", goku: "goku",
     kamehameha: "breaker", training: "breaker", breaker: "breaker", ki: "ki", charge: "ki", radar: "radar", hunt: "radar" }));
   const aliases = { whoami: "about", links: "connect", projects: featuredRoute };
   for (const [id, panel] of panels) {
@@ -34,7 +34,7 @@
     help: "help commands shortcuts keyboard",
     goku: "goku dragon ball adventure story episode",
     arcade: "arcade games play training",
-    blocks: "blocks block blast puzzle grid",
+    piccolo: "piccolo lookout handheld training target aim",
     platformer: "platformer goku jump run",
   };
   const normalizeCommand = value => String(value).trim().toLowerCase().replace(/^[:/]\s*/, "").replace(/\s+/g, " ");
@@ -359,7 +359,7 @@
       say(`Animation ${motion === "paused" ? "paused" : "running"}.`);
     } else if (command === "help" || command === "?") {
       if (help) help.hidden = !help.hidden;
-      say(`Commands: projects, ${routes.join(", ")}, home, theme, light, dark, motion, ecdsa, arcade, blocks, platformer, goku, help. Use arrow keys on the wheel or j/k to browse sections; Home/End select its first/last item. Escape returns home.`);
+      say(`Commands: projects, ${routes.join(", ")}, home, theme, light, dark, motion, ecdsa, arcade, piccolo, platformer, goku, help. Use arrow keys on the wheel or j/k to browse sections; Home/End select its first/last item. Escape returns home.`);
     } else {
       say(command ? "Unknown command. Type help to see the available commands." : "Enter a command, such as about or theme.");
     }

@@ -45,7 +45,7 @@ test("live checks every exact immutable URL including lazy assets, roots, redire
     assert.equal(result.sha256[key], digest(bytes));
     assert.equal(requests.filter(url => url === `${origin}/${key}`).length, 1);
   }
-  for (const source of ["assets/block-blast.js", "assets/goku-platformer.js", "assets/arcade.css"]) assert.equal(result.versioned_assets['/' + asset(source)], digest(files.get(asset(source))));
+  for (const source of ["assets/piccolo-lookout.js", "assets/piccolo.css", "assets/goku-platformer.js", "assets/goku-platformer.css", "assets/arcade.css"]) assert.equal(result.versioned_assets['/' + asset(source)], digest(files.get(asset(source))));
   assert.equal(result.redirects.length, 3);
   assert.equal(requests.filter(url => url === origin + '/').length, 4);
   assert.equal(result.not_found.status, 404); assert.match(result.not_found.path, missingPath);

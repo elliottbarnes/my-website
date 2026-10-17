@@ -293,7 +293,7 @@ test("explore projects and the projects command open the featured project", asyn
 });
 
 test("arcade commands hand off to the lazy loader after closing the command menu", () => {
-  for (const [command, mode] of Object.entries({ arcade: "choose", blocks: "blocks", platformer: "platformer", goku: "goku", kamehameha: "breaker", training: "breaker", breaker: "breaker", ki: "ki", charge: "ki", radar: "radar", hunt: "radar" })) {
+  for (const [command, mode] of Object.entries({ arcade: "choose", piccolo: "piccolo", platformer: "platformer", goku: "goku", kamehameha: "breaker", training: "breaker", breaker: "breaker", ki: "ki", charge: "ki", radar: "radar", hunt: "radar" })) {
     const page = setup(); page.search(command); page.submit();
     assert.equal(page.dialog.open, false);
     assert.equal(page.calls.games.length, 1);

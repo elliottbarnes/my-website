@@ -2,15 +2,16 @@
 (() => {
   'use strict';
   const root = document.documentElement;
-  const scripts = new Map();
-  let styles, request = 0, opener, lastMode;
-  const ids = ['arcade-dialog', 'training-dialog', 'blocks-dialog', 'platformer-dialog', 'goku-dialog'];
+  const scripts = new Map(), styles = new Map();
+  let request = 0, opener, lastMode;
+  const ids = ['arcade-dialog', 'training-dialog', 'piccolo-dialog', 'platformer-dialog', 'goku-dialog'];
   const paths = {
     choose: ['/assets/hidden-games.js'], ki: ['/assets/hidden-games.js'], radar: ['/assets/hidden-games.js'],
-    blocks: ['/assets/block-blast.js'], platformer: ['/assets/goku-platformer.js'],
+    piccolo: ['/assets/piccolo-lookout.js'], platformer: ['/assets/goku-platformer.js'],
     breaker: ['/assets/brick-breaker.js', '/assets/training-chamber.js'],
     goku: ['/assets/goku-story.js', '/assets/goku-terminal.js', '/assets/goku-adventure.js'],
   };
+  const stylePaths = { piccolo: ['/assets/piccolo.css'], platformer: ['/assets/goku-platformer.css'] };
   const loading = document.createElement('dialog');
   loading.id = 'game-loading-dialog'; loading.className = 'arcade-loading';
   loading.setAttribute('aria-labelledby', 'game-loading-title');
@@ -33,14 +34,14 @@
   loading.querySelector('[data-game-dismiss]').addEventListener('click', dismiss);
   loading.addEventListener('cancel', event => { event.preventDefault(); event.stopPropagation(); dismiss(); });
   retry.addEventListener('click', () => { open(lastMode, opener).catch(() => {}); });
-  function loadStyle() {
-    if (!styles) styles = new Promise((resolve, reject) => {
-      const link = document.createElement('link'); link.rel = 'stylesheet'; link.href = '/assets/arcade.css';
+  function loadStyle(path) {
+    if (!styles.has(path)) styles.set(path, new Promise((resolve, reject) => {
+      const link = document.createElement('link'); link.rel = 'stylesheet'; link.href = path;
       link.onload = resolve;
-      link.onerror = () => { link.remove(); styles = null; reject(new Error('Arcade styles could not load.')); };
+      link.onerror = () => { link.remove(); styles.delete(path); reject(new Error('Cartridge styles could not load.')); };
       document.head.append(link);
-    });
-    return styles;
+    }));
+    return styles.get(path);
   }
   function loadScript(path) {
     if (!scripts.has(path)) scripts.set(path, new Promise((resolve, reject) => {
@@ -61,11 +62,12 @@
     // Stop a running cartridge immediately, even on slow/offline connections.
     for (const id of ids) { const dialog = document.getElementById(id); if (dialog?.open) dialog.close(); }
     try {
-      await loadStyle();
+      await loadStyle('/assets/arcade.css');
       if (token !== request) return false;
+      for (const path of stylePaths[mode] || []) { await loadStyle(path); if (token !== request) return false; }
       for (const path of paths[mode]) { await loadScript(path); if (token !== request) return false; }
       if (token !== request) return false;
-      const api = mode === 'breaker' ? window.PortfolioTraining : mode === 'blocks' ? window.PortfolioBlocks : mode === 'platformer' ? window.PortfolioPlatformer : mode === 'goku' ? window.PortfolioGoku : window.PortfolioArcade;
+      const api = mode === 'breaker' ? window.PortfolioTraining : mode === 'piccolo' ? window.PortfolioPiccolo : mode === 'platformer' ? window.PortfolioPlatformer : mode === 'goku' ? window.PortfolioGoku : window.PortfolioArcade;
       if (!api || api.lazy) throw new Error('The cartridge could not start.');
       // Keep one modal active and the original footer/command trigger through handoffs.
       for (const id of ids) { const dialog = document.getElementById(id); if (dialog?.open) dialog.close(); }

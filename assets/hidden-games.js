@@ -150,9 +150,9 @@
     window.dispatchEvent(new CustomEvent('portfolio:training', { detail: { open: true } }));
     focusGame();
   }
-  function focusGame() { (mode === 'choose' ? (document.getElementById('game-pick-blocks') || document.getElementById('game-pick-breaker')) : mode === 'ki' ? action : grid.children[0]).focus(); }
-  for (const game of ['breaker', 'blocks', 'platformer', 'ki', 'radar']) document.getElementById(`game-pick-${game}`)?.addEventListener('click', () => {
-    if (['breaker', 'blocks', 'platformer'].includes(game)) {
+  function focusGame() { (mode === 'choose' ? (document.getElementById('game-pick-piccolo') || document.getElementById('game-pick-breaker')) : mode === 'ki' ? action : grid.children[0]).focus(); }
+  for (const game of ['breaker', 'piccolo', 'platformer', 'ki', 'radar']) document.getElementById(`game-pick-${game}`)?.addEventListener('click', () => {
+    if (['breaker', 'piccolo', 'platformer'].includes(game)) {
       if (window.PortfolioGames) window.PortfolioGames.run(game, opener);
       else if (game === 'breaker') { const trigger = opener; dialog.close(); window.PortfolioTraining?.open(trigger); }
     } else { select(game); focusGame(); }
@@ -176,7 +176,7 @@
   document.getElementById('arcade-close').addEventListener('click', () => dialog.close());
   dialog.addEventListener('close', () => {
     if (dialog.open) return;
-    stop(); const trainingOpen = ['training-dialog', 'blocks-dialog', 'platformer-dialog', 'goku-dialog', 'game-loading-dialog'].some(id => document.getElementById(id)?.open);
+    stop(); const trainingOpen = ['training-dialog', 'piccolo-dialog', 'platformer-dialog', 'goku-dialog', 'game-loading-dialog'].some(id => document.getElementById(id)?.open);
     if (!trainingOpen) delete root.dataset.training;
     window.dispatchEvent(new CustomEvent('portfolio:training', { detail: { open: trainingOpen } }));
     if (!trainingOpen && opener?.isConnected) opener.focus({ preventScroll: true });
