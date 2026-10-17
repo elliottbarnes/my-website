@@ -25,7 +25,7 @@
     <link rel="apple-touch-icon" href="/assets/dragon-ball.png" type="image/png" sizes="256x256">
     <link rel="manifest" href="/site.webmanifest">
     <link rel="preload" href="/assets/fonts/IBMPlexMono-Regular.ttf" as="font" type="font/ttf" crossorigin>
-    <link rel="stylesheet" href="/styles.css?v=d96c5bc56089">
+    <link rel="stylesheet" href="/styles.css?v=a9779f8de83c">
     <link rel="stylesheet" href="/assets/themes.css?v=07412e345894">
     <script type="application/ld+json">
       {
@@ -237,20 +237,17 @@ output color * (0.35 + 0.65 * glow);</code></pre></div>
       <button id="arcade-reset" type="button">start fresh ↻</button>
     </dialog>
     <dialog id="goku-dialog" aria-labelledby="goku-title">
-      <div class="goku-heading"><div><p class="goku-kicker">goku / an original fan episode</p><h2 id="goku-title">the quiet current</h2></div><button type="button" id="goku-close">exit</button></div>
-      <div class="goku-meta"><p id="goku-objective"></p><p id="goku-progress"></p></div>
-      <div id="goku-scroll">
-        <section id="goku-scene" tabindex="-1" aria-labelledby="goku-scene-title">
-          <h3 id="goku-scene-title"></h3><div id="goku-prose"></div><p id="goku-memory"></p><div id="goku-choices"></div>
-        </section>
-        <details id="goku-journal"><summary>journal</summary><ol id="goku-history"></ol></details>
-      </div>
-      <p id="goku-status" role="status" aria-live="polite" aria-atomic="true"></p>
-      <form id="goku-form"><label for="goku-input">type an action or choose above</label><div class="goku-command-row"><span aria-hidden="true">&gt;</span><input id="goku-input" type="text" maxlength="64" autocomplete="off" autocapitalize="off" spellcheck="false" enterkeyhint="go" aria-describedby="goku-status"><button type="submit">run ↵</button></div></form>
-      <nav class="goku-tools" aria-label="episode controls"><button type="button" id="goku-help">help</button><button type="button" id="goku-restart">restart</button><span>progress stays until this page closes</span></nav>
+      <div class="goku-heading"><h2 id="goku-title">goku / the quiet current</h2><button type="button" id="goku-close" aria-label="exit adventure">exit <span aria-hidden="true">[esc]</span></button></div>
+      <p id="goku-location"></p>
+      <div id="goku-output" tabindex="0" role="region" aria-label="adventure transcript"><div id="goku-transcript"></div></div>
+      <nav id="goku-choices" aria-label="available commands"></nav>
+      <form id="goku-form"><label for="goku-input" class="visually-hidden">adventure command</label><div class="goku-command-row"><span aria-hidden="true">&gt;</span><input id="goku-input" type="text" maxlength="64" autocomplete="off" autocapitalize="off" spellcheck="false" enterkeyhint="go" placeholder="type a command" aria-describedby="goku-hint"><button type="submit" aria-label="run adventure command">return ↵</button></div></form>
+      <p id="goku-hint">help · ↑↓ history · tab complete · esc exit</p>
+      <p id="goku-status" class="visually-hidden" role="status" aria-live="polite" aria-atomic="true"></p>
     </dialog>
     <script src="/assets/goku-story.js?v=3fb518d7a5aa" defer></script>
-    <script src="/assets/goku-adventure.js?v=6684229cecc4" defer></script>
+    <script src="/assets/goku-terminal.js?v=37db70c64821" defer></script>
+    <script src="/assets/goku-adventure.js?v=684f50b0a9ba" defer></script>
     <script src="/assets/hidden-games.js?v=0cbdd23ca560" defer></script>
     <script src="/assets/brick-breaker.js?v=e26d59223cc2" defer></script>
     <script src="/assets/training-chamber.js?v=8f59223fb8e3" defer></script>

@@ -477,47 +477,32 @@ html.is-leaving .entrance-intro{opacity:0;transition:opacity .25s}
 @media(max-width:600px){.ecdsa-controls>span{width:100%}}
 @media(max-width:380px){.ecdsa-controls{gap:3px}.ecdsa-controls button{padding-inline:5px}.ecdsa-controls>span{width:100%}}
 
-/* One reading surface; the episode's choices remain native controls. */
-#goku-dialog{width:min(720px,calc(100% - 24px));max-height:calc(100dvh - 24px);margin:auto;padding:22px;background:var(--paper);color:var(--ink);border:1px solid var(--line);border-radius:6px;overflow:auto;overscroll-behavior:contain}
-#goku-dialog[open]{display:flex;flex-direction:column;gap:16px}
-#goku-dialog::backdrop{background:#020610df}
-.goku-heading{display:flex;align-items:flex-start;justify-content:space-between;gap:12px;flex-shrink:0}
-#goku-dialog h2{margin:5px 0 0;font-size:22px;font-weight:400;letter-spacing:-.5px;color:var(--accent)}
-.goku-kicker{font-size:10px;color:var(--muted)}
-#goku-dialog button{min-height:44px;padding:8px 12px;border:1px solid var(--line);border-radius:3px;font-size:12px}
-#goku-dialog button:hover{border-color:var(--accent);background:var(--panel)}
-#goku-dialog button:focus-visible,#goku-journal summary:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
-.goku-meta{flex-shrink:0;border-block:1px solid var(--line);padding:12px 0;font-size:11px;line-height:1.7;color:var(--muted)}
-#goku-objective{color:var(--highlight)}
-#goku-progress{margin-top:4px}
-#goku-scroll{overflow:auto;overscroll-behavior:contain;min-height:100px;scrollbar-color:var(--line) transparent;padding:2px 4px 6px 2px}
-#goku-scene:focus{outline:none}
-#goku-scene h3{font-size:12px;font-weight:400;color:var(--accent);margin-bottom:15px}
-#goku-prose{font-size:14px;line-height:1.85;overflow-wrap:break-word}
-#goku-prose p+p{margin-top:16px}
-#goku-memory{font-size:11px;line-height:1.8;color:var(--highlight);border-left:2px solid var(--line);padding-left:12px;margin-top:18px}
-#goku-choices{display:grid;gap:10px;margin-top:22px}
-#goku-dialog .goku-choice{display:grid;grid-template-columns:76px minmax(0,1fr);gap:5px 12px;width:100%;text-align:left;padding:14px;background:var(--panel)}
-.goku-choice-command{grid-row:span 2;color:var(--accent);font-size:13px}
-.goku-choice-command:before{content:"> ";color:var(--muted)}
-.goku-choice-label{font-size:12px}
-.goku-choice-detail{font-size:11px;line-height:1.7;color:var(--muted)}
-#goku-journal{border-top:1px solid var(--line);margin-top:24px;font-size:11px;color:var(--muted)}
-#goku-journal summary{cursor:pointer;min-height:44px;padding:14px 0;color:var(--ink)}
-#goku-history{margin:0;padding-left:22px;line-height:1.7}
-#goku-history li{padding-bottom:16px}
-#goku-history h4{margin:0 0 5px;font-size:11px;color:var(--accent);font-weight:400}
-#goku-history p+p{margin-top:5px}
-#goku-status{flex-shrink:0;font-size:10px;line-height:1.7;color:var(--highlight);max-height:65px;overflow:auto}
-#goku-form{flex-shrink:0}
-#goku-form label{display:block;font-size:10px;color:var(--muted);margin-bottom:6px}
-.goku-command-row{display:flex;align-items:center;gap:10px;border-bottom:1px solid var(--line)}
-.goku-command-row>span{color:var(--accent)}
-#goku-input{width:100%;min-width:0;min-height:44px;border:0;background:transparent;color:var(--ink);font-size:16px;border-radius:0}
-#goku-input:focus-visible{outline-offset:-2px}
+/* A command-driven amber terminal, isolated from the portfolio palette. */
+#goku-dialog{--terminal-ink:#ffd394;--terminal-muted:#b8a68b;--terminal-line:#51432f;width:min(820px,calc(100% - 24px));height:min(790px,calc(100dvh - 24px));max-height:calc(100dvh - 24px);padding:16px 20px;margin:auto;border:1px solid var(--terminal-line);border-radius:2px;background:#090b0a;color:var(--terminal-ink);color-scheme:dark;overflow:hidden;box-shadow:0 0 40px #0009;text-shadow:0 0 8px #ffba3d14}
+#goku-dialog[open]{display:grid;grid-template-rows:auto auto minmax(0,1fr) auto auto auto;gap:8px}
+#goku-dialog::backdrop{background:#020403ed}
+.goku-heading{display:flex;align-items:center;justify-content:space-between;gap:10px;border-bottom:1px solid var(--terminal-line);padding-bottom:6px}
+#goku-title{font-size:13px;font-weight:400;letter-spacing:0;line-height:1.6;margin:0}
+#goku-dialog button{font:inherit;font-size:12px;min-height:44px;padding:8px 10px;color:var(--terminal-ink);border:1px solid transparent;border-radius:0}
+#goku-dialog button:hover{background:#221c12;border-color:var(--terminal-line)}
+#goku-dialog button:focus-visible,#goku-input:focus-visible,#goku-output:focus-visible{outline:1px solid var(--terminal-ink);outline-offset:-2px}
+#goku-close{white-space:nowrap}
+#goku-close span{color:var(--terminal-muted)}
+#goku-location{font-size:11px;color:var(--terminal-muted);padding:4px 0;line-height:1.6}
+#goku-output{overflow:auto;overscroll-behavior:contain;scrollbar-width:thin;scrollbar-color:var(--terminal-line) transparent;padding:10px 8px 14px 0;line-height:1.75;font-size:13px;overflow-wrap:anywhere}
+#goku-output:focus:not(:focus-visible){outline:none}
+.goku-entry+.goku-entry{margin-top:24px}
+.goku-echo{color:#f9ebd2;margin-bottom:10px}
+.goku-room-title{font-weight:400;font-size:12px;line-height:1.6;margin:0 0 8px;color:var(--terminal-muted)}
+.goku-ascii,.goku-map{font-family:var(--mono);font-weight:400;font-size:12px;line-height:1.2;white-space:pre;overflow-wrap:normal;margin:12px 0 18px;color:var(--terminal-ink)}
+.goku-reply+.goku-reply{margin-top:12px}
+#goku-choices{display:flex;gap:4px;flex-wrap:wrap;max-height:96px;overflow:auto;border-top:1px solid var(--terminal-line);padding-top:4px;scrollbar-width:thin}
+#goku-dialog .goku-shortcut{padding:7px 9px;text-decoration:underline;text-decoration-color:var(--terminal-line);text-underline-offset:5px}
+.goku-command-row{display:flex;align-items:center;gap:8px;border-top:1px solid var(--terminal-line);border-bottom:1px solid var(--terminal-line)}
+.goku-command-row>span{font-size:17px}
+#goku-input{font-family:var(--mono);width:100%;min-width:0;min-height:46px;font-size:16px;background:transparent;color:var(--terminal-ink);border:0;border-radius:0;caret-color:var(--terminal-ink)}
+#goku-input::placeholder{color:var(--terminal-muted);font-size:12px;opacity:1}
 .goku-command-row button{flex-shrink:0}
-.goku-tools{display:flex;align-items:center;gap:12px;flex-wrap:wrap;flex-shrink:0}
-#goku-dialog .goku-tools button{padding:0 5px;border-color:transparent;color:var(--muted)}
-.goku-tools span{font-size:9px;color:var(--muted);margin-left:auto}
-@media(max-width:480px){#goku-dialog{padding:14px;gap:12px}#goku-dialog h2{font-size:19px}.goku-tools span{width:100%;margin:0}#goku-prose{font-size:13px}#goku-dialog .goku-choice{grid-template-columns:1fr;gap:6px}.goku-choice-command{grid-row:auto}#goku-status{max-height:50px}}
-@media(max-height:650px){#goku-dialog[open]{display:block;max-height:calc(100dvh - 16px);padding:12px}#goku-scroll{overflow:visible;margin:14px 0}.goku-meta{margin-top:10px}.goku-tools{margin-top:8px}#goku-status{max-height:none;margin:12px 0}}
+#goku-hint{font-size:9px;line-height:1.6;color:var(--terminal-muted)}
+@media(max-width:480px){#goku-dialog{width:calc(100% - 12px);height:calc(100dvh - 12px);max-height:calc(100dvh - 12px);padding:10px 12px;gap:5px}#goku-title{font-size:11px}#goku-close span{display:none}#goku-output{font-size:12px;padding-right:3px}.goku-ascii,.goku-map{font-size:11px}#goku-dialog .goku-shortcut{font-size:11px;padding-inline:8px}#goku-dialog .goku-command-row button{font-size:11px;padding-inline:7px}}
+@media(max-height:480px){#goku-dialog{height:calc(100dvh - 8px);max-height:calc(100dvh - 8px);padding:4px 12px;gap:2px}.goku-heading{padding:0}#goku-location{padding:0}#goku-hint{display:none}#goku-dialog[open]{grid-template-rows:auto auto minmax(0,1fr) auto auto}#goku-choices{max-height:48px;flex-wrap:nowrap;overflow-x:auto}#goku-choices button{white-space:nowrap;flex-shrink:0}}
