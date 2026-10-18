@@ -1,34 +1,52 @@
-/* Goku / Cloud Trail. Original pixel scenery; fixed-step, local-only platform physics. */
+/* Goku / Cloud Trail. Original cel-shaded 2.5D art; fixed-step local platform physics. */
 (() => {
   'use strict';
-  const WIDTH = 3400, HEIGHT = 360, GROUND = 306;
-  // Three short regions: a forgiving foothill, stepped cloud bridges, then the shrine.
-  // The 100px gaps fit comfortably inside the full jump's roughly 165px travel.
+  const WIDTH = 6000, HEIGHT = 360, GROUND = 306, GOAL = 5860;
+  // Every gap has a bridge within a full jump. Ground and raised surfaces share
+  // one collision model: a visible ledge is solid from every direction.
   const solids = [
-    [0, GROUND, 680, 70], [780, GROUND, 540, 70], [1420, GROUND, 740, 70], [2256, GROUND, 544, 70], [2900, GROUND, 500, 70],
+    [0, GROUND, 680, 70], [780, GROUND, 540, 70], [1420, GROUND, 740, 70], [2256, GROUND, 544, 70], [2900, GROUND, 600, 70],
+    [3600, GROUND, 700, 70], [4400, GROUND, 640, 70], [5140, GROUND, 860, 70],
     [260, 246, 120, 18], [470, 212, 104, 18], [700, 244, 96, 18], [960, 246, 128, 18],
     [1194, 224, 100, 18], [1350, 242, 94, 18], [1510, 240, 85, 18], [1750, 220, 106, 18],
     [1960, 238, 116, 18], [2190, 242, 96, 18], [2410, 242, 112, 18], [2670, 238, 100, 18], [2825, 236, 96, 18], [3030, 236, 128, 18],
+    [3530, 242, 98, 18], [3680, 236, 120, 18], [3930, 218, 116, 18], [4230, 240, 98, 18],
+    [4340, 242, 96, 18], [4590, 236, 120, 18], [4860, 224, 104, 18], [5070, 242, 98, 18], [5290, 246, 112, 18],
   ].map(([x, y, w, h]) => Object.freeze({ x, y, w, h }));
-  const orbLocations = [[314, 224], [850, 280], [1236, 202], [1650, 280], [2006, 216], [2570, 280], [3086, 214]];
-  const regions = Object.freeze([{ x: 0, name: 'BAMBOO FOOTHILLS' }, { x: 1120, name: 'CLOUD PASS' }, { x: 2260, name: 'SUNSET SHRINE' }]);
+  const orbLocations = [[314, 224], [1236, 202], [2006, 216], [3086, 214], [3734, 214], [4644, 214], [5460, 280]];
+  const regions = Object.freeze([{ x: 0, name: 'BAMBOO COAST' }, { x: 1420, name: 'CLOUD PASS' }, { x: 3300, name: 'AMBER CANYON' }, { x: 5140, name: 'SKY TEMPLE' }]);
+  const checkpoints = Object.freeze([1605, 3390, 5170]);
   const overlaps = (a, b) => a.x < b.x + b.w && a.x + a.w > b.x && a.y < b.y + b.h && a.y + a.h > b.y;
   function create() {
-    return { width: WIDTH, height: HEIGHT, phase: 'ready', time: 0, lives: 3, score: 0, checkpoint: 80, event: 'ready', eventId: 0, camera: 0, shots: [], bursts: [],
+    const enemies = [[510, 430, 610], [990, 880, 1060], [1850, 1730, 1940], [2520, 2450, 2690], [3210, 3160, 3270], [4110, 4050, 4170]]
+      .map(([x, left, right], i) => ({ kind: 'patrol', x, y: GROUND - 20, w: 24, h: 20, left, right, vx: i % 2 ? -47 : 47, alive: true, hp: 1, maxHp: 1, hit: 0 }));
+    enemies.push({ kind: 'hover', x: 3870, y: 245, baseY: 245, w: 28, h: 24, left: 3820, right: 3910, vx: 36, alive: true, hp: 2, maxHp: 2, hit: 0 });
+    enemies.push({ kind: 'sentry', x: 4785, y: GROUND - 30, w: 29, h: 30, left: 4785, right: 4785, vx: 0, alive: true, hp: 2, maxHp: 2, hit: 0, cooldown: 1.2 });
+    enemies.push({ kind: 'guardian', x: 5660, y: GROUND - 52, w: 44, h: 52, left: 5610, right: 5740, vx: -24, alive: true, hp: 6, maxHp: 6, hit: 0, cooldown: 1.7 });
+    return { width: WIDTH, height: HEIGHT, phase: 'ready', time: 0, lives: 3, score: 0, checkpoint: 80, event: 'ready', eventId: 0, camera: 0, shots: [], hazards: [], bursts: [],
       player: { x: 80, y: GROUND - 31, w: 20, h: 31, vx: 0, vy: 0, grounded: true, facing: 1, coyote: .1, buffer: 0, jumpHeld: false, immune: 0, cooldown: 0, fired: -10 },
-      orbs: orbLocations.map(([x, y], i) => ({ x, y, w: 16, h: 16, collected: false, star: i + 1 })),
-      enemies: [[510, 430, 610], [990, 880, 1060], [1850, 1730, 1940], [2520, 2450, 2690], [3210, 3160, 3270]].map(([x, left, right], i) => ({ x, y: GROUND - 20, w: 24, h: 20, left, right, vx: i % 2 ? -47 : 47, alive: true })),
+      orbs: orbLocations.map(([x, y], i) => ({ x, y, w: 16, h: 16, collected: false, star: i + 1 })), enemies,
     };
   }
   function event(game, name) { game.event = name; game.eventId++; }
   function start(game) { if (game.phase === 'ready') { game.phase = 'playing'; event(game, 'start'); } }
   function hurt(game) {
-    if (game.player.immune > 0 || game.phase !== 'playing') return;
+    if (game.player.immune > 0 || game.phase !== 'playing') return false;
     game.lives--; event(game, game.lives ? 'respawn' : 'lost');
-    game.shots = [];
-    if (!game.lives) { game.phase = 'lost'; return; }
-    Object.assign(game.player, { x: game.checkpoint, y: GROUND - 31, vx: 0, vy: 0, grounded: true, coyote: .1, buffer: 0, immune: 1.5, cooldown: .2 });
+    game.shots = []; game.hazards = [];
+    if (!game.lives) { game.phase = 'lost'; return true; }
+    Object.assign(game.player, { x: game.checkpoint, y: GROUND - 31, vx: 0, vy: 0, grounded: true, coyote: .1, buffer: 0, jumpHeld: false, immune: 1.5, cooldown: .2 });
     game.camera = Math.max(0, Math.min(WIDTH - 640, game.checkpoint - 240));
+    return true;
+  }
+  function hitEnemy(game, enemy, kind) {
+    if (!enemy.alive || enemy.hit > 0) return;
+    enemy.hp--; enemy.hit = .18;
+    game.bursts.push({ x: enemy.x + enemy.w / 2, y: enemy.y + enemy.h / 2, at: game.time });
+    if (enemy.hp <= 0) {
+      enemy.alive = false; game.score += enemy.kind === 'guardian' ? 1000 : 100;
+      event(game, enemy.kind === 'guardian' ? 'guardian-down' : kind);
+    } else event(game, enemy.kind === 'guardian' ? 'guardian-hit' : 'armor-hit');
   }
   function step(game, input = {}, dt = 1 / 120) {
     if (game.phase !== 'playing' || !Number.isFinite(dt) || dt <= 0) return game;
@@ -60,47 +78,75 @@
       p.cooldown = .34; p.fired = game.time;
       game.shots.push({ x: p.x + p.w / 2 + p.facing * 14 - 5, y: p.y + 10, w: 10, h: 8, vx: p.facing * 510, life: .85 });
     }
-    game.shots = game.shots.filter(shot => {
-      shot.x += shot.vx * dt; shot.life -= dt;
-      if (shot.life <= 0 || solids.some(tile => overlaps(shot, tile))) return false;
-      const enemy = game.enemies.find(enemy => enemy.alive && overlaps(shot, enemy));
-      if (enemy) {
-        enemy.alive = false; game.score += 100;
-        game.bursts.push({ x: enemy.x + 12, y: enemy.y + 8, at: game.time });
-        event(game, 'blast'); return false;
-      }
-      return true;
-    });
     for (const enemy of game.enemies) {
+      enemy.hit = Math.max(0, enemy.hit - dt);
       if (!enemy.alive) continue;
       enemy.x += enemy.vx * dt;
       if (enemy.x < enemy.left) { enemy.x = enemy.left; enemy.vx = Math.abs(enemy.vx); }
       if (enemy.x > enemy.right) { enemy.x = enemy.right; enemy.vx = -Math.abs(enemy.vx); }
-      if (!overlaps(p, enemy)) continue;
-      if (p.vy > 0 && oldY + p.h <= enemy.y + 8) { enemy.alive = false; p.vy = input.jump ? -440 : -330; game.score += 100; game.bursts.push({ x: enemy.x + 12, y: enemy.y + 8, at: game.time }); event(game, 'stomp'); }
-      else { hurt(game); break; }
+      if (enemy.kind === 'hover') enemy.y = enemy.baseY + Math.sin(game.time * 2.1) * 12;
+      if (enemy.kind === 'sentry' || enemy.kind === 'guardian') {
+        const nearby = Math.abs(enemy.x - p.x) < 420;
+        // Waiting enemies do not bank a volley; entering range always leaves a
+        // readable wind-up. The last .35s is drawn as a charging indicator.
+        if (nearby) enemy.cooldown = Math.max(0, enemy.cooldown - dt);
+        if (nearby && enemy.cooldown === 0) {
+          const facing = p.x < enemy.x ? -1 : 1;
+          game.hazards.push({ x: enemy.x + enemy.w / 2 + facing * 23, y: GROUND - 19, w: 12, h: 10, vx: facing * (enemy.kind === 'guardian' ? 175 : 145), life: 3 });
+          enemy.cooldown = enemy.kind === 'guardian' ? 1.6 : 2.1;
+        }
+      }
     }
-    if (p.y > HEIGHT + 70) { p.immune = 0; hurt(game); }
-    if (game.phase !== 'playing') return game;
+    game.shots = game.shots.filter(shot => {
+      shot.x += shot.vx * dt; shot.life -= dt;
+      if (shot.life <= 0 || solids.some(tile => overlaps(shot, tile))) return false;
+      const enemy = game.enemies.find(enemy => enemy.alive && overlaps(shot, enemy));
+      if (enemy) { hitEnemy(game, enemy, 'blast'); return false; }
+      const hazard = game.hazards.find(hazard => hazard.life > 0 && overlaps(shot, hazard));
+      if (hazard) { hazard.life = 0; game.bursts.push({ x: shot.x, y: shot.y, at: game.time }); return false; }
+      return true;
+    });
+    let damaged = false;
+    game.hazards = game.hazards.filter(hazard => {
+      hazard.x += hazard.vx * dt; hazard.life -= dt;
+      if (hazard.life <= 0 || solids.some(tile => overlaps(hazard, tile))) return false;
+      if (overlaps(p, hazard)) { if (p.immune <= 0) damaged = true; return false; }
+      return true;
+    });
+    // Resolve damage outside filter: respawn clears every projectile reliably.
+    if (damaged && hurt(game)) return game;
+    for (const enemy of game.enemies) {
+      if (!enemy.alive || !overlaps(p, enemy)) continue;
+      if (p.vy > 0 && oldY + p.h <= enemy.y + 8) {
+        hitEnemy(game, enemy, 'stomp'); p.vy = input.jump ? -440 : -330;
+      } else if (hurt(game)) return game;
+    }
+    if (p.y > HEIGHT + 70) { p.immune = 0; hurt(game); return game; }
     for (const orb of game.orbs) if (!orb.collected && overlaps(p, orb)) { orb.collected = true; game.score += 250; event(game, 'orb'); }
-    if (p.x >= 1600 && p.grounded && p.y + p.h === GROUND && game.checkpoint < 1540) { game.checkpoint = 1605; event(game, 'checkpoint'); }
-    if (p.x > 3280 && game.orbs.every(orb => orb.collected)) { game.phase = 'won'; game.score += game.lives * 500; event(game, 'won'); }
-    else if (p.x > 3270 && game.orbs.some(orb => !orb.collected) && game.event !== 'missing') event(game, 'missing');
+    for (const checkpoint of checkpoints) if (p.x >= checkpoint && p.grounded && p.y + p.h === GROUND && game.checkpoint < checkpoint) {
+      game.checkpoint = checkpoint; event(game, 'checkpoint');
+    }
+    const guardian = game.enemies.find(enemy => enemy.kind === 'guardian');
+    if (p.x > GOAL && game.orbs.every(orb => orb.collected) && !guardian.alive) { game.phase = 'won'; game.score += game.lives * 500; event(game, 'won'); }
+    else if (p.x > GOAL - 10) {
+      const nextEvent = game.orbs.some(orb => !orb.collected) ? 'missing' : 'guardian';
+      if (game.event !== nextEvent) event(game, nextEvent);
+    }
     const cameraTarget = Math.max(0, Math.min(WIDTH - 640, p.x - 250 + p.facing * 36));
     game.camera += (cameraTarget - game.camera) * (1 - Math.exp(-dt * 7));
     return game;
   }
-  const engine = Object.freeze({ WIDTH, HEIGHT, GROUND, solids, regions, create, start, step, overlaps });
+  const engine = Object.freeze({ WIDTH, HEIGHT, GROUND, GOAL, solids, regions, checkpoints, create, start, step, overlaps });
   if (typeof module !== 'undefined') module.exports = engine;
   if (typeof document === 'undefined') return;
   const dialog = document.getElementById('platformer-dialog'); if (!dialog) return;
-  dialog.innerHTML = `<div class="console-heading"><div><span class="console-eyebrow">16-BIT / ACTION ADVENTURE</span><h2 id="platformer-title">goku<span>CLOUD TRAIL</span></h2></div><button type="button" data-platform-close aria-label="Close Goku platformer">esc</button></div>
-    <div class="console-hud"><span>power <strong id="platform-score">0</strong></span><span>balls <strong id="platform-orbs">0 / 7</strong></span><span>lives <strong id="platform-lives">3</strong></span></div>
-    <div class="platform-stage"><canvas id="platform-canvas" width="640" height="360" tabindex="0" aria-label="Goku Cloud Trail platform game" aria-describedby="platform-help platform-status">Run, jump, and collect seven Dragon Balls on the cloud trail. Use left and right arrows to move and Space to jump.</canvas></div>
-    <p id="platform-status" role="status" aria-live="polite" aria-atomic="true">Collect seven Dragon Balls and reach the red gate. Start when you are ready.</p>
-    <div class="platform-touch" aria-label="Game controls"><div><button type="button" data-platform-hold="left" aria-label="Move left">◀</button><button type="button" data-platform-hold="right" aria-label="Move right">▶</button></div><div class="platform-buttons"><button type="button" data-platform-hold="attack" aria-label="Fire ki blast">X <span>ki</span></button><button type="button" data-platform-hold="jump" aria-label="Jump">B <span>jump</span></button></div></div>
+  dialog.innerHTML = `<div class="console-heading"><div><span class="console-eyebrow">00s CONSOLE / CEL-SHADED ADVENTURE</span><h2 id="platformer-title">goku <span>CLOUD TRAIL</span></h2></div><button type="button" data-platform-close aria-label="Close Goku platformer">esc</button></div>
+    <div class="console-hud"><span>power <strong id="platform-score">0</strong></span><span>balls <strong id="platform-orbs">0 / 7</strong></span><span>lives <strong id="platform-lives">3</strong></span><span>stage <strong id="platform-region">1 / 4</strong></span></div>
+    <div class="platform-stage"><canvas id="platform-canvas" width="1280" height="720" tabindex="0" aria-label="Goku Cloud Trail platform game" aria-describedby="platform-help platform-status">Run, jump, and collect seven Dragon Balls on the cloud trail. Use left and right arrows to move and Space to jump.</canvas></div>
+    <p id="platform-status" role="status" aria-live="polite" aria-atomic="true">Cross four regions, collect seven Dragon Balls, and defeat the Sky Guardian. Start when you are ready.</p>
+    <div class="platform-touch" aria-label="Game controls"><div><button type="button" data-platform-hold="left" aria-label="Move left">◀</button><button type="button" data-platform-hold="right" aria-label="Move right">▶</button></div><div class="platform-buttons"><button type="button" data-platform-hold="attack" aria-label="B: fire ki blast">B <span>ki</span></button><button type="button" data-platform-hold="jump" aria-label="A: jump">A <span>jump</span></button></div></div>
     <div class="console-actions"><button type="button" data-platform-back>← cartridges</button><button id="platform-action" type="button">start game ↵</button><button id="platform-pause" type="button" aria-pressed="false">pause</button></div>
-    <details class="console-help"><summary>how to play / controls</summary><p id="platform-help">← → or A/D to run · Space, ↑ or W to jump · X to fire ki · P to pause. Hold jump for height. Bounce on patrol bots or blast a path. The orange halfway flag saves your checkpoint; collected balls stay with you. Escape returns to cartridges.</p></details>`;
+    <details class="console-help"><summary>how to play / controls</summary><p id="platform-help">← → or A/D to run · Space, ↑ or W to jump · X to fire ki · P to pause. Hold jump for height. Bounce on patrol bots or blast a path. Three orange flags save your progress. Armored bots need two hits; the Sky Guardian needs six. Jump over red shots or cancel them with ki. Collect all seven balls, defeat the guardian, then enter the red gate. Escape returns to cartridges.</p></details>`;
   const root = document.documentElement, canvas = dialog.querySelector('#platform-canvas'), context = canvas.getContext('2d');
   if (!context) return;
   const status = dialog.querySelector('#platform-status'), action = dialog.querySelector('#platform-action'), pause = dialog.querySelector('#platform-pause');
@@ -123,171 +169,204 @@
   function announce() {
     const count = game.orbs.filter(orb => orb.collected).length;
     setText(dialog.querySelector('#platform-score'), String(game.score)); setText(dialog.querySelector('#platform-orbs'), `${count} / 7`); setText(dialog.querySelector('#platform-lives'), String(game.lives));
+    setText(dialog.querySelector('#platform-region'), `${regions.filter(region => game.player.x >= region.x).length} / 4`);
     setText(action, terminal() ? 'play again ↵' : game.phase === 'ready' ? 'start game ↵' : 'restart ↻');
     setText(pause, paused ? 'resume' : 'pause'); if (pause.getAttribute('aria-pressed') !== String(paused)) pause.setAttribute('aria-pressed', String(paused)); pause.disabled = game.phase === 'ready' || terminal();
     if (paused) status.textContent = 'Paused. Resume when you are ready.';
     else if (game.eventId !== lastEvent) {
       lastEvent = game.eventId;
-      const messages = { ready: 'Collect seven Dragon Balls and reach the red gate. Start when you are ready.', start: 'Cloud Trail. Run, jump, and collect all seven Dragon Balls.', orb: `Dragon Ball ${count} of 7 collected.`, stomp: 'Bot bounced! +100 power.', blast: 'Ki hit! +100 power.', respawn: `${game.lives} ${game.lives === 1 ? 'life' : 'lives'} left. Back at your checkpoint; collected balls are safe.`, checkpoint: 'Halfway checkpoint reached. Your collected balls stay with you.', missing: `${7 - count} Dragon ${7 - count === 1 ? 'Ball remains' : 'Balls remain'}. Follow the trail back to find them.`, won: `Wish granted! All seven Dragon Balls collected. ${game.score} power.`, lost: `Great effort. ${count} of seven Dragon Balls, ${game.score} power. Play again to try a new run.` };
+      const messages = { ready: 'Cross four regions, collect seven Dragon Balls, and defeat the Sky Guardian. Start when you are ready.', start: 'Cloud Trail. Seven Dragon Balls, three checkpoints, one Sky Guardian. Jump with A / Space; fire ki with B / X.', orb: `Dragon Ball ${count} of 7 collected.`, stomp: 'Bot bounced! +100 power.', blast: 'Ki hit! +100 power.', respawn: `${game.lives} ${game.lives === 1 ? 'life' : 'lives'} left. Back at your checkpoint; collected balls are safe.`, checkpoint: `Checkpoint ${checkpoints.indexOf(game.checkpoint) + 1} of 3 reached. Balls and defeated enemies stay saved.`, missing: `${7 - count} Dragon ${7 - count === 1 ? 'Ball remains' : 'Balls remain'}. Follow the trail back to find them.`, 'armor-hit': 'Armored bot hit. Keep firing or bounce again.', 'guardian-hit': `Sky Guardian hit. ${game.enemies.find(enemy => enemy.kind === 'guardian').hp} hits remain.`, 'guardian-down': 'Sky Guardian defeated! Reach the red gate to complete your journey.', guardian: 'The Sky Guardian still stands. Turn back and use ki or jump on its head.', won: `Wish granted! All seven Dragon Balls collected. ${game.score} power.`, lost: `Great effort. ${count} of seven Dragon Balls, ${game.score} power. Play again to try a new run.` };
       status.textContent = messages[game.event] || messages.start;
     }
   }
-  function rect(x, y, w, h, color) { context.fillStyle = color; context.fillRect(Math.round(x), Math.round(y), w, h); }
-  function text(label, x, y, size = 12, color = '#fff5d2', align = 'center') { context.font = `bold ${size}px monospace`; context.textAlign = align; context.fillStyle = color; context.fillText(label, Math.round(x), Math.round(y)); }
-  // Small original sprite atlases: one drawing pixel stays one canvas pixel.
-  // Build once on opening this cartridge, then reuse drawImage while playing.
-  const spriteCache = new Map();
-  function sprite(key, width, height, paint) {
-    if (!spriteCache.has(key)) {
-      const image = document.createElement('canvas'); image.width = width; image.height = height;
-      const ctx = image.getContext('2d');
-      const pixel = (x, y, w, h, color) => { ctx.fillStyle = color; ctx.fillRect(x, y, w, h); };
-      paint(pixel); spriteCache.set(key, image);
-    }
-    return spriteCache.get(key);
+  function rect(x, y, w, h, color) { context.fillStyle = color; context.fillRect(x, y, w, h); }
+  function text(label, x, y, size = 12, color = '#fff5d2', align = 'center') {
+    context.font = `bold ${size}px system-ui, sans-serif`; context.textAlign = align; context.fillStyle = color; context.fillText(label, x, y);
   }
-  function gokuSprite(pose) {
-    return sprite(`goku-${pose}`, 40, 48, (r) => {
-      const ink = '#1c1c35', hair = '#30334d', shine = '#4c4c68', skin = '#f4b87e', light = '#ffdda0', shade = '#bc704c';
-      const orange = '#f47c2b', gold = '#ffb846', red = '#b83f36', blue = '#355998', pale = '#6594c5';
-      const jumping = pose === 'jump' || pose === 'fall', shooting = pose === 'shot';
-      const stride = /^run/.test(pose) ? Number(pose.at(-1)) : -1;
-      // Boots and trouser folds use distinct silhouettes, not a sliding rectangle.
-      if (jumping) {
-        r(8,33,12,8,ink); r(10,34,9,5,orange); r(11,34,6,2,gold); r(5,39,13,6,ink); r(6,40,10,3,blue); r(5,44,11,2,pale);
-        r(20,32,10,8,ink); r(21,34,7,4,orange); r(25,37,10,7,ink); r(26,38,7,4,blue); r(29,41,7,3,pale);
-      } else if (stride === 0 || stride === 2) {
-        const front = stride === 0;
-        r(8,34,10,7,ink); r(9,35,8,5,orange); r(4,39,12,5,ink); r(5,40,9,3,red); r(1,43,13,5,ink); r(2,44,10,3,blue); r(2,46,11,1,pale);
-        r(20,34,9,7,ink); r(21,35,6,4,front ? gold : orange); r(26,39,7,6,ink); r(27,40,5,3,orange); r(28,43,11,5,ink); r(29,44,9,3,blue); r(30,46,9,1,pale);
-      } else {
-        r(9,34,10,11,ink); r(10,35,8,8,orange); r(11,36,3,5,gold); r(15,38,3,5,red); r(7,43,12,5,ink); r(8,44,10,3,blue); r(8,46,10,1,pale);
-        r(21,34,9,stride === 1 ? 8 : 11,ink); r(22,35,6,stride === 1 ? 5 : 8,orange); r(26,36,2,5,red); r(20,stride === 1 ? 40 : 43,13,5,ink); r(21,stride === 1 ? 41 : 44,11,3,blue); r(25,stride === 1 ? 43 : 46,7,1,pale);
-      }
-      // Gi: dark undershirt, tied belt, shaded orange cloth and a tiny back emblem.
-      r(9,23,20,12,ink); r(11,22,16,14,orange); r(13,23,6,3,gold); r(23,25,4,9,red);
-      r(19,21,8,4,blue); r(20,24,5,4,blue); r(20,23,3,2,pale); r(10,33,19,4,ink); r(10,33,18,2,blue); r(19,34,3,6,blue);
-      r(12,26,6,6,'#fff0bf'); r(11,27,8,4,'#fff0bf'); r(14,27,1,4,ink); r(12,28,5,1,ink); r(13,30,4,1,ink);
-      // Far arm and near arm change with the run, leap and firing poses.
-      r(5,25,7,9,ink); r(6,26,5,6,skin); r(6,31,5,3,blue); r(5,34,6,3,shade);
-      if (shooting) { r(26,25,12,7,ink); r(27,26,8,4,skin); r(29,26,3,4,blue); r(36,23,3,10,light); }
-      else if (jumping) { r(27,18,6,13,ink); r(28,19,4,9,skin); r(28,24,4,3,blue); r(27,16,6,5,light); }
-      else { const swing = stride === 1 ? -3 : stride === 3 ? 2 : 0; r(27,25+swing,7,10,ink); r(28,26+swing,5,7,skin); r(28,31+swing,5,3,blue); r(29,34+swing,5,3,light); }
-      // Skin, ear, cheek and a single high contrast eye under the brow.
-      r(13,12,15,11,ink); r(14,13,12,9,skin); r(16,14,10,4,light); r(12,16,4,5,shade); r(13,17,3,3,skin); r(20,21,5,3,shade);
-      r(23,16,5,2,ink); r(24,18,3,2,'#fff9d8'); r(26,18,1,2,ink); r(26,20,3,1,skin); r(23,22,3,1,ink);
-      // Goku's stepped, swept spikes are deliberately larger than the face.
-      const runs = [[0,15,2],[1,15,3],[2,14,4],[3,5,2],[3,14,5],[3,25,2],[4,5,4],[4,13,6],[4,24,3],[5,6,5],[5,12,9],[5,23,4],[6,6,22],[7,4,24],[8,5,24],[9,6,24],[10,7,22],[11,7,21],[12,8,20],[13,9,18],[14,11,12],[15,12,6]];
-      runs.forEach(([y,x,w]) => r(x,y,w,1,ink));
-      r(14,5,3,5,hair); r(11,8,5,4,hair); r(17,7,7,5,hair); r(22,6,3,4,hair); r(9,10,5,2,shine); r(17,8,5,1,shine); r(24,9,3,2,shine);
-    });
+  function poly(points, fill, stroke = '#23384b', width = 1.2) {
+    context.beginPath(); points.forEach(([x, y], i) => i ? context.lineTo(x, y) : context.moveTo(x, y)); context.closePath();
+    context.fillStyle = fill; context.fill();
+    if (stroke) { context.strokeStyle = stroke; context.lineWidth = width; context.stroke(); }
   }
-  function botSprite(frame) {
-    return sprite(`bot-${frame}`, 32, 26, r => {
-      const dark='#272c53', edge='#47426b', mid='#77639a', light='#a88fbd';
-      r(7,0,18,2,dark); r(4,2,24,4,dark); r(2,6,28,13,dark); r(5,19,22,3,dark);
-      r(7,2,17,3,light); r(5,5,22,12,mid); r(6,5,17,2,light); r(24,7,3,10,edge); r(4,14,22,4,edge);
-      r(5,8,22,6,dark); r(7,9,18,3,'#bde6d6'); r(11,9,3,3,'#ed6d79'); r(21,9,3,3,'#ed6d79');
-      r(12,16,9,3,dark); r(14,17,5,1,light); r(0,10,3,7,edge); r(29,10,3,7,edge);
-      r(frame ? 5 : 3,21,9,4,dark); r(frame ? 20 : 22,21,9,4,dark); r(frame ? 5 : 3,21,8,1,light); r(frame ? 20 : 22,21,8,1,light);
-    });
+  function oval(x, y, rx, ry, fill, stroke = null, width = 1) {
+    context.beginPath(); context.ellipse(x, y, rx, ry, 0, 0, Math.PI * 2); context.fillStyle = fill; context.fill();
+    if (stroke) { context.strokeStyle = stroke; context.lineWidth = width; context.stroke(); }
+  }
+  function line(points, color, width = 1) {
+    context.beginPath(); points.forEach(([x, y], i) => i ? context.lineTo(x, y) : context.moveTo(x, y));
+    context.strokeStyle = color; context.lineWidth = width; context.lineCap = 'round'; context.lineJoin = 'round'; context.stroke();
   }
   function cloud(x, y, scale = 1) {
-    const colors=['#d7d9e6','#eff0e8','#fff5dc'];
-    rect(x,y+12*scale,80*scale,12*scale,colors[0]); rect(x+8*scale,y+5*scale,62*scale,16*scale,colors[1]);
-    rect(x+20*scale,y,26*scale,17*scale,colors[2]); rect(x+47*scale,y+8*scale,23*scale,9*scale,colors[2]);
+    context.save(); context.translate(x, y); context.scale(scale, scale);
+    context.beginPath(); context.moveTo(-45, 14); context.bezierCurveTo(-60, -3, -29, -15, -18, -8);
+    context.bezierCurveTo(-10, -32, 24, -28, 28, -8); context.bezierCurveTo(59, -15, 67, 13, 41, 18);
+    context.closePath(); context.fillStyle = '#edf5ed'; context.fill();
+    context.beginPath(); context.moveTo(-45, 14); context.bezierCurveTo(-12, 9, 23, 22, 47, 11); context.lineTo(41, 18); context.closePath(); context.fillStyle = '#b8d8de'; context.fill(); context.restore();
   }
   function mountain(x, base, width, height, color, lit) {
-    for(let y=0;y<height;y+=10) {
-      const half=Math.round((width/2)*(y/height)*.75+width*.08), center=x+width*.52;
-      rect(center-half,base-height+y,half*2,10,color);
-      rect(center-half,base-height+y,Math.max(3,half*.63),10,lit);
-    }
+    const peak = x + width * .47;
+    poly([[x, base], [x + width * .15, base - height * .42], [peak, base - height], [x + width * .69, base - height * .59], [x + width, base]], color, null);
+    poly([[x, base], [peak, base - height], [x + width * .43, base - height * .37], [x + width * .67, base]], lit, null);
+    poly([[peak, base - height], [x + width * .58, base - height * .75], [x + width * .43, base - height * .69]], '#d6e6db', null);
   }
   function background(camera) {
-    const sky=['#6579b2','#758bbf','#869dc9','#9aafcf','#b0c0d6','#c8cfd8','#dfd9d1','#efdfc5'];
-    sky.forEach((color,i)=>rect(0,i*37,640,38,color));
-    rect(485-camera*.025,45,36,34,'#f7e6bd'); rect(489-camera*.025,41,28,42,'#f7e6bd');
-    // Far ridgelines, rock spires and bamboo are different depth planes.
-    for(let i=-1;i<9;i++) mountain(i*150-camera*.12,282,220,100+(i%3)*31,'#8d98bb','#a4aec8');
-    for(let i=-1;i<10;i++) mountain(i*190-camera*.27,306,155,110+((i+10)%4)*23,'#697f9d','#8595ac');
-    for(let i=-1;i<11;i++) {
-      const x=i*185-camera*.49, y=184+(i%3)*13;
-      rect(x,y+16,66,132,'#4b737b'); rect(x+10,y,46,146,'#59838a'); rect(x+11,y,12,146,'#6d9694');
-      rect(x+39,y+13,9,132,'#426773'); rect(x-8,y+36,80,7,'#658f87');
-      for(let k=0;k<4;k++) { rect(x+8+k*11,y+28+(k%2)*27,4,31,'#466b78'); }
+    const sky = context.createLinearGradient(0, 0, 0, 330);
+    sky.addColorStop(0, '#2787b9'); sky.addColorStop(.54, '#89cbd9'); sky.addColorStop(1, '#f7dfb3');
+    rect(0, 0, 640, 360, sky); oval(505 - camera * .018, 60, 28, 28, '#fff2c6');
+    for (let i = -1; i < 8; i++) cloud(i * 185 - (camera * .09 % 185), 64 + ((i + 8) % 3) * 20, .6 + (i % 2) * .14);
+    for (let i = -1; i < 8; i++) mountain(i * 180 - (camera * .16 % 180), 305, 250, 112 + ((i + 9) % 3) * 38, '#769fb3', '#a1c1c8');
+    for (let i = -1; i < 7; i++) mountain(i * 205 - (camera * .32 % 205), 336, 242, 124 + ((i + 8) % 3) * 26, '#48798d', '#72a49f');
+    // Tall faceted rock islands establish a near plane and a distant river.
+    for (let i = -1; i < 7; i++) {
+      const x = i * 157 - (camera * .48 % 157), y = 204 + ((i + 9) % 3) * 17;
+      poly([[x, 332], [x + 7, y], [x + 43, y - 13], [x + 77, y + 4], [x + 90, 332]], '#477b80', null);
+      poly([[x + 7, y], [x + 43, y - 13], [x + 35, 332], [x, 332]], '#73a091', null);
+      poly([[x + 7, y], [x + 43, y - 13], [x + 77, y + 4], [x + 42, y + 11]], '#aed0a1', null);
     }
-    for(let i=-1;i<8;i++) cloud(i*179-camera*.18,38+((i+8)%3)*21,.75+(i%2)*.25);
-    // The river stays below the collision plane; bright grass always means solid ground.
-    rect(0,307,640,53,'#5b899c');
-    for(let i=0;i<12;i++) rect((i*79-Math.round(camera*.65)%79),318+(i%4)*10,39,2,'#9dbbbf');
+    rect(0, 315, 640, 45, '#41839b');
+    for (let i = 0; i < 14; i++) line([[i * 61 - (camera * .64 % 61), 325 + (i % 3) * 12], [i * 61 + 31 - (camera * .64 % 61), 325 + (i % 3) * 12]], '#9fc9cf', 1.5);
   }
-  function terrain(tile,camera) {
-    const x=Math.round(tile.x-camera), ground=tile.y===GROUND;
-    if(x>640||x+tile.w<0)return;
-    const shrine=tile.x>2250, base=shrine?'#947369':'#8b785d', shade=shrine?'#6c535e':'#59645a';
-    rect(x,tile.y,tile.w,tile.h,shade); rect(x+2,tile.y+7,tile.w-4,tile.h-8,base);
-    // Block seams and broken highlights are deterministic and do not shimmer.
-    for(let dx=0;dx<tile.w;dx+=24) {
-      rect(x+dx,tile.y+14,Math.min(21,tile.w-dx),2,shade);
-      rect(x+dx+7,tile.y+15,2,Math.min(15,tile.h-15),shade);
-      if(ground) { rect(x+dx+4,tile.y+28,14,3,'#b29472'); rect(x+dx+16,tile.y+39,2,16,shade); rect(x+dx+3,tile.y+52,17,2,shade); }
+  function terrain(tile, camera) {
+    const x = tile.x - camera, y = tile.y, w = tile.w, h = tile.h, canyon = tile.x > 3300 && tile.x < 5140;
+    if (x > 660 || x + w < -20) return;
+    const top = canyon ? '#e7cb8d' : '#a6db78', face = canyon ? '#bb8666' : '#8b9d77', shade = canyon ? '#8c5b58' : '#4e7566';
+    // The front edge is exactly the collision plane; the top recedes into depth.
+    poly([[x, y], [x + w, y], [x + w, y + h], [x, y + h]], face, '#36585c', 1.5);
+    poly([[x, y], [x + 14, y - 12], [x + w + 14, y - 12], [x + w, y]], top, '#3b6562', 1.3);
+    poly([[x + w, y], [x + w + 14, y - 12], [x + w + 14, y + h - 12], [x + w, y + h]], shade, '#36585c', 1.3);
+    for (let dx = 0; dx < w; dx += 79) {
+      const span = Math.min(79, w - dx);
+      poly([[x + dx, y + h], [x + dx + span * .38, y + 7], [x + dx + span, y + h * .61], [x + dx + span, y + h]], shade, null);
+      if (h > 20) poly([[x + dx + span * .38, y + 7], [x + dx + span * .17, y + h * .55], [x + dx + span * .63, y + h * .4]], canyon ? '#d4a27b' : '#aec099', null);
     }
-    rect(x,tile.y,tile.w,3,'#344e51'); rect(x,tile.y-2,tile.w,3,shrine?'#d5cd8b':'#c3d784');
-    rect(x,tile.y+2,tile.w,4,'#71945d'); rect(x+2,tile.y+6,tile.w-4,2,'#425f56');
-    for(let dx=5;dx<tile.w-6;dx+=17) { rect(x+dx,tile.y-4,3,3,'#b5cf7d'); if(ground)rect(x+dx+4,tile.y+6,2,4,'#597a57'); }
+    line([[x, y + 1], [x + w, y + 1]], canyon ? '#fff0bb' : '#daf0ad', 3);
+    line([[x, y + 5], [x + w, y + 5]], canyon ? '#a37652' : '#539553', 3);
   }
   function scenery(camera) {
-    // Decorative bamboo lives behind the path; no trunk looks like a solid wall.
-    for(const bx of [45,128,575,920,1460,2100,2320,2720,3190]) {
-      const x=bx-camera, h=bx%3*15+70;
-      if(x < -40 || x > 680) continue;
-      rect(x,GROUND-h,5,h,'#376454'); rect(x+1,GROUND-h,2,h,'#73a270');
-      for(let i=0;i<h;i+=18){rect(x-1,GROUND-h+i,7,2,'#9bbc7b');rect(x+5,GROUND-h+i+4,13,3,'#568969');rect(x+11,GROUND-h+i,10,3,'#568969');rect(x-13,GROUND-h+i+6,12,3,'#4c7c63');}
+    for (const bx of [45,128,575,920,1460,2100,2320,2720,3190]) {
+      const x = bx - camera, h = 62 + bx % 3 * 14;
+      if (x < -40 || x > 680) continue;
+      poly([[x, GROUND], [x + 2, GROUND - h], [x + 7, GROUND - h], [x + 8, GROUND]], '#477f58', '#30564c');
+      line([[x + 3, GROUND - h + 2], [x + 3, GROUND - 4]], '#9cc67d', 2);
+      for (let k = 0; k < 3; k++) { const y = GROUND - h + 14 + k * 18; poly([[x + 5, y], [x + 23, y - 10], [x + 31, y - 8], [x + 13, y + 2]], '#659769', null); poly([[x + 3, y + 4], [x - 18, y - 1], [x - 24, y + 3], [x - 8, y + 9]], '#457d61', null); }
     }
-    // A visible orange flag marks the safe ground where a respawn actually occurs.
-    const cp=1605-camera; rect(cp,248,3,58,'#45486a'); rect(cp-3,304,10,3,'#d4c99c');
-    rect(cp+3,248,26,16,game.checkpoint>80?'#f6b348':'#777b9a'); rect(cp+3,250,18,4,game.checkpoint>80?'#ffdd82':'#a3a4b5'); rect(cp+18,260,11,4,'#8a6357');
-    const g=3295-camera;
-    rect(g-32,215,9,91,'#633e54');rect(g+30,215,9,91,'#633e54');rect(g-31,219,4,85,'#d37867');rect(g+31,219,4,85,'#d37867');
-    rect(g-43,208,94,11,'#7d4059');rect(g-47,203,102,6,'#df9a75');rect(g-39,199,86,4,'#f1c397');rect(g-33,235,72,7,'#a25760');rect(g-8,216,20,14,'#e5bb79');
-    for(let i=0;i<3;i++)rect(g-30+i*31,306,28,3,'#c2b08e');
+    for (const cp of checkpoints) {
+      const x = cp - camera, active = game.checkpoint >= cp; if (x < -45 || x > 685) continue;
+      oval(x + 9, GROUND + 3, 21, 5, '#35584e'); poly([[x - 4, GROUND], [x + 7, GROUND - 8], [x + 27, GROUND - 8], [x + 19, GROUND]], '#c6d1ae');
+      line([[x + 6, 247], [x + 6, GROUND - 4]], '#344e6b', 3);
+      poly([[x + 7, 248], [x + 35, 254], [x + 28, 270], [x + 7, 264]], active ? '#ffbf53' : '#7086a2', '#354e6a');
+      text(active ? '✓' : String(checkpoints.indexOf(cp) + 1), x + 18, 263, 12, '#fff5d4');
+    }
+    // Temple silhouette, raised roof and pillars all share the same depth axis.
+    const g = GOAL + 15 - camera;
+    if (g > -100 && g < 740) {
+      poly([[g - 52, 306], [g - 35, 290], [g + 64, 290], [g + 49, 306]], '#b5c7bb');
+      for (const dx of [-35, 31]) { poly([[g + dx, 218], [g + dx + 9, 218], [g + dx + 9, 302], [g + dx, 302]], '#ce6959'); poly([[g + dx + 9, 218], [g + dx + 16, 211], [g + dx + 16, 295], [g + dx + 9, 302]], '#7c4653'); }
+      poly([[g - 55, 218], [g - 36, 201], [g + 48, 201], [g + 63, 218]], '#313d5a');
+      poly([[g - 55, 218], [g - 36, 211], [g + 50, 211], [g + 63, 218]], '#f0bb77');
+      poly([[g - 28, 240], [g + 40, 240], [g + 40, 247], [g - 28, 247]], '#bd6057');
+      oval(g + 6, 232, 9, 11, '#ffe0a0', '#694958', 1.5);
+    }
   }
-  function ball(orb,x,y,small=false) {
-    if(small) { rect(x+2,y,7,11,'#9b513f');rect(x,y+2,11,7,'#9b513f');rect(x+2,y+1,7,8,'#f8bd57');rect(x+2,y+2,3,2,'#fff0b1');return; }
-    rect(x+4,y,9,17,'#9f4d3f');rect(x+1,y+3,15,11,'#9f4d3f');rect(x+4,y+1,9,15,'#ed9039');rect(x+2,y+4,13,9,'#f8b347');
-    rect(x+4,y+2,7,3,'#ffe5a0');rect(x+3,y+5,2,4,'#ffe5a0');rect(x+11,y+12,2,2,'#d96d35');
-    const stars=[[8,8],[6,7],[10,10],[10,6],[5,11],[12,8],[8,12]];
-    stars.slice(0,orb.star).forEach(([sx,sy])=>rect(x+sx,y+sy,2,2,'#b84c40'));
+  function ball(orb, x, y, small = false) {
+    const r = small ? 5.3 : 8, cx = x + (small ? 5 : 8), cy = y + (small ? 5 : 8);
+    if (!small) oval(cx, cy, 12, 12, '#ffe0a025');
+    oval(cx, cy, r, r, '#ffb443', '#8a5638', small ? 1 : 1.4);
+    context.save(); context.beginPath(); context.ellipse(cx, cy, r - 1, r - 1, 0, 0, Math.PI * 2); context.clip();
+    oval(cx + 4, cy + 5, r, r, '#df8137'); oval(cx - 3, cy - 3, r * .48, r * .27, '#ffeaa3'); context.restore();
+    if (!small) {
+      const positions = [[0,0],[-3,-3],[3,3],[3,-3],[-3,3],[0,-4],[0,4]];
+      positions.slice(0, orb.star).forEach(([dx,dy]) => poly([[cx+dx,cy+dy-1.5],[cx+dx+1.4,cy+dy],[cx+dx,cy+dy+1.5],[cx+dx-1.4,cy+dy]], '#ad4830', null));
+    }
   }
-  function playerSprite(p,camera) {
-    if(p.immune>0&&!quiet()&&Math.floor(game.time*12)%2)return;
-    const pose=game.time-p.fired<.16?'shot':!p.grounded?p.vy<0?'jump':'fall':Math.abs(p.vx)>20&&!quiet()?`run${Math.floor(game.time*11)%4}`:'idle';
-    context.save();context.translate(Math.round(p.x-camera+p.w/2),Math.round(p.y-17));context.scale(p.facing,1);
-    context.drawImage(gokuSprite(pose),-20,0);context.restore();
+  function playerSprite(p, camera) {
+    const blinking = p.immune > 0 && !quiet() && Math.floor(game.time * 12) % 2;
+    if (blinking) return;
+    const feet = p.y + p.h, running = p.grounded && Math.abs(p.vx) > 20, stride = running && !quiet() ? Math.sin(game.time * 15) : 0;
+    const shooting = game.time - p.fired < .18, jump = !p.grounded;
+    oval(p.x - camera + p.w / 2 + 3, feet + 2, 16, 3.8, '#173f4c45');
+    context.save(); context.translate(p.x - camera + p.w / 2, feet); context.scale(p.facing, 1);
+    const ink = '#28334b', orange = '#fc8527', light = '#ffbf5c', shade = '#bb4f35', blue = '#294c86', skin = '#f3ba88';
+    function limb(points, color, width = 7, lit = null) { line(points, ink, width + 2.6); line(points, color, width); if (lit) line(points.map(([x,y])=>[x-1,y-1]), lit, Math.max(1.5,width*.3)); }
+    // Far limbs, torso, then near limbs create a readable articulated silhouette.
+    limb([[-4,-28],[-11,-21-stride*3],[-9,-15-stride*5]], '#bd795f', 5);
+    const backKnee = jump ? [-10,-12] : [-4-stride*7,-10], backFoot = jump ? [-17,-13] : [-4-stride*11,-3];
+    limb([[-4,-18],backKnee,backFoot], shade, 8); limb([backFoot,[backFoot[0]+6,backFoot[1]]], blue, 5, '#6994bc');
+    const knee = jump ? [10,-13] : [5+stride*6,-10], foot = jump ? [16,-6] : [5+stride*11,-3];
+    limb([[4,-18],knee,foot], orange, 8, light); limb([foot,[foot[0]+6,foot[1]]], blue, 5, '#7ab2cf');
+    poly([[-8,-35],[6,-36],[11,-27],[7,-17],[-8,-17],[-12,-27]], orange, ink, 1.8);
+    poly([[-8,-34],[-3,-35],[2,-22],[-6,-21],[-10,-28]], light, null);
+    poly([[4,-34],[9,-29],[7,-18],[2,-19]], shade, null);
+    poly([[-2,-35],[6,-36],[7,-31],[1,-28]], blue, ink, 1);
+    poly([[-9,-21],[8,-21],[8,-17],[-9,-17]], blue, ink, 1);
+    poly([[1,-19],[5,-18],[10,-9],[6,-9]], '#386a9c', ink, .8);
+    oval(-5,-28,3.8,4.1,'#fff0c9',ink,.7); line([[-7,-28],[-3,-28]],ink,.7); line([[-5,-30],[-5,-26]],ink,.7);
+    if (shooting) { limb([[8,-31],[17,-28],[24,-28]],skin,5.5,'#ffddb2'); limb([[16,-28],[19,-28]],blue,6); oval(25,-28,3.2,4.5,'#ffddb2',ink,1); }
+    else if (jump) { limb([[7,-31],[13,-37],[15,-42]],skin,5,'#ffddb2'); limb([[14,-38],[15,-41]],blue,6); }
+    else { limb([[8,-31],[12,-23+stride*5],[14,-18+stride*7]],skin,5.5,'#ffd6a4'); limb([[13,-21+stride*6],[14,-18+stride*7]],blue,6); }
+    oval(2,-41,8.1,9.2,skin,ink,1.5); poly([[5,-46],[9,-43],[10,-39],[7,-34],[3,-33],[4,-40]],'#d88b67',null);
+    oval(-5,-40,2.4,3.2,'#f3ba88',ink,1); line([[5,-42],[9,-42]],ink,1.5); line([[7,-40],[9,-40]],'#fff8db',2); line([[9,-41],[9,-39]],ink,1); line([[7,-36],[9,-36]],ink,.8);
+    poly([[-7,-41],[-12,-45],[-8,-46],[-14,-51],[-7,-49],[-8,-57],[-2,-52],[3,-62],[5,-54],[12,-57],[10,-50],[15,-51],[11,-44],[4,-46],[0,-43],[-3,-47]],'#242c40',ink,1.4);
+    poly([[-7,-49],[-3,-51],[-1,-47],[3,-55],[3,-48],[8,-51],[6,-46],[1,-46]],'#455066',null);
+    context.restore();
+  }
+  function enemySprite(enemy, camera) {
+    const x = enemy.x - camera, y = enemy.y, boss = enemy.kind === 'guardian', w = enemy.w, h = enemy.h;
+    if (x < -60 || x > 690) return;
+    const flash = enemy.hit > 0 && !quiet(), shell = flash ? '#fff2b4' : boss ? '#74588d' : enemy.kind === 'sentry' ? '#a76470' : '#7189a7';
+    oval(x + w / 2 + 3, enemy.kind === 'hover' ? GROUND + 1 : y + h + 2, w * .65, 4, '#24485845');
+    poly([[x+2,y+7],[x+w*.25,y],[x+w*.78,y],[x+w,y+9],[x+w-2,y+h-4],[x+w*.6,y+h],[x+4,y+h-3]],shell,'#2b3650',1.8);
+    poly([[x+w*.25,y],[x+w*.78,y],[x+w,y+9],[x+w*.42,y+7]],boss?'#ba9cc7':'#b2cbd4',null);
+    poly([[x+w*.7,y+9],[x+w,y+9],[x+w-2,y+h-4],[x+w*.7,y+h-1]],boss?'#4d406d':'#455f7e',null);
+    poly([[x+4,y+h*.31],[x+w-4,y+h*.31],[x+w-5,y+h*.53],[x+4,y+h*.53]],'#24364d',null);
+    line([[x+7,y+h*.41],[x+w-8,y+h*.41]],boss?'#f4b173':'#95e4dc',boss?4:2.5);
+    if (enemy.kind === 'hover') { poly([[x+6,y+h],[x+10,y+h+7],[x+15,y+h]],'#a3eddf',null); poly([[x+w-14,y+h],[x+w-10,y+h+7],[x+w-6,y+h]],'#a3eddf',null); }
+    else { poly([[x+3,y+h-3],[x+12,y+h-3],[x+13,y+h+3],[x,y+h+3]],'#354764'); poly([[x+w-12,y+h-3],[x+w-3,y+h-3],[x+w+2,y+h+3],[x+w-12,y+h+3]],'#354764'); }
+    if (boss || enemy.kind === 'sentry') {
+      const charging = enemy.cooldown < .35 && Math.abs(enemy.x-game.player.x)<420;
+      oval(x+w/2,y+h*.70,boss?7:4,boss?7:4,charging?'#ffe19b':'#f19763','#493c59',1.2);
+      if (charging) { oval(x+w/2,y+h*.70,boss?11:7,boss?11:7,'#ffd28340'); text('!',x+w/2,y-9,17,'#ffe2a0'); }
+    }
+    if (enemy.maxHp>1) { rect(x,y-6,w,3,'#253a55'); rect(x,y-6,w*enemy.hp/enemy.maxHp,3,boss?'#e7ab70':'#a4d8d0'); }
   }
   function draw() {
-    const camera=Math.round(game.camera);
-    context.imageSmoothingEnabled=false;background(camera);scenery(camera);
-    solids.forEach(tile=>terrain(tile,camera));
-    for(const orb of game.orbs)if(!orb.collected)ball(orb,Math.round(orb.x-camera),Math.round(orb.y+(quiet()?0:Math.sin(game.time*3+orb.star)*2)));
-    for(const enemy of game.enemies)if(enemy.alive){context.drawImage(botSprite(quiet()?0:Math.floor(game.time*6)%2),Math.round(enemy.x-camera-4),Math.round(enemy.y-5));}
-    for(const shot of game.shots){const x=shot.x-camera;rect(x-(shot.vx>0?8:-8),shot.y+2,12,4,'#f7c35e');rect(x,shot.y,10,8,'#fff1a1');rect(x+2,shot.y+2,6,4,'#fffce0');}
+    context.setTransform(2, 0, 0, 2, 0, 0); context.imageSmoothingEnabled = true;
+    const camera = game.camera;
+    background(camera); scenery(camera); solids.forEach(tile => terrain(tile, camera));
+    for (const orb of game.orbs) if (!orb.collected) ball(orb,orb.x-camera,orb.y+(quiet()?0:Math.sin(game.time*3+orb.star)*2));
+    for (const enemy of game.enemies) if (enemy.alive) enemySprite(enemy,camera);
+    for (const hazard of game.hazards) { oval(hazard.x-camera+6,hazard.y+5,9,7,'#f4777650'); oval(hazard.x-camera+6,hazard.y+5,6,5,'#ef987d','#785169',1); }
+    for (const shot of game.shots) {
+      const x=shot.x-camera, cy=shot.y+4;
+      poly([[x+5,cy-5],[x-(shot.vx>0?20:-26),cy],[x+5,cy+5]],'#ffcc6c70',null);
+      oval(x+5,cy,9,7,'#ffe09a80'); oval(x+5,cy,6,4,'#fffce0');
+    }
     playerSprite(game.player,camera);
-    if(!quiet())for(const burst of game.bursts){const age=(game.time-burst.at)/.32;for(let i=0;i<8;i++){const angle=i*Math.PI/4;rect(burst.x-camera+Math.cos(angle)*age*25,burst.y+Math.sin(angle)*age*25,3,3,i%2?'#ffe5a0':'#e99d58');}}
-    // A subdued foreground edge adds depth without covering any walking surface.
-    for(let i=0;i<10;i++){const x=i*91-(camera%91);rect(x,349,21,11,'#345865');rect(x+8,342,5,18,'#345865');rect(x+13,347,11,3,'#557a76');}
+    if (!quiet()) for (const burst of game.bursts) {
+      const age=(game.time-burst.at)/.32;
+      for(let i=0;i<7;i++){const angle=i*Math.PI/3.5, x=burst.x-camera+Math.cos(angle)*age*27,y=burst.y+Math.sin(angle)*age*25; poly([[x,y-3*(1-age)],[x+3*(1-age),y],[x,y+3*(1-age)],[x-3*(1-age),y]],'#ffe2a1',null);}
+    }
+    // Lightweight translucent mission HUD leaves the jump and landing plane clear.
     const region=[...regions].reverse().find(region=>game.player.x>=region.x);
-    rect(10,10,182,22,'#293652');text(region.name,19,25,10,'#e8e4c8','left');
-    rect(500,10,130,22,'#293652');game.orbs.forEach((orb,i)=>{if(orb.collected)ball(orb,509+i*16,15,true);else{rect(511+i*16,17,7,7,'#54647e');rect(513+i*16,19,3,3,'#a6adba');}});
-    const missing=game.orbs.find(orb=>!orb.collected), target=missing?missing.x:3295;
-    const distance=target-camera;
-    if(game.phase==='playing'&&!paused&&(distance<24||distance>612))text(`${distance<24?'◀':'▶'} ${missing?`BALL ${missing.star}`:'GATE'}`,distance<24?18:622,53,10,'#fff2bc',distance<24?'left':'right');
+    poly([[10,10],[212,10],[200,39],[10,39]],'#213e57df','#9ac7ce80',1);
+    text(region.name,21,29,13,'#ecf5e2','left');
+    poly([[493,10],[630,10],[630,39],[482,39]],'#263953df','#a6bccb80',1);
+    game.orbs.forEach((orb,i)=>{if(orb.collected)ball(orb,502+i*17,20,true);else oval(507+i*17,25,4.3,4.3,'#748ba4','#b2c9ce',.7);});
+    const guardian=game.enemies.find(enemy=>enemy.kind==='guardian'), missing=game.orbs.find(orb=>!orb.collected);
+    const target=missing?missing.x:guardian.alive?guardian.x:GOAL+15, distance=target-camera;
+    if(game.phase==='playing'&&!paused&&(distance<24||distance>612)) text(`${distance<24?'◀':'▶'} ${missing?`BALL ${missing.star}`:guardian.alive?'GUARDIAN':'GATE'}`,distance<24?18:622,58,12,'#fff2bc',distance<24?'left':'right');
+    if(guardian.alive&&Math.abs(game.player.x-guardian.x)<450){
+      rect(211,14,218,22,'#23394ddd');text('SKY GUARDIAN',320,29,11,'#f0d5ad');rect(219,39,202,5,'#253b53');rect(219,39,202*guardian.hp/guardian.maxHp,5,'#e9a66a');
+    }
     if(game.phase==='ready'||terminal()||paused){
-      rect(101,105,438,144,'#29334b');rect(105,109,430,136,'#60617f');rect(109,113,422,128,'#343b58');rect(113,117,414,2,'#aaa3b0');
-      text(paused?'PAUSED':game.phase==='won'?'WISH GRANTED!':game.phase==='lost'?'ONE MORE JOURNEY?':'GOKU / CLOUD TRAIL',320,151,22,'#ffe8a6');
-      text(paused?'Take your time. The trail will wait.':game.phase==='won'?`${game.score} POWER · ALL SEVEN FOUND`:game.phase==='lost'?'Collected courage. Try the trail again.':'Seven Dragon Balls, beyond the cloud pass.',320,181,11,'#dce0e5');
-      text(paused?'P / resume':terminal()?'Enter / play again':'Space / start · X / ki blast',320,214,11,'#c6badf');
+      rect(0,0,640,360,'#18344d55');
+      poly([[107,97],[541,97],[526,251],[92,251]],'#243953ed','#bdd9d3',1.5);
+      poly([[107,97],[541,97],[537,118],[105,118]],'#5e6d9c','#a7b9d0',1);
+      text(paused?'SYSTEM / PAUSE':terminal()?'MISSION / RESULTS':'MISSION 01 / CLOUD TRAIL',320,112,10,'#e7f0e5');
+      text(paused?'TAKE A BREATHER':game.phase==='won'?'WISH GRANTED':game.phase==='lost'?'ONE MORE JOURNEY?':'GOKU / CLOUD TRAIL',320,158,25,'#ffdf9f');
+      text(paused?'The trail will be here when you return.':game.phase==='won'?`${game.score} POWER · SKY GUARDIAN DEFEATED`:game.phase==='lost'?'Your next journey starts with a fresh slate.':'Seven Dragon Balls. Four regions. One guardian.',320,188,12,'#e0eae7');
+      oval(242,219,10,10,'#48bc94','#c5f3ca',1);text('A',242,223,12,'#163e42');
+      text(paused?'P / RESUME':terminal()?'ENTER / PLAY AGAIN':'START · SPACE / JUMP · X / KI',338,224,11,'#dae5f0');
     }
   }
   function schedule() { if (!frame && dialog.open && !document.hidden && !paused && game.phase === 'playing') frame = requestAnimationFrame(tick); }
@@ -312,6 +391,7 @@
     const key = event.key.length === 1 ? event.key.toLowerCase() : event.key;
     if (key === 'p') { event.preventDefault(); if (!event.repeat) setPaused(!paused); return; }
     if (key === 'Enter' && (terminal() || game.phase === 'ready') && event.target === canvas) { event.preventDefault(); begin(); return; }
+    if (event.repeat && !keys.has(key)) return;
     const control = actionForKey(key); if (!control || (key === ' ' && event.target.closest('button'))) return;
     event.preventDefault(); event.stopPropagation();
     if (control === 'jump' && game.phase === 'ready' && !event.repeat) begin();
@@ -325,8 +405,13 @@
       if (paused || terminal()) return;
       const control = button.dataset.platformHold; pointers.set(event.pointerId, control); latch(control); button.setPointerCapture(event.pointerId); button.dataset.held = 'true';
     });
-    const release = event => { pointers.delete(event.pointerId); button.removeAttribute('data-held'); };
-    button.addEventListener('pointerup', release); button.addEventListener('pointercancel', release); button.addEventListener('lostpointercapture', release);
+    const release = event => { pointers.delete(event.pointerId); if (![...pointers.values()].includes(button.dataset.platformHold)) button.removeAttribute('data-held'); };
+    button.addEventListener('pointerup', release);
+    const cancel = event => {
+      const control = pointers.get(event.pointerId); release(event);
+      if (control && !held(control)) pendingActions.delete(control);
+    };
+    button.addEventListener('pointercancel', cancel); button.addEventListener('lostpointercapture', cancel);
     // Native button activation remains useful to switch users: a brief move/jump.
     button.addEventListener('click', event => {
       if (event.detail !== 0 || paused || terminal()) return;
@@ -336,6 +421,22 @@
       pulseTimers.set(control, setTimeout(() => { pulses.delete(control); pulseTimers.delete(control); }, control === 'jump' ? 220 : 160));
     });
   });
+  // A browser can release a captured pointer or a key outside the dialog.
+  // Global release handlers clear physical input without stealing native keys.
+  window.addEventListener('keyup', event => {
+    const key = event.key.length === 1 ? event.key.toLowerCase() : event.key;
+    keys.delete(key);
+  });
+  const releasePointer = (event, cancelled) => {
+    const control = pointers.get(event.pointerId); pointers.delete(event.pointerId);
+    if (!control) return;
+    if (cancelled && !held(control)) pendingActions.delete(control);
+    if (![...pointers.values()].includes(control)) dialog.querySelectorAll('[data-platform-hold]').forEach(button => {
+      if (button.dataset.platformHold === control) button.removeAttribute('data-held');
+    });
+  };
+  window.addEventListener('pointerup', event => releasePointer(event, false));
+  window.addEventListener('pointercancel', event => releasePointer(event, true));
   action.addEventListener('click', begin); pause.addEventListener('click', () => setPaused(!paused));
   const back = () => window.PortfolioGames?.run('choose', opener);
   dialog.querySelector('[data-platform-back]').addEventListener('click', back);

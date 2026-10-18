@@ -1,38 +1,58 @@
-/* Cloud Trail: a cream and violet 16-bit console, isolated from every other cartridge. */
-#platformer-dialog{color-scheme:light;width:min(790px,calc(100vw - 24px));max-height:calc(100dvh - 24px);padding:16px 20px;background:linear-gradient(155deg,#ece9e0,#d4d2ce);color:#343447;border:2px solid #9c9aab;border-radius:19px 19px 34px 34px;box-shadow:0 24px 80px #080d26b3,inset 0 2px 0 #fffaf0,inset 0 -7px 0 #bbb9c0;overflow:auto;font-family:"Plex Mono",monospace;}
-#platformer-dialog::backdrop{background:#1b1936ba;backdrop-filter:blur(5px)}
-#platformer-dialog .console-heading{align-items:center;margin:0 0 10px;gap:12px}
-#platformer-dialog .console-eyebrow{color:#67617f;font-size:8px;letter-spacing:.18em}
-#platformer-dialog .console-heading h2{color:#51446c;font-size:27px;line-height:1.1;margin:4px 0 0;font-style:italic;letter-spacing:-1px}
-#platformer-dialog .console-heading h2 span{display:inline;margin-left:12px;color:#777089;font-size:9px;font-style:normal;letter-spacing:.19em}
-#platformer-dialog button{font:inherit;color:#454252;background:#e4e0dc;border:1px solid #9c98a9;border-radius:7px;min-height:42px;cursor:pointer;box-shadow:0 2px 0 #aca7b2,inset 0 1px 0 #fff8eb}
-#platformer-dialog button:hover{background:#f4eee5;border-color:#81748e}
-#platformer-dialog :focus-visible{outline:3px solid #795497;outline-offset:3px}
-#platformer-dialog .console-heading>button{min-width:42px;padding:5px 9px;font-size:10px}
-#platformer-dialog .console-hud{margin:0 0 10px;padding:6px 12px;gap:12px;border:1px solid #c0bcc6;border-radius:6px;background:#c8c4ce;color:#555066;font-size:8px;text-transform:uppercase;letter-spacing:.08em}
-#platformer-dialog .console-hud>span{display:flex;align-items:center;gap:9px}
-#platformer-dialog .console-hud strong{display:inline;margin:0;color:#40354e;font-size:14px}
-#platformer-dialog .platform-stage{width:100%;margin-inline:auto;border:5px solid #4c4a60;border-radius:8px;background:#6579b2;overflow:hidden;box-shadow:0 1px 0 #fbf8eb,inset 0 0 0 2px #2e2d41}
-#platformer-dialog #platform-canvas{display:block;width:100%;height:auto;aspect-ratio:16/9;image-rendering:pixelated;touch-action:none}
-#platformer-dialog #platform-status{font-size:10px;line-height:1.5;color:#50495e;min-height:30px;margin:9px 3px 4px}
-#platformer-dialog .platform-touch{display:flex;align-items:center;justify-content:space-between;gap:12px;margin:6px 0 0;padding:7px 12px;border:1px solid #bdb9c7;border-radius:16px;background:linear-gradient(#d9d5df,#c6c2ce);box-shadow:inset 0 2px 3px #a8a2b32b}
-#platformer-dialog .platform-touch>div{display:flex;align-items:center;gap:9px}
-#platformer-dialog .platform-touch button{min-width:55px;height:47px;padding:4px 9px;font-size:19px;touch-action:none;user-select:none;-webkit-user-select:none;-webkit-touch-callout:none;box-shadow:0 3px 0 #72687d,inset 0 2px 0 #f7f2ff50}
-#platformer-dialog .platform-touch [data-platform-hold=left],#platformer-dialog .platform-touch [data-platform-hold=right]{background:#555262;border-color:#3b3849;color:#ece7e4}
-#platformer-dialog .platform-touch .platform-buttons{gap:12px;transform:rotate(-7deg)}
-#platformer-dialog .platform-touch .platform-buttons button{border-radius:50%;width:51px;min-width:51px;height:51px;color:#fff8ee;background:#766291;border-color:#5d4779;transform:rotate(7deg)}
-#platformer-dialog .platform-touch .platform-buttons [data-platform-hold=attack]{background:#a79bbb;border-color:#817395;color:#352b4a}
+/* Cloud Trail: original early-00s console shell and smooth cel-shaded viewport. */
+#platformer-dialog{color-scheme:dark;box-sizing:border-box;width:min(790px,calc(100vw - 24px));max-height:calc(100dvh - 24px);padding:14px 19px 16px;background:linear-gradient(145deg,#656a9f 0%,#434b83 45%,#343d70 100%);color:#eff5e9;border:2px solid #939dcc;border-radius:20px 20px 38px 38px;box-shadow:0 24px 80px #07142bc9,inset 0 2px 0 #c3cbed70,inset 0 -7px 0 #222e59;overflow:auto;font-family:"Plex Mono",monospace;}
+#platformer-dialog::backdrop{background:#0c1932c7;backdrop-filter:blur(5px)}
+#platformer-dialog .console-heading{align-items:center;margin:0 0 8px;gap:12px}
+#platformer-dialog .console-eyebrow{color:#d0d9ef;font-size:8px;letter-spacing:.13em}
+#platformer-dialog .console-heading h2{color:#fff0ba;font-size:28px;line-height:1.1;margin:4px 0 0;font-style:italic;letter-spacing:-1px;text-shadow:2px 2px #293b68}
+#platformer-dialog .console-heading h2 span{display:inline;margin-left:12px;color:#d5e7e5;font-size:10px;font-style:normal;letter-spacing:.17em}
+#platformer-dialog button{font:inherit;color:#f0f1e7;background:#59648d;border:1px solid #a5aec8;border-radius:8px;min-height:44px;cursor:pointer;box-shadow:0 3px 0 #273453,inset 0 1px 0 #f8fbff40}
+#platformer-dialog button:hover{background:#7081ab;border-color:#e3efd8}
+#platformer-dialog :focus-visible{outline:3px solid #f9dc87;outline-offset:3px}
+#platformer-dialog .console-heading>button{min-width:44px;padding:5px 9px;font-size:10px;border-radius:50%;background:#303d62}
+#platformer-dialog .console-hud{margin:0 0 8px;padding:6px 12px;gap:10px;border:1px solid #839dc0;border-radius:4px 13px 4px 13px;background:#233d5b;color:#b9d6dd;font-size:8px;text-transform:uppercase;letter-spacing:.06em;box-shadow:inset 0 1px 0 #9dbfc42b}
+#platformer-dialog .console-hud>span{display:flex;align-items:center;gap:8px}
+#platformer-dialog .console-hud strong{display:inline;margin:0;color:#e5f3c5;font-size:13px}
+#platformer-dialog .platform-stage{box-sizing:border-box;width:100%;margin-inline:auto;border:4px solid #1f2d4b;border-radius:7px;background:#669ab7;overflow:hidden;box-shadow:0 1px 0 #bac9e1,inset 0 0 0 2px #101c32}
+#platformer-dialog #platform-canvas{display:block;width:100%;height:auto;aspect-ratio:16/9;image-rendering:auto;touch-action:none}
+#platformer-dialog #platform-status{font-size:10px;line-height:1.5;color:#e1e7eb;min-height:30px;margin:8px 3px 4px}
+#platformer-dialog .platform-touch{display:flex;align-items:center;justify-content:space-between;gap:12px;margin:4px 0 0;padding:6px 18px;border:1px solid #8192ba;border-radius:24px 24px 32px 32px;background:linear-gradient(160deg,#7780b2,#4e598c 60%,#3e4d7b);box-shadow:inset 0 2px 0 #c2cdec50,0 3px 0 #25375f}
+#platformer-dialog .platform-touch>div{display:flex;align-items:center;gap:10px}
+#platformer-dialog .platform-touch button{min-width:53px;height:46px;padding:4px 9px;font-size:19px;touch-action:none;user-select:none;-webkit-user-select:none;-webkit-touch-callout:none;box-shadow:0 3px 0 #27364d,inset 0 2px 0 #f7f2ff50}
+#platformer-dialog .platform-touch [data-platform-hold=left],#platformer-dialog .platform-touch [data-platform-hold=right]{background:linear-gradient(#b2bdbf,#899aab);border-color:#d1dde1;color:#263e5c;border-radius:14px}
+#platformer-dialog .platform-touch .platform-buttons{gap:14px;align-items:center}
+#platformer-dialog .platform-touch .platform-buttons [data-platform-hold=jump]{border-radius:50%;width:56px;min-width:56px;height:56px;color:#123c36;background:linear-gradient(145deg,#8ae0b7,#39b18c);border-color:#b0f4cd;font-weight:bold;font-size:23px}
+#platformer-dialog .platform-touch .platform-buttons [data-platform-hold=attack]{border-radius:50%;width:44px;min-width:44px;height:44px;background:linear-gradient(145deg,#f99b91,#dc6875);border-color:#ffc6ba;color:#592841;font-size:18px;margin-top:10px}
 #platformer-dialog .platform-touch button span{display:block;font-size:7px;line-height:1;margin-top:2px;text-transform:uppercase;letter-spacing:.08em}
-#platformer-dialog .platform-touch button[data-held]{box-shadow:0 1px 0 #72687d,inset 0 1px 3px #44365360;filter:brightness(.92)}
-#platformer-dialog .console-actions{display:flex;align-items:center;flex-wrap:wrap;gap:8px;margin-top:10px}
-#platformer-dialog .console-actions button{font-size:9px;min-height:36px;padding:5px 10px;background:#d6d1d5}
+#platformer-dialog .platform-touch button[data-held]{box-shadow:0 1px 0 #26354e,inset 0 2px 3px #24354c80;filter:brightness(.90)}
+#platformer-dialog .console-actions{display:flex;align-items:center;flex-wrap:wrap;gap:8px;margin-top:8px}
+#platformer-dialog .console-actions button{font-size:9px;min-height:44px;padding:5px 11px;background:#35496b}
 #platformer-dialog .console-actions button:first-child{margin-right:auto}
-#platformer-dialog #platform-action{background:#79658e;border-color:#665078;color:#fff7df}
-#platformer-dialog #platform-action:hover{background:#8a739e}
+#platformer-dialog #platform-action{background:#829ab0;border-color:#c2d6d9;color:#172c45;font-weight:bold}
+#platformer-dialog #platform-action:hover{background:#a1b9c6}
 #platformer-dialog button:disabled{opacity:.45;cursor:default}
-#platformer-dialog .console-help{margin:9px 2px 0;color:#625c70;font-size:9px;line-height:1.7}
-#platformer-dialog .console-help summary{cursor:pointer;min-height:25px;padding:4px 0;color:#625c70}
+#platformer-dialog .console-help{margin:5px 2px 0;color:#d2dce8;font-size:9px;line-height:1.7}
+#platformer-dialog .console-help summary{cursor:pointer;min-height:24px;padding:4px 0;color:#d2dce8}
 #platformer-dialog .console-help p{margin:5px 0}
-@media(max-width:520px){#platformer-dialog{width:calc(100vw - 16px);max-height:calc(100dvh - 16px);padding:12px;border-radius:15px 15px 25px 25px}#platformer-dialog .console-heading h2{font-size:24px}#platformer-dialog .console-heading h2 span{font-size:8px;margin-left:8px;letter-spacing:.1em}#platformer-dialog .console-hud{padding:6px 8px;gap:6px;font-size:7px}#platformer-dialog .console-hud>span{gap:5px}#platformer-dialog .console-hud strong{font-size:12px}#platformer-dialog .platform-stage{border-width:4px}#platformer-dialog .platform-touch{padding:6px 9px}#platformer-dialog .platform-touch button{min-width:47px}#platformer-dialog .platform-touch .platform-buttons{gap:9px}#platformer-dialog .console-actions{gap:6px}#platformer-dialog .console-actions button{padding:5px 7px}}
-@media(min-width:650px){#platformer-dialog .platform-stage{width:min(100%,max(440px,calc((100dvh - 360px)*16/9)))}}
-@media(max-height:640px) and (min-width:650px){#platformer-dialog{width:min(720px,calc(100vw - 24px))}#platformer-dialog .console-heading{margin-bottom:6px}#platformer-dialog .console-hud{margin-bottom:6px}#platformer-dialog .platform-touch{margin-top:4px}}
+@media(max-width:520px){#platformer-dialog{width:calc(100vw - 16px);max-height:calc(100dvh - 16px);padding:12px;border-radius:15px 15px 29px 29px}#platformer-dialog .console-heading h2{font-size:25px}#platformer-dialog .console-heading h2 span{font-size:8px;margin-left:8px;letter-spacing:.1em}#platformer-dialog .console-eyebrow{font-size:7px;letter-spacing:.08em}#platformer-dialog .console-hud{padding:6px;gap:5px;font-size:7px}#platformer-dialog .console-hud>span{gap:4px}#platformer-dialog .console-hud strong{font-size:11px}#platformer-dialog .platform-stage{border-width:3px}#platformer-dialog .platform-touch{padding:6px 12px}#platformer-dialog .platform-touch button{min-width:47px}#platformer-dialog .platform-touch .platform-buttons{gap:11px}#platformer-dialog .console-actions{gap:6px}#platformer-dialog .console-actions button{padding:5px 7px}}
+@media(min-width:650px){#platformer-dialog .platform-stage{width:min(100%,max(360px,calc((100dvh - 430px)*16/9)))}}
+@media(max-height:640px) and (min-width:650px){#platformer-dialog{width:min(720px,calc(100vw - 24px))}#platformer-dialog .console-heading{margin-bottom:5px}#platformer-dialog .console-hud{margin-bottom:5px}}
+@media(orientation:landscape) and (max-height:520px) and (min-width:650px){
+  #platformer-dialog[open]{display:grid;grid-template-columns:minmax(0,1fr) 270px;column-gap:13px;row-gap:5px;width:calc(100vw - 20px);max-height:calc(100dvh - 16px);padding:10px 12px;border-radius:14px 14px 24px 24px}
+  #platformer-dialog .platform-stage{grid-column:1;grid-row:1/7;align-self:center;width:100%;border-width:3px}
+  #platformer-dialog .console-heading{grid-column:2;grid-row:1;margin:0;gap:6px}
+  #platformer-dialog .console-heading h2{font-size:24px}
+  #platformer-dialog .console-heading h2 span{font-size:8px;margin-left:8px}
+  #platformer-dialog .console-eyebrow{font-size:6px;letter-spacing:.06em}
+  #platformer-dialog .console-hud{grid-column:2;grid-row:2;margin:0;padding:5px;gap:4px;font-size:6px}
+  #platformer-dialog .console-hud>span{gap:3px}
+  #platformer-dialog .console-hud strong{font-size:10px}
+  #platformer-dialog #platform-status{grid-column:2;grid-row:3;margin:0;min-height:0;font-size:9px;line-height:1.4}
+  #platformer-dialog .platform-touch{grid-column:2;grid-row:4;margin:0;padding:5px 9px;gap:8px}
+  #platformer-dialog .platform-touch>div{gap:6px}
+  #platformer-dialog .platform-touch button{width:44px;min-width:44px;height:44px;padding:4px}
+  #platformer-dialog .platform-touch .platform-buttons{gap:9px}
+  #platformer-dialog .platform-touch .platform-buttons [data-platform-hold=jump]{width:53px;min-width:53px;height:53px}
+  #platformer-dialog .console-actions{grid-column:2;grid-row:5;display:grid;grid-template-columns:1.15fr 1fr .75fr;margin:0;gap:5px}
+  #platformer-dialog .console-actions button{width:100%;padding:4px;font-size:8px}
+  #platformer-dialog .console-help{grid-column:2;grid-row:6;margin:0;font-size:8px}
+}

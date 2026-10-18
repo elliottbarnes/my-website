@@ -84,28 +84,32 @@ test('checkpoint survives falls, the third fall ends the run, and stopped worlds
 });
 test('finish requires all seven balls, awards its life bonus once, and preserves a finite winning state', () => {
   const game = platform.create(); platform.start(game);
-  game.player.x = 3290; platform.step(game); assert.equal(game.phase, 'playing'); assert.equal(game.event, 'missing');
-  game.orbs.forEach(orb => { orb.collected = true; }); platform.step(game); assert.equal(game.phase, 'won'); assert.equal(game.score, 1500);
+  game.player.x = platform.GOAL + 10; platform.step(game); assert.equal(game.phase, 'playing'); assert.equal(game.event, 'missing');
+  game.orbs.forEach(orb => { orb.collected = true; }); platform.step(game); assert.equal(game.phase, 'playing'); assert.equal(game.event, 'guardian');
+  game.enemies.find(enemy => enemy.kind === 'guardian').alive = false; platform.step(game); assert.equal(game.phase, 'won'); assert.equal(game.score, 1500);
   simulate(game, 1); assert.equal(game.score, 1500);
 });
 test('the entire Cloud Trail is physically completable through ordinary run/jump input, with all seven balls', () => {
   const game = platform.create(); platform.start(game);
   // A deterministic navigator uses the same actions as a player: it cannot
   // reposition actors, modify collectibles, change lives or bypass collisions.
-  for (let frame = 0; frame < 120 * 60 && game.phase === 'playing'; frame++) {
-    const p = game.player, target = game.orbs.find(orb => !orb.collected), targetX = target ? target.x : 3300;
-    const direction = Math.abs(targetX - p.x) > 4 ? Math.sign(targetX - p.x) : 0;
+  for (let frame = 0; frame < 120 * 120 && game.phase === 'playing'; frame++) {
+    const p = game.player, target = game.orbs.find(orb => !orb.collected), guardian = game.enemies.find(enemy => enemy.kind === 'guardian');
+    const targetX = target ? target.x : guardian.alive ? 5480 : platform.GOAL + 30;
+    const direction = Math.abs(targetX - p.x) > (!target && guardian.alive ? 12 : 4) ? Math.sign(targetX - p.x) : 0;
     let shouldJump = false;
     if (direction > 0) {
       shouldJump = platform.solids.some(tile => tile.y < platform.GROUND && tile.y < p.y + p.h && tile.y > p.y + p.h - 105 && tile.x - p.x > 15 && tile.x - p.x < 75);
       shouldJump ||= game.enemies.some(bot => bot.alive && bot.x - p.x > 5 && bot.x - p.x < 85 && Math.abs(p.y + p.h - platform.GROUND) < 6);
       shouldJump ||= platform.solids.some(tile => tile.y === platform.GROUND && p.x >= tile.x && p.x < tile.x + tile.w && tile.x + tile.w - p.x < 70 && tile.x + tile.w < platform.WIDTH);
     }
+    shouldJump ||= game.hazards.some(shot => Math.abs(shot.x - p.x) < 95 && (shot.x - p.x) * shot.vx < 0);
     if (target && Math.abs(targetX - p.x) < 25 && target.y + target.h < p.y + p.h - 15) shouldJump = true;
-    platform.step(game, { direction, jump: p.grounded ? !p.jumpHeld && shouldJump : p.jumpHeld }, 1 / 120);
+    platform.step(game, { direction, jump: p.grounded ? !p.jumpHeld && shouldJump : p.jumpHeld, attack: true }, 1 / 120);
   }
   assert.equal(game.phase, 'won'); assert.equal(game.orbs.filter(orb => orb.collected).length, 7);
-  assert.equal(game.lives, 3); assert.equal(game.checkpoint, 1605); assert.ok(game.score >= 3250);
+  assert.ok(game.lives >= 1); assert.equal(game.checkpoint, 5170); assert.ok(game.score >= 3250);
+  assert.equal(game.enemies.find(enemy => enemy.kind === 'guardian').alive, false);
   assert.ok(game.camera >= 0 && game.camera <= platform.WIDTH - 640);
   assert.ok(game.player.x - game.camera < 640);
 });
@@ -114,7 +118,12 @@ const source = await readFile(new URL('../assets/goku-platformer.js', import.met
 function controlsHarness() {
   let focus, now = 0, sequence = 0; const frames = new Map(), timers = new Map(), nodes = new Map();
   const trace = { x: 0, y: 0, blasts: 0 };
-  const paint = main => ({ fillRect() { if (main && this.fillStyle === '#fffce0') trace.blasts++; }, fillText() {}, save() {}, restore() {}, scale() {}, drawImage() {}, translate(x, y) { if (main) { trace.x = x; trace.y = y; } } });
+  const paint = main => ({ fillRect() {}, fillText() {}, save() {}, restore() {}, scale() {}, drawImage() {},
+    beginPath() {}, moveTo() {}, lineTo() {}, closePath() {}, ellipse() {}, bezierCurveTo() {}, clip() {}, stroke() {}, setTransform() {},
+    createLinearGradient() { return { addColorStop() {} }; },
+    fill() { if (main && this.fillStyle === '#fffce0') trace.blasts++; },
+    translate(x, y) { if (main) { trace.x = x; trace.y = y; } },
+  });
   class Element {
     constructor(tag = '') { this.tag = tag; this.listeners = {}; this.dataset = {}; this.attributes = new Map(); this.open = false; this.textContent = ''; }
     addEventListener(name, fn) { (this.listeners[name] ||= []).push(fn); }
@@ -168,4 +177,100 @@ test('equivalent physical keys remain independent and Space on native buttons is
   h.dialog.fire('keydown', { target: h.button('jump'), key: ' ', preventDefault() { prevented = true; } });
   h.dialog.fire('keyup', { target: h.button('jump'), key: ' ', preventDefault() { prevented = true; } });
   assert.equal(prevented, false);
+});
+
+test('cancelled touch actions are discarded before the next simulation tick', () => {
+  const h = controlsHarness(); h.start(); const ground = h.trace.y;
+  h.button('jump').fire('pointerdown', { button: 0, pointerId: 1 });
+  h.button('jump').fire('pointercancel', { pointerId: 1 });
+  h.pump(25);
+  assert.equal(h.trace.y, ground, 'a cancelled touch must not launch a jump');
+});
+
+test('all three checkpoints respawn on safe ground and clear hostile projectiles', () => {
+  for (const checkpoint of platform.checkpoints) {
+    const game = platform.create(); platform.start(game); game.player.x = checkpoint;
+    platform.step(game); assert.equal(game.checkpoint, checkpoint);
+    game.orbs[0].collected = true;
+    game.hazards.push({ x: checkpoint + 60, y: 286, w: 12, h: 10, vx: -145, life: 3 });
+    game.player.y = 450; platform.step(game);
+    assert.equal(game.player.x, checkpoint); assert.equal(game.player.y + game.player.h, platform.GROUND);
+    assert.equal(game.hazards.length, 0); assert.equal(game.orbs[0].collected, true);
+    assert.equal(game.lives, 2); simulate(game, .8);
+    assert.equal(game.player.y + game.player.h, platform.GROUND); assert.equal(game.lives, 2);
+  }
+});
+
+test('armored enemies need separate hits and the guardian can be defeated by ordinary ranged attacks', () => {
+  const game = platform.create(); platform.start(game);
+  const guardian = game.enemies.find(enemy => enemy.kind === 'guardian');
+  game.player.x = 5480;
+  const initialHealth = guardian.hp;
+  simulate(game, .62, { attack: true });
+  assert.ok(guardian.hp < initialHealth && guardian.hp > 0, 'one volley cannot instantly defeat the guardian');
+  for (let frame = 0; frame < 120 * 12 && guardian.alive && game.phase === 'playing'; frame++) {
+    const imminent = game.hazards.some(shot => shot.x - game.player.x < 95 && shot.x > game.player.x);
+    platform.step(game, { attack: true, jump: game.player.grounded ? imminent && !game.player.jumpHeld : game.player.jumpHeld });
+  }
+  assert.equal(guardian.alive, false); assert.equal(guardian.hp, 0); assert.equal(game.score, 1000);
+  const score = game.score; simulate(game, 1, { attack: true }); assert.equal(game.score, score);
+});
+
+test('ki collides with solid ledges and cancels incoming projectiles without awarding enemy points', () => {
+  const blocked = platform.create(); platform.start(blocked);
+  Object.assign(blocked.player, { x: 220, y: 236, vy: 0, grounded: false });
+  simulate(blocked, .08, { attack: true });
+  assert.equal(blocked.shots.length, 0, 'the shot meets the side of the first raised ledge');
+  const game = platform.create(); platform.start(game);
+  game.hazards.push({ x: 135, y: 286, w: 12, h: 10, vx: -145, life: 2 });
+  simulate(game, .12, { attack: true });
+  assert.equal(game.hazards.length, 0); assert.equal(game.shots.length, 0); assert.equal(game.score, 0); assert.equal(game.lives, 3);
+});
+
+test('sentry wind-up is range-limited, projectiles are bounded, and a fresh run resets every encounter', () => {
+  const game = platform.create(); platform.start(game); const sentry = game.enemies.find(enemy => enemy.kind === 'sentry');
+  simulate(game, 10); assert.equal(sentry.cooldown, 1.2); assert.equal(game.hazards.length, 0);
+  game.player.x = 4500; simulate(game, .7); assert.equal(game.hazards.length, 0);
+  simulate(game, .6); assert.ok(game.hazards.length > 0); assert.ok(game.hazards.length <= 2);
+  const fresh = platform.create();
+  assert.equal(fresh.phase, 'ready'); assert.equal(fresh.lives, 3); assert.equal(fresh.checkpoint, 80);
+  assert.ok(fresh.orbs.every(orb => !orb.collected)); assert.ok(fresh.enemies.every(enemy => enemy.hp === enemy.maxHp && enemy.alive));
+});
+
+test('orphan key repeats cannot resurrect movement after pause, restart or hidden-tab input clearing', () => {
+  for (const reset of ['pause', 'restart', 'hidden']) {
+    const h = controlsHarness(); h.start(); h.key('keydown', 'd');
+    for (let i = 0; i < 4; i++) h.pump(20);
+    if (reset === 'pause') { h.key('keydown', 'p'); h.key('keydown', 'd', { repeat: true }); h.key('keydown', 'p'); }
+    if (reset === 'restart') { h.dialog.querySelector('#platform-action').fire('click'); h.key('keydown', 'd', { repeat: true }); }
+    if (reset === 'hidden') { h.document.hidden = true; h.document.fire('visibilitychange'); assert.equal(h.frames.size, 0); h.document.hidden = false; h.document.fire('visibilitychange'); h.key('keydown', 'd', { repeat: true }); h.key('keydown', 'p'); }
+    for (let i = 0; i < 15; i++) h.pump(20);
+    const settled = h.trace.x;
+    for (let i = 0; i < 10; i++) h.pump(20);
+    assert.equal(h.trace.x, settled, `${reset} must not revive a physically cleared key`);
+    h.key('keydown', 'd'); for (let i = 0; i < 8; i++) h.pump(20);
+    assert.ok(h.trace.x > settled + 10, 'a fresh keydown still works');
+  }
+});
+
+test('releases outside the dialog stop held keys and captured pointers', () => {
+  for (const kind of ['key', 'pointer']) {
+    const h = controlsHarness(); h.start();
+    if (kind === 'key') h.key('keydown', 'd');
+    else h.button('right').fire('pointerdown', { button: 0, pointerId: 18 });
+    for (let i = 0; i < 8; i++) h.pump(20);
+    if (kind === 'key') h.window.fire('keyup', { key: 'd' });
+    else h.window.fire('pointerup', { pointerId: 18 });
+    for (let i = 0; i < 15; i++) h.pump(20);
+    const stopped = h.trace.x; for (let i = 0; i < 10; i++) h.pump(20);
+    assert.equal(h.trace.x, stopped);
+  }
+});
+
+test('blur stops all game work, Escape hands off to the chooser, and opening never starts automatically', () => {
+  const h = controlsHarness(); h.window.PortfolioPlatformer.open(h.opener);
+  assert.equal(h.frames.size, 0); assert.equal(h.dialog.querySelector('#platform-region').textContent, '1 / 4');
+  h.dialog.querySelector('#platform-action').fire('click'); h.pump(0);
+  h.window.fire('blur'); assert.equal(h.frames.size, 0); assert.equal(h.dialog.querySelector('#platform-pause').textContent, 'resume');
+  h.dialog.fire('cancel'); assert.equal(h.dialog.open, false); assert.equal(h.frames.size, 0); assert.equal(h.focus(), h.opener);
 });

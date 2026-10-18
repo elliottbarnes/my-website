@@ -6,6 +6,19 @@
   const separation = .01;
   const minimumReturnAngle = Math.PI / 24;
   const maximumReturnAngle = Math.PI * .31;
+  const arenas = Object.freeze(["Orbit", "Nova", "Zenith"]);
+
+  function shields(wave) {
+    const bricks = [], rows = wave === 2 ? 5 : wave === 3 ? 4 : 3;
+    for (let row = 0; row < rows; row++) for (let column = 0; column < 7; column++) {
+      if (wave === 2 && Math.abs(column - 3) > [3, 2, 1, 2, 3][row]) continue;
+      const health = wave === 1 ? row === 0 ? 1 : 2
+        : wave === 2 ? row === 2 ? 2 : 1 : (row + column) % 3 === 0 ? 3 : 2;
+      bricks.push({ id: row * 7 + column, x: 18 + column * 47, y: 62 + row * 26,
+        width: 42, height: 18, health, maxHealth: health, star: column + 1, active: true });
+    }
+    return bricks;
+  }
 
   function dock(state) {
     state.ball.x = state.paddle.x;
@@ -17,19 +30,26 @@
   function create() {
     const state = {
       width, height, phase: "ready", lives: 3, score: 0, collected: [], time: 0, lastHit: null,
+      wave: 1, totalWaves: arenas.length,
       paddle: { x: width / 2, y: 442, width: 68, height: 10 },
       ball: { x: width / 2, y: 435, radius: 5, vx: 0, vy: 0, speed: 260 },
-      bricks: [],
+      bricks: shields(1),
     };
-    for (let row = 0; row < 3; row++) {
-      for (let column = 0; column < 7; column++) {
-        const health = row === 0 ? 1 : 2;
-        state.bricks.push({
-          id: row * 7 + column, x: 18 + column * 47, y: 62 + row * 26,
-          width: 42, height: 18, health, maxHealth: health, star: column + 1, active: true,
-        });
-      }
-    }
+    dock(state);
+    return state;
+  }
+
+  // A cleared arena waits for an explicit continue; score and remaining lives carry.
+  function nextArena(state) {
+    if (state.phase !== "clear" || state.wave >= arenas.length) return state;
+    state.wave++;
+    state.bricks = shields(state.wave);
+    state.collected = [];
+    state.lastHit = null;
+    state.lives = Math.min(3, state.lives + 1);
+    state.ball.speed = 260 + (state.wave - 1) * 20;
+    state.phase = "ready";
+    dock(state);
     return state;
   }
 
@@ -105,7 +125,7 @@
       ball.vy *= ball.speed / speed;
     }
     if (!state.bricks.some(other => other.active)) {
-      state.phase = "won";
+      state.phase = state.wave === arenas.length ? "won" : "clear";
       ball.vx = 0;
       ball.vy = 0;
     }
@@ -182,7 +202,16 @@
       const depth = Math.max(...contacts.map(({ hit }) => hit.depth / (hit.nx * normal.nx + hit.ny * normal.ny)));
       for (const { brick } of contacts) touched.add(brick.id);
       separate(ball, { ...normal, depth });
-      if (reflect(ball, normal)) for (const { brick } of contacts) damage(state, brick);
+      if (reflect(ball, normal)) {
+        for (const { brick } of contacts) damage(state, brick);
+        // A diagonal corner can turn a vertical shot into an exact horizontal
+        // orbit below the remaining shields. Keep a small vertical component.
+        if (state.phase === "playing" && Math.abs(ball.vy) < ball.speed * .15) {
+          const vertical = Math.abs(ball.vy) > .000001 ? Math.sign(ball.vy) : Math.sign(normal.ny) || -1;
+          ball.vy = vertical * ball.speed * .15;
+          ball.vx = (Math.sign(ball.vx) || 1) * Math.sqrt(ball.speed ** 2 - ball.vy ** 2);
+        }
+      }
     }
     if (state.phase === "playing" && ball.y > state.height + ball.radius) loseLife(state);
   }
@@ -201,5 +230,5 @@
     return state;
   }
 
-  window.PortfolioBreakerEngine = Object.freeze({ create, reset, launch, movePaddle, step });
+  window.PortfolioBreakerEngine = Object.freeze({ arenas, create, reset, nextArena, launch, movePaddle, step });
 })();
