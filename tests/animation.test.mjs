@@ -705,7 +705,7 @@ test("code-discovered interference preserves static discovery without losing the
     }
     assert.equal(controls.api.state.effect, "interference");
     assert.equal(controls.frames.size, 0);
-    assert.ok(controls.field.calls.text.map(call => call.text).join("").includes("twosources"));
+    assert.ok(controls.field.calls.text.map(call => call.text).join("").includes("twocoherentsources"));
     const before = JSON.stringify(controls.field.calls.text);
     controls.window.dispatch("pointermove", { clientX: 500, clientY: 100, target: controls.field });
     controls.frame(1000);
@@ -954,6 +954,18 @@ test("source actions stay on the displayed project and open its related experime
   assert.equal(controls.api.state.effect, "object");
   assert.equal(controls.api.state.static, true);
   assert.equal(controls.document.activeElement, controls.field.parentElement);
+});
+
+test("the framebuffer scan finishes before a touch discovery closes", () => {
+  for (const fieldWidth of [320, 640]) {
+    const controls = animation({ featured: "architecture-lab", fieldWidth });
+    tap(controls);
+    displayFor(controls, 5100);
+    assert.equal(controls.api.state.effect, "object");
+    assert.ok(renderedText(controls).includes("framecomplete/80bytes→640pixels"));
+    displayFor(controls, 1600);
+    assert.equal(controls.api.state.effect, null, "the completed scan still returns to source normally");
+  }
 });
 
 test("project links hold their destination while hovered or keyboard-focused", () => {
