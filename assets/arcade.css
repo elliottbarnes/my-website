@@ -62,12 +62,12 @@
 #arcade-dialog [data-game="breaker"] .cartridge-generation { color:#9fddea; }
 .cartridge-art svg { display:block; width:100%; height:100%; }
 .cartridge-piccolo { width:100px; height:88px; border:5px solid #a6ab99; border-radius:6px 6px 16px 6px; background:#879b55; box-shadow:0 2px 0 #111d2f,inset 0 0 0 2px #34452c; }
-.cartridge-platformer { width:100px; height:76px; border:4px solid #81768f; border-radius:7px; background:#74629e; box-shadow:0 3px 0 #171b35; }
+.cartridge-platformer { width:100px; height:88px; border:2px solid #8d88bd; border-radius:9px; background:#292551; box-shadow:0 3px 0 #171b35; image-rendering:auto; }
 #arcade-dialog .cartridge-arrow { color:#b1c2d4; font-size:16px; }
 @media (max-width:520px) {
   #arcade-dialog .game-choice { grid-template-columns:76px minmax(0,1fr) 12px; gap:11px; }
   .cartridge-piccolo { width:73px; height:74px; }
-  .cartridge-platformer { width:73px; height:62px; }
+  .cartridge-platformer { width:73px; height:74px; }
   #arcade-dialog .cartridge-generation { font-size:8px; letter-spacing:.02em; margin-bottom:5px; }
 }
 @media (prefers-reduced-motion:reduce) { #arcade-dialog .game-choice:hover { transform:none; } }

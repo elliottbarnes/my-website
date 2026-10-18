@@ -249,7 +249,7 @@ test("a Dragon Ball is collected only when its entire column has been cleared", 
   assert.equal(state.phase, "playing", "other columns remain playable");
 });
 
-test("clearing all seven columns wins, retains the full collection, and ends movement", () => {
+test("clearing all seven columns pauses at the arena result and ends movement", () => {
   const state = engine.create();
   // Clear from the bottom so the deliberate test impacts have unobstructed paths.
   for (const brick of Array.from(state.bricks).reverse()) {
@@ -259,7 +259,7 @@ test("clearing all seven columns wins, retains the full collection, and ends mov
     }
     assert.equal(brick.active, false);
   }
-  assert.equal(state.phase, "won");
+  assert.equal(state.phase, "clear");
   assert.deepEqual(Array.from(state.collected), [1, 2, 3, 4, 5, 6, 7]);
   assert.equal(state.score, 665);
   assert.equal(state.ball.vx, 0);
@@ -268,6 +268,55 @@ test("clearing all seven columns wins, retains the full collection, and ends mov
   engine.step(state, .1);
   engine.launch(state);
   assert.deepEqual(snapshot(state), before);
+});
+
+test("a diagonal corner cannot strand the ball in a horizontal orbit below all remaining shields", () => {
+  const state = engine.create(), brick = state.bricks[20];
+  state.phase = "playing";
+  for (const other of state.bricks) other.active = other === brick || other.id === 0;
+  brick.health = 1;
+  Object.assign(state.ball, { x: brick.x + brick.width + 3,
+    y: brick.y + brick.height + 3 + state.ball.speed * .001, vx: 0, vy: -state.ball.speed });
+  engine.step(state, .001);
+  assert.equal(brick.active, false);
+  assert.ok(Math.abs(state.ball.vy) >= state.ball.speed * .15 - 1e-9);
+  close(Math.hypot(state.ball.vx, state.ball.vy), state.ball.speed);
+  const impactY = state.ball.y;
+  for (let frame = 0; frame < 120; frame++) engine.step(state, 1 / 60);
+  assert.ok(Math.abs(state.ball.y - impactY) > 50, "the shot must leave the empty horizontal corridor");
+});
+
+test("three distinct arenas require explicit progression and preserve score with bounded life recovery", () => {
+  const state = engine.create();
+  const layouts = [], scores = [];
+  for (let wave = 1; wave <= 3; wave++) {
+    assert.equal(state.wave, wave);
+    assert.equal(state.phase, "ready");
+    assert.ok(state.bricks.every(brick => brick.x >= 0 && brick.x + brick.width <= state.width
+      && brick.y + brick.height < state.paddle.y && brick.health >= 1 && brick.health <= 3));
+    layouts.push(JSON.stringify(state.bricks.map(brick => [brick.x, brick.y, brick.maxHealth])));
+    for (let star = 1; star <= 7; star++) assert.ok(state.bricks.some(brick => brick.star === star));
+    const beforeStart = snapshot(state); engine.nextArena(state);
+    assert.deepEqual(snapshot(state), beforeStart, "a live arena cannot be skipped");
+    for (const brick of Array.from(state.bricks).reverse()) {
+      for (let hit = 0; hit < brick.maxHealth; hit++) { aimAtBottom(state, brick); engine.step(state, .015); }
+      assert.equal(brick.active, false);
+    }
+    assert.deepEqual(Array.from(state.collected), [1, 2, 3, 4, 5, 6, 7]);
+    assert.equal(state.phase, wave === 3 ? "won" : "clear");
+    assert.equal(state.ball.vx, 0); assert.equal(state.ball.vy, 0);
+    scores.push(state.score);
+    const result = snapshot(state); engine.step(state, 10); engine.launch(state);
+    assert.deepEqual(snapshot(state), result, "the result cannot auto-advance");
+    state.lives = 2; engine.nextArena(state);
+    assert.equal(state.score, scores.at(-1));
+    if (wave < 3) { assert.equal(state.lives, 3); assert.equal(state.collected.length, 0); }
+    else { assert.equal(state.phase, "won"); assert.equal(state.wave, 3); }
+  }
+  assert.equal(new Set(layouts).size, 3);
+  assert.ok(scores[2] > scores[1] && scores[1] > scores[0]);
+  engine.reset(state);
+  assert.equal(state.wave, 1); assert.equal(state.score, 0); assert.equal(state.phase, "ready");
 });
 
 test("missing the paddle spends one life and waits for a new launch until all three are gone", () => {
@@ -309,6 +358,7 @@ test("frame duration is bounded and invalid timing input cannot advance the simu
 test("extended deterministic play keeps coordinates and velocities finite", () => {
   const state = engine.create();
   for (let frame = 0; frame < 18000 && !["won", "lost"].includes(state.phase); frame++) {
+    if (state.phase === "clear") engine.nextArena(state);
     engine.movePaddle(state, state.ball.x + Math.sin(frame * .031) * 20);
     if (state.phase === "ready") engine.launch(state);
     engine.step(state, 1 / 60);

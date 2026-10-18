@@ -94,12 +94,12 @@ test("late arena artwork covers the board without resuming a paused game", () =>
 });
 
 test("completed training results survive blur and hidden-tab changes", () => {
-  for (const phase of ["won", "lost"]) {
+  for (const phase of ["clear", "won", "lost"]) {
     const page = chamber();
     page.open();
     page.state.phase = phase;
     page.images[0].load();
-    const title = phase === "won" ? "wish granted" : "another round?";
+    const title = phase === "clear" ? "arena cleared" : phase === "won" ? "wish granted" : "another round?";
     assert.ok(frameText(page).includes(title));
     page.window.emit("blur");
     page.document.hidden = true;
@@ -109,6 +109,43 @@ test("completed training results survive blur and hidden-tab changes", () => {
     assert.notEqual(page.status.textContent, "training paused");
     assert.equal(page.pendingFrames, 0);
   }
+});
+
+test("continuing a cleared arena keeps the score and waits for a fresh launch", () => {
+  const page = chamber(); page.open();
+  page.state.phase = "clear"; page.state.score = 665; page.state.lives = 2;
+  page.state.collected = [1, 2, 3, 4, 5, 6, 7];
+  page.window.emit("portfolio:preferences");
+  key(page, "keydown", " ");
+  assert.equal(page.state.wave, 2);
+  assert.equal(page.state.score, 665);
+  assert.equal(page.state.lives, 3);
+  assert.equal(page.state.phase, "ready");
+  assert.equal(page.pendingFrames, 0);
+  assert.equal(page.state.collected.length, 0);
+  assert.match(page.status.textContent, /Nova/);
+  page.document.emit("keydown", { key: " ", target: page.canvas, repeat: true });
+  assert.equal(page.state.phase, "ready", "holding Space through the intermission cannot launch");
+  key(page, "keyup", " "); key(page, "keydown", " ");
+  assert.equal(page.state.phase, "playing");
+  assert.equal(page.pendingFrames, 1);
+});
+
+test("an old arrow-key repeat cannot restore a hold cleared by pause or restart", () => {
+  const page = chamber(); page.open();
+  key(page, "keydown", "ArrowRight");
+  page.pause.emit("click"); page.pause.emit("click");
+  let x = page.state.paddle.x;
+  page.document.emit("keydown", { key: "ArrowRight", target: page.canvas, repeat: true });
+  page.displayFrame(200);
+  assert.equal(page.state.paddle.x, x);
+  key(page, "keydown", "ArrowRight");
+  assert.ok(page.state.paddle.x > x, "a fresh press still works");
+  page.state.phase = "lost"; page.action.emit("click");
+  x = page.state.paddle.x;
+  page.document.emit("keydown", { key: "ArrowRight", target: page.canvas, repeat: true });
+  page.displayFrame(220);
+  assert.equal(page.state.paddle.x, x, "restart cannot inherit the old hold");
 });
 
 test("mouse, pen, and touch drag from the existing paddle without jumping to the press", () => {

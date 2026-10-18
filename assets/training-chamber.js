@@ -12,6 +12,7 @@
   const status = document.getElementById("training-status");
   const score = document.getElementById("training-score");
   const lives = document.getElementById("training-lives");
+  const wave = document.getElementById("training-wave");
   const action = document.getElementById("training-action");
   const pause = document.getElementById("training-pause");
   const reducedMotion = window.matchMedia("(prefers-reduced-motion: reduce)");
@@ -41,7 +42,7 @@
 
   const decorative = () => !reducedMotion.matches && root.dataset.motion !== "paused";
   const active = () => dialog.open && !document.hidden && !paused;
-  const terminal = () => game.phase === "won" || game.phase === "lost";
+  const terminal = () => ["clear", "won", "lost"].includes(game.phase);
   const direction = () => Number(keys.has("ArrowRight") || keys.has("d")) - Number(keys.has("ArrowLeft") || keys.has("a"));
 
   function loadSprites() {
@@ -80,8 +81,9 @@
     const text = (element, value) => { if (element && element.textContent !== value) element.textContent = value; };
     text(score, String(game.score * 15));
     text(lives, String(game.lives));
+    text(wave, `${game.wave} / ${game.totalWaves}`);
     if (action) {
-      text(action, terminal() ? "again ↵" : game.phase === "ready" ? "release ki ↵" : "ki in flight");
+      text(action, game.phase === "clear" ? "next arena ↵" : terminal() ? "again ↵" : game.phase === "ready" ? "release ki ↵" : "ki in flight");
       action.disabled = paused || game.phase === "playing";
     }
     if (pause) {
@@ -92,9 +94,10 @@
       pause.disabled = terminal();
     }
     if (paused) announce("training paused");
-    else if (game.phase === "won") announce("power over 9000. seven dragon balls collected. wish granted — train again?");
+    else if (game.phase === "clear") announce(`${engine.arenas[game.wave - 1]} cleared. Seven Dragon Balls collected. Continue to ${engine.arenas[game.wave]}; recover one life, up to three.`);
+    else if (game.phase === "won") announce("All three arenas cleared. Seven dragon balls collected. Wish granted — train again?");
     else if (game.phase === "lost") announce("training complete. try again to collect all seven dragon balls.");
-    else if (game.phase === "ready") announce(`${game.lives < 3 ? "ki lost. " : ""}${game.lives} ${game.lives === 1 ? "life" : "lives"} remaining. drag anywhere to aim, then tap or press space to release ki.`);
+    else if (game.phase === "ready") announce(`${game.lives < 3 ? "Ki lost. " : ""}${engine.arenas[game.wave - 1]} · arena ${game.wave} of ${game.totalWaves}. ${game.lives} ${game.lives === 1 ? "life" : "lives"} remaining. Drag to aim, then tap or press space to release ki.`);
     else if (game.collected.length !== lastCollected) announce(`${game.collected.length} of seven dragon balls collected.`);
     else if (game.phase !== previousPhase || lastAnnouncement === "training paused") announce("ki released. clear the shields to collect all seven dragon balls.");
     previousPhase = game.phase;
@@ -285,6 +288,8 @@
       orb(star, x, 20, 20, collected ? 1 : .22);
     }
     for (const brick of game.bricks) if (brick.active) drawShield(brick);
+    context.fillStyle = palette.muted; context.font = '10px "Plex Mono", monospace'; context.textAlign = "center";
+    context.fillText(`${engine.arenas[game.wave - 1].toUpperCase()} / ${game.wave} OF ${game.totalWaves}`, width / 2, 46);
     drawEffects(ball);
 
     context.save();
@@ -333,8 +338,8 @@
     context.fillStyle = palette.muted;
     context.fillText("drag anywhere to guide", width / 2, height - 12);
     if (paused || game.phase !== "playing") {
-      const title = paused ? "time stands still" : game.phase === "won" ? "wish granted" : game.phase === "lost" ? "another round?" : game.lives < 3 ? "ki scattered" : "gather the seven";
-      const subtitle = paused ? "resume when you’re ready" : game.phase === "won" ? "seven stars. one little secret." : game.phase === "lost" ? "even saiyans need practice" : game.lives < 3 ? `${game.lives} ${game.lives === 1 ? "life" : "lives"} left · tap / space to release` : "tap / space to release ki";
+      const title = paused ? "time stands still" : game.phase === "clear" ? "arena cleared" : game.phase === "won" ? "wish granted" : game.phase === "lost" ? "another round?" : game.lives < 3 ? "ki scattered" : "gather the seven";
+      const subtitle = paused ? "resume when you’re ready" : game.phase === "clear" ? "next arena / +1 life, up to 3" : game.phase === "won" ? "three arenas. one little secret." : game.phase === "lost" ? "even saiyans need practice" : game.lives < 3 ? `${game.lives} ${game.lives === 1 ? "life" : "lives"} left · tap / space to release` : "tap / space to release ki";
       context.save();
       context.fillStyle = "rgba(7, 15, 32, .9)"; context.strokeStyle = palette.line;
       shieldPath(34, height * .49 - 33, width - 68, 72, 9); context.fill(); context.stroke();
@@ -481,6 +486,13 @@
     // An input arriving at the end of a flight must leave the new result or
     // ready serve visible; starting another round needs a fresh action.
     if (wasPlaying) { draw(); return; }
+    if (game.phase === "clear") {
+      stop(); releasePointer(); keys.clear(); clearEffects();
+      engine.nextArena(game);
+      previousHealth = new Map(game.bricks.map(brick => [brick.id, brick.health]));
+      previousCollections = new Set(); lastCollected = 0;
+      updateUI(); draw(); return;
+    }
     if (terminal()) reset();
     if (game.phase !== "ready") return;
     paused = false;
@@ -580,6 +592,9 @@
     if (key === " ") { if (!event.repeat) release(event); return; }
     if (key === "p") { if (!event.repeat && !terminal()) setPaused(!paused, event); return; }
     if (paused || terminal()) return;
+    // A reset, pause or focus loss clears held keys. OS repeat events must not
+    // resurrect that old press after play resumes; wait for a fresh keydown.
+    if (event.repeat && !keys.has(key)) return;
     flushInput(event);
     if (terminal()) return;
     keys.add(key);

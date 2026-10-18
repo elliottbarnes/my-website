@@ -15,7 +15,11 @@
 #piccolo-dialog .piccolo-screen-label i { display:inline-block; height:5px; width:5px; margin-right:3px; border-radius:50%; background:#c35b63; }
 #piccolo-canvas { box-sizing:border-box; display:block; width:100%; height:auto; aspect-ratio:10/7; background:#d8e6a0; image-rendering:pixelated; border:2px solid #3c4644; touch-action:none; }
 #piccolo-dialog .piccolo-screen-brand { display:flex; justify-content:space-between; gap:5px; margin-top:8px; font-size:7px; font-style:italic; color:#e6e4dc; text-align:right; letter-spacing:.12em; }
-#piccolo-objective { color:#273c33; font-size:11px; font-weight:bold; margin:11px 0 4px; }
+#piccolo-dialog .piccolo-route { display:flex; gap:5px; padding:0; margin:9px 0 5px; list-style:none; }
+#piccolo-dialog .piccolo-route li { flex:1; padding:2px 0; border-bottom:2px solid #a2aaa0; color:#667065; text-align:center; font-size:8px; line-height:1.2; }
+#piccolo-dialog .piccolo-route li[data-cleared="true"] { border-color:#53724f; color:#385337; }
+#piccolo-dialog .piccolo-route li[aria-current="step"] { border-color:#273c33; color:#273c33; font-weight:bold; background:#c1caba; }
+#piccolo-objective { color:#273c33; font-size:11px; font-weight:bold; margin:6px 0 4px; }
 #piccolo-status { color:#454d52; font-size:10px; line-height:1.6; min-height:32px; margin:0 0 8px; }
 #piccolo-dialog .piccolo-controller { display:flex; align-items:center; gap:20px; padding:0 10px; min-height:118px; }
 #piccolo-dialog .piccolo-dpad { display:grid; grid-template-columns:44px 44px 44px; grid-template-rows:44px 44px 44px; flex:none; filter:drop-shadow(0 4px 0 #8a8f90); }
@@ -39,3 +43,36 @@
 #piccolo-dialog .piccolo-help p { margin:7px 0 0; }
 @media(min-width:450px) { #piccolo-dialog .piccolo-speaker { display:block; } }
 @media(max-width:450px) { #piccolo-dialog { padding:14px 16px 19px; }#piccolo-dialog h2 { font-size:21px; }#piccolo-dialog .piccolo-screen-bezel { padding:10px 12px 8px; }#piccolo-dialog .piccolo-controller { padding:0 3px; gap:12px; } }
+@media(max-width:600px) and (max-height:640px) {
+  #piccolo-dialog { width:calc(100vw - 12px); max-height:calc(100dvh - 12px); padding:9px 12px 12px; }
+  #piccolo-dialog .piccolo-heading { margin-bottom:5px; }
+  #piccolo-dialog h2 { font-size:18px; margin-top:2px; }
+  #piccolo-dialog .piccolo-edition { font-size:7px; }
+  #piccolo-dialog .piccolo-screen-bezel { width:min(100%,calc((100dvh - 400px) * 10 / 7)); padding:7px 9px 5px; }
+  #piccolo-dialog .piccolo-screen-label { margin-bottom:5px; }
+  #piccolo-dialog .piccolo-screen-brand { margin-top:5px; font-size:6px; letter-spacing:0; }
+  #piccolo-dialog .piccolo-route { margin:5px 0 3px; }
+  #piccolo-objective { margin:3px 0; font-size:10px; }
+  #piccolo-status { margin-bottom:3px; font-size:9px; line-height:1.4; min-height:26px; }
+  #piccolo-dialog .piccolo-actions { margin-top:4px; }
+  #piccolo-dialog .piccolo-actions button { min-height:44px; padding:5px 8px; }
+  #piccolo-dialog .piccolo-help { margin-top:3px; }
+}
+@media(min-width:520px) and (max-height:450px) {
+  #piccolo-dialog[open] { display:grid; grid-template-columns:minmax(0,1.18fr) minmax(264px,1fr); grid-template-rows:auto minmax(132px,auto) auto auto; gap:4px 16px; }
+  #piccolo-dialog { width:min(800px,calc(100vw - 16px)); max-height:calc(100dvh - 16px); padding:9px 14px; border-radius:12px 12px 34px 12px; }
+  #piccolo-dialog .piccolo-heading { grid-column:1; grid-row:1; margin:0; }
+  #piccolo-dialog h2 { font-size:19px; margin-top:2px; }
+  #piccolo-dialog .piccolo-edition { font-size:7px; }
+  #piccolo-dialog .piccolo-screen-bezel { grid-column:1; grid-row:2 / 4; align-self:center; width:min(100%,calc((100dvh - 160px) * 10 / 7)); padding:7px 9px 5px; }
+  #piccolo-dialog .piccolo-screen-label { margin-bottom:5px; }
+  #piccolo-dialog .piccolo-screen-brand { margin-top:5px; }
+  #piccolo-dialog .piccolo-route { display:none; }
+  #piccolo-objective { grid-column:2; grid-row:1; align-self:center; margin:0; }
+  #piccolo-status { grid-column:1; grid-row:4; margin:0; min-height:0; font-size:9px; line-height:1.4; }
+  #piccolo-dialog .piccolo-controller { grid-column:2; grid-row:2; align-self:center; padding:0 10px; gap:16px; }
+  #piccolo-dialog .piccolo-speaker { display:none; }
+  #piccolo-dialog .piccolo-actions { grid-column:2; grid-row:3; margin:0; gap:5px; }
+  #piccolo-dialog .piccolo-actions button { min-height:44px; padding:5px 8px; font-size:9px; }
+  #piccolo-dialog .piccolo-help { grid-column:2; grid-row:4; margin:0; }
+}
