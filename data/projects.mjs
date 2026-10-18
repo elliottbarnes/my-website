@@ -31,7 +31,7 @@ export const PROJECTS = Object.freeze([
     },
     "experiment": {
       "kind": "object",
-      "label": "source field"
+      "label": "framebuffer scan"
     }
   },
   {

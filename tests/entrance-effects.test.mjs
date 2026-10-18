@@ -10,8 +10,8 @@ const effects = window.PortfolioEntranceEffects;
 
 // Record the visible drawing operations, including their canvas coordinates.
 function surface() {
-  const calls = { text: [], boxes: [], curves: [], lines: [], dots: [] };
-  let transform = { x: 0, y: 0, scale: 1 }, start = null;
+  const calls = { text: [], boxes: [], curves: [], lines: [], dots: [], fills: [], polygons: [] };
+  let transform = { x: 0, y: 0, scale: 1 }, start = null, pathPoints = [];
   const saved = [];
   const point = (x, y) => ({ x: transform.x + x * transform.scale, y: transform.y + y * transform.scale });
   const context = {
@@ -20,17 +20,19 @@ function surface() {
     translate(x, y) { transform.x += x * transform.scale; transform.y += y * transform.scale; },
     scale(x, y) { assert.equal(x, y); transform.scale *= x; },
     fillText(value, x, y) { calls.text.push({ value, color: this.fillStyle, alpha: this.globalAlpha, size: parseFloat(this.font) * transform.scale, ...point(x, y) }); },
+    fillRect(x, y, width, height) { calls.fills.push({ ...point(x,y), width:width*transform.scale, height:height*transform.scale, color:this.fillStyle, alpha:this.globalAlpha }); },
+    closePath() {},
     strokeRect(x, y, width, height) {
       calls.boxes.push({ ...point(x, y), width: width * transform.scale, height: height * transform.scale });
     },
-    beginPath() { start = null; },
-    moveTo(x, y) { start = point(x, y); },
-    lineTo(x, y) { calls.lines.push({ start, end: point(x, y), color: this.strokeStyle, alpha: this.globalAlpha }); },
+    beginPath() { start = null; pathPoints = []; },
+    moveTo(x, y) { start = point(x, y); pathPoints.push(start); },
+    lineTo(x, y) { pathPoints.push(point(x,y)); calls.lines.push({ start, end: point(x, y), color: this.strokeStyle, alpha: this.globalAlpha }); },
     bezierCurveTo(x1, y1, x2, y2, x, y) {
       calls.curves.push({ start, control1: point(x1, y1), control2: point(x2, y2), end: point(x, y) });
     },
-    arc(x, y, radius) { calls.dots.push({ ...point(x, y), radius: radius * transform.scale }); },
-    stroke() {}, fill() {},
+    arc(x, y, radius) { calls.dots.push({ ...point(x, y), radius: radius * transform.scale, color:this.fillStyle, alpha:this.globalAlpha }); },
+    stroke() {}, fill() { if (pathPoints.length > 2) calls.polygons.push({ points:[...pathPoints], color:this.fillStyle, alpha:this.globalAlpha }); },
   };
   return { context, calls };
 }
@@ -233,7 +235,7 @@ test("short compile sketches show only rows that fit between labels and the sour
     const footer = calls.text.find(entry => entry.value === "docs/core.js");
     const headers = calls.text.filter(entry => ["source", "tokens", "wasm"].includes(entry.value));
     assert.equal(headers.length, 3);
-    assert.equal(calls.boxes.length, height === 110 ? 3 : 6, "the canvas contains one or two complete token rows");
+    assert.equal(calls.boxes.length, height === 110 ? 3 : 9, "short layouts contain only complete token rows");
     for (const box of calls.boxes) {
       assert.ok(box.y > headers[0].y + headers[0].size / 2);
       assert.ok(box.y + box.height < footer.y - footer.size / 2, "token boxes cannot collide with the footer");
@@ -250,7 +252,7 @@ test('algorithm sketches remain bounded and finite on desktop and mobile over th
     const { calls, bounds } = draw(kind, { width, height: 260, time });
     assert.ok(bounds.left >= 0 && bounds.right <= width);
     assert.ok(bounds.top >= 0 && bounds.bottom <= 260);
-    assert.ok(calls.text.length >= 10);
+    assert.ok(calls.text.length >= (kind === 'automaton' ? 4 : 10));
     for (const point of [...calls.text, ...calls.dots]) {
       assert.ok(Number.isFinite(point.x) && Number.isFinite(point.y));
       assert.ok(point.x >= bounds.left - 1 && point.x <= bounds.right + 1);
@@ -270,7 +272,8 @@ test("interference stays finite and bounded at pointer extremes on narrow and sh
   for (const width of [260, 348, 740]) for (const height of [180, 320]) for (const time of [0, 1200, 8300]) for (const pointer of [-1, 1]) {
     const { calls, bounds } = draw("interference", { width, height, time, pointerX: pointer, pointerY: pointer });
     assert.ok(calls.text.length <= 1500);
-    assert.ok(calls.lines.length <= 1200);
+    assert.ok(calls.lines.length <= 4000);
+    assert.ok(calls.polygons.length <= 1100);
     const expected = effects.bounds("interference", {width,height,amount:1,anchor:{x:.5,y:.5}});
     for (const key of ["left","right","top","bottom"]) assert.equal(bounds[key], expected[key]);
     for (const p of [...calls.text, ...calls.dots]) {
@@ -295,7 +298,7 @@ test('sorting moves compared values continuously and lands in the next trace sta
   assert.equal(x(160,7),x(165,7)); assert.equal(x(160,2),x(165,2));
 });
 test('graph traversal sends its pulse along an edge instead of teleporting between nodes', () => {
-  const head = time => draw('graph',{time}).calls.text.find(p=>p.value==='◆');
+  const head = time => draw('graph',{time,highlight:'pulse'}).calls.dots.find(p=>p.radius===3.5&&p.color==='pulse');
   assert.ok(head(900).x>head(650).x);
   assert.ok(head(900).y<head(650).y);
 });
@@ -312,23 +315,24 @@ test('sort finishes during a normal effect appearance and holds every value in i
   assert.deepEqual(initial.map(p => Number(p.value)), [7, 2, 8, 4, 1, 6, 3, 5]);
 });
 
-test('rule 110 begins with one visible seed and applies the actual three-neighbour rule', () => {
+test('rule 110 renders filled cells from one seed and applies the actual three-neighbour rule', () => {
   for (const width of [280, 740]) {
-    const first = draw('automaton', { width, time: 0 });
-    const seed = first.calls.text.filter(p => p.value === '■');
-    assert.equal(seed.length, 1);
-    assert.ok(seed[0].x > first.bounds.left && seed[0].x < first.bounds.right);
-    const frame = draw('automaton', { width, time: 405 });
-    const cells = frame.calls.text.filter(p => ['■', '·'].includes(p.value));
-    const levels = [...new Set(cells.map(p => p.y))].sort((a,b) => a-b);
-    assert.equal(levels.length, 4);
-    for (let row = 1; row < levels.length; row++) {
-      const previous = cells.filter(p => p.y === levels[row - 1]).sort((a,b) => a.x-b.x);
-      const current = cells.filter(p => p.y === levels[row]).sort((a,b) => a.x-b.x);
-      for (let x = 0; x < current.length; x++) {
-        const alive = index => previous[(index + previous.length) % previous.length].value === '■' ? 1 : 0;
-        const pattern = (alive(x - 1) << 2) | (alive(x) << 1) | alive(x + 1);
-        assert.equal(current[x].value === '■', Boolean((110 >> pattern) & 1));
+    const opts = {width,accent:'live',highlight:'new',muted:'dead'};
+    const fieldCells = frame => frame.calls.fills.filter(p => p.y >= frame.bounds.top + 87 && Math.abs(p.width-p.height)<.001 && ['live','new','dead'].includes(p.color));
+    const first = draw('automaton', {...opts,time:0});
+    const seed = fieldCells(first).filter(p=>p.color!=='dead');
+    assert.equal(seed.length,1);
+    assert.ok(seed[0].x>first.bounds.left&&seed[0].x<first.bounds.right);
+    const frame = draw('automaton', {...opts,time:405}), cells = fieldCells(frame);
+    const levels=[...new Set(cells.map(p=>p.y))].sort((a,b)=>a-b);
+    assert.equal(levels.length,4);
+    for(let row=1;row<levels.length;row++) {
+      const previous=cells.filter(p=>p.y===levels[row-1]).sort((a,b)=>a.x-b.x);
+      const current=cells.filter(p=>p.y===levels[row]).sort((a,b)=>a.x-b.x);
+      for(let x=0;x<current.length;x++) {
+        const alive=index=>previous[(index+previous.length)%previous.length].color!=='dead'?1:0;
+        const pattern=(alive(x-1)<<2)|(alive(x)<<1)|alive(x+1);
+        assert.equal(current[x].color!=='dead',Boolean((110>>pattern)&1));
       }
     }
   }
@@ -376,12 +380,12 @@ test('optional effect modules share source-glyph helpers and fail harmlessly whe
     for (const kind of group) {
       assert.equal(draw(kind).bounds, null);
       const bounds = effects.bounds(kind, { width: 348, height: 360, amount: 1 });
-      assert.equal(bounds.h, 260);
+      assert.equal(bounds.h, 320);
     }
     const used = [];
     window[name] = { draw(kind, args, helpers) {
       used.push(kind);
-      const box = helpers.layout(args, 260), ctx = helpers.begin(args, box);
+      const box = helpers.layout(args, 320), ctx = helpers.begin(args, box);
       helpers.text(ctx, 'target', 20, 30, 'ink', args.amount);
       ctx.restore();
       assert.deepEqual(Object.keys(helpers).sort(), ['begin', 'carry', 'clamp', 'dot', 'layout', 'segment', 'smooth', 'text']);
@@ -394,5 +398,47 @@ test('optional effect modules share source-glyph helpers and fail harmlessly whe
     }
     assert.deepEqual(used, group);
     delete window[name];
+  }
+});
+
+test('refined diagrams use substantial geometry with readable titles at the 330px internal mobile width', () => {
+  for (const kind of ['tokens','sort','graph','automaton','interference']) {
+    const {calls,bounds}=draw(kind,{width:354,height:350,time:1500});
+    assert.equal(bounds.right-bounds.left,330); assert.equal(bounds.bottom-bounds.top,320);
+    const titlePrefix={tokens:'source →',sort:'bubble sort',graph:'breadth-first',automaton:'rule 110',interference:'wave interference'}[kind];
+    const title=calls.text.find(p=>p.value.startsWith(titlePrefix));
+    assert.ok(title&&title.size>=10, `${kind} title is readable`);
+    if(kind==='tokens') assert.ok(calls.fills.filter(p=>p.height>=20&&p.width>=60).length>=12,'pipeline has filled token cells');
+    if(kind==='sort') assert.equal(calls.boxes.filter(p=>p.height>10).length,8,'each data value has a real bar');
+    if(kind==='graph') { assert.ok(calls.dots.filter(p=>p.radius>=14).length>=8,'vertices are substantial connected nodes'); assert.ok(calls.boxes.length>=1,'frontier has real FIFO cells'); }
+    if(kind==='automaton') assert.ok(calls.fills.length>200,'cellular field is made of filled cells');
+    if(kind==='interference') assert.ok(calls.polygons.length>500,'interference is a shaded surface');
+    assert.ok(!calls.text.some(p=>['▰','■','▪','·','◆'].includes(p.value)&&p.alpha>0),'settled geometry does not remain a punctuation sketch');
+  }
+});
+
+test('geometric scenes, short fallbacks and advertised drag bounds agree without escaping their panel', () => {
+  for(const kind of ['tokens','sort','graph','automaton','interference']) for(const width of [280,354,760]) for(const height of [166,350]) for(const time of [0,1500,4800]) {
+    const args={width,height,time,amount:1,anchor:{x:.9,y:.1},pull:{x:40,y:-20}};
+    const {calls,bounds}=draw(kind,args), advertised=effects.bounds(kind,args);
+    for(const key of ['left','right','top','bottom']) assert.equal(bounds[key],advertised[key]);
+    for(const rect of [...calls.boxes,...calls.fills]) {
+      assert.ok(rect.width>0&&rect.height>0);
+      assert.ok(rect.x>=bounds.left-.001&&rect.x+rect.width<=bounds.right+.001,`${kind} horizontal bounds`);
+      assert.ok(rect.y>=bounds.top-.001&&rect.y+rect.height<=bounds.bottom+.001,`${kind} vertical bounds`);
+    }
+    for(const polygon of calls.polygons) for(const p of polygon.points) {
+      assert.ok(p.x>=bounds.left-.001&&p.x<=bounds.right+.001&&p.y>=bounds.top-.001&&p.y<=bounds.bottom+.001,`${kind} polygon bounds`);
+    }
+  }
+});
+
+test('solid geometry fades away before glyphs return to source cells', () => {
+  for(const kind of ['tokens','sort','graph','automaton','interference']) {
+    const source={glyph:'X',x:30,y:50,size:12};
+    const closing=draw(kind,{amount:.001,glyphs:[source],width:354,height:350});
+    assert.ok(closing.calls.text.some(p=>p.value==='X'&&Math.hypot(p.x-source.x,p.y-source.y)<.01));
+    assert.equal(closing.calls.fills.length,0);
+    assert.equal(closing.calls.polygons.length,0);
   }
 });

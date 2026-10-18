@@ -381,57 +381,94 @@ const snippets = [{"repo": "glassbox", "title": "source → WebAssembly", "path"
     context.globalAlpha = 1;
   }
 
-  function liveObject(snippet, amount, time, anchor = null) {
-    const t = interaction?.static ? 0 : time / 1000;
-    const columns = Math.min(68, Math.max(26, Math.floor(width / 10)));
-    const rows = Math.min(21, Math.max(12, Math.floor(height / 13)));
-    const spacingX = Math.min(8.5, (width - 30) / columns);
-    const spacingY = Math.min(11, (height - 60) / rows);
-    const cx = width * (anchor?.x ?? .5) + (interaction?.pull?.x || 0), cy = height * (anchor?.y ?? .49) + (interaction?.pull?.y || 0);
-    const growth = .1 + .9 * ease(amount);
-    displayedGraphic = { kind: interaction?.kind || "object", snippet, amount, anchor,
-      bounds: { left: cx - columns * spacingX / 2, right: cx + columns * spacingX / 2,
-        top: cy - rows * spacingY / 2, bottom: cy + rows * spacingY / 2 } };
-    const architecture = snippet.repo === "architecture-lab" && interaction?.kind !== "interference";
-    const marks = " .:;+=*#%@";
-    const points = transportedGlyphs();
-    context.textAlign = "left";
-    context.textBaseline = "middle";
-    context.font = `${Math.max(6, spacingX)}px "Plex Mono", monospace`;
-    const total = rows * columns;
-    const stride = total % 31 === 0 ? 37 : 31;
-    for (let index = 0; index < total; index++) {
-      const slot = index * stride % total, x = slot % columns, y = Math.floor(slot / columns);
-      const px = (x - columns / 2) / columns, py = (y - rows / 2) / rows;
-      const distance = Math.hypot(px - pointerX * .34, py - pointerY * .28);
-      const value = architecture
-        ? Math.sin(x * .35 - t * 1.6) * Math.cos(y * .45 + t * .8) + Math.sin(distance * 25 - t * 2)
-        : Math.sin(Math.hypot(px - .22 * Math.cos(t * .32) - pointerX * .12, py - .18 * Math.sin(t * .4)) * 48 - t * 2.4)
-          + Math.sin(Math.hypot(px + .24 * Math.cos(t * .27), py + .20 * Math.sin(t * .33) - pointerY * .12) * 48 - t * 2.4)
-          + Math.cos(px * 12 - py * 9 + t * .6) * .65;
-      const brightness = clamp((value + 3) / 6);
-      const edge = clamp((.72 - Math.hypot(px, py)) * 4);
-      context.globalAlpha = amount * edge * (.16 + brightness * .79);
-      context.fillStyle = brightness > .64 ? palette.accent : palette.ink;
-      const glyph = architecture ? ((x + y + Math.floor(t * 3)) % 7 === 0 ? "1" : brightness > .6 ? "▦" : "0")
-        : marks[Math.min(marks.length - 1, Math.floor(brightness * marks.length))];
-      const destX = cx + (x - columns / 2) * spacingX * growth;
-      const destY = cy + ((y - rows / 2) * spacingY + (architecture ? 0 : (brightness - .5) * 22)) * growth;
-      carryGlyph(points, index, { x: destX, y: destY }, amount,
-        brightness > .78 ? palette.highlight : brightness > .48 ? palette.accent : palette.ink, edge * (.16 + brightness * .79), Math.max(6, spacingX), glyph);
+  // A small monochrome window stored as real packed bytes, like framebuffer.js.
+  const framebuffer = Array.from({ length: 80 }, (_, address) => {
+    const row = Math.floor(address / 4), column = address % 4;
+    let byte = 0;
+    for (let bit = 0; bit < 8; bit++) {
+      const x = column * 8 + bit, y = row;
+      const border = x >= 2 && x <= 29 && y >= 2 && y <= 17 && (x === 2 || x === 29 || y === 2 || y === 17 || y === 5);
+      const title = y === 3 && x >= 6 && x <= 26 && x % 2 === 0;
+      const icon = x >= 6 && x <= 12 && y >= 8 && y <= 13 && (x === 6 || x === 12 || y === 8 || y === 13);
+      const lines = x >= 16 && x <= 25 && [9, 12, 14].includes(y) && (y !== 14 || x < 22);
+      if (border || title || icon || lines) byte |= 1 << (7 - bit);
     }
-    context.globalAlpha = amount * .78;
-    context.textAlign = "left";
-    context.font = '9px "Plex Mono", monospace';
-    context.fillStyle = palette.muted;
-    context.fillText(architecture ? "// memory → signal → pixels" : "// code → interference → light", 15, height - 22);
-    context.globalAlpha = 1;
+    return byte;
+  });
+
+  function liveObject(snippet, amount, time, anchor = null) {
+    const quiet = interaction?.static;
+    const clock = quiet ? 3200 : Math.max(0, time - (interaction?.visualStarted || 0)) % 6200;
+    const address = Math.min(79, Math.floor(clock / 60)), complete = clock >= 4800;
+    const row = Math.floor(address / 4), column = address % 4, byte = framebuffer[address];
+    const w = Math.min(540, width - 24), h = Math.min(320, height - 30);
+    const cx = clamp(width * (anchor?.x ?? .5) + (interaction?.pull?.x || 0), w / 2 + 12, width - w / 2 - 12);
+    const cy = clamp(height * (anchor?.y ?? .5) + (interaction?.pull?.y || 0), h / 2 + 15, height - h / 2 - 15);
+    const left = cx - w / 2, top = cy - h / 2;
+    displayedGraphic = { kind: "object", snippet, amount, anchor,
+      bounds: { left, right: left + w, top, bottom: top + h } };
+    const points = transportedGlyphs();
+    let glyph = 0;
+    const label = (value, x, y, color = palette.muted, size = 10) => {
+      for (const character of value) {
+        if (character !== " ") carryGlyph(points, glyph++, { x: left + x, y: top + y }, amount, color, 1, size, character);
+        x += size * .6;
+      }
+    };
+    const geometry = ease((amount - .25) / .75);
+    const line = (coordinates, color, alpha = 1, stroke = 1) => {
+      context.beginPath(); context.strokeStyle = color; context.globalAlpha = geometry * alpha; context.lineWidth = stroke;
+      coordinates.forEach(([x, y], index) => context[index ? "lineTo" : "moveTo"](left + x, top + y)); context.stroke();
+    };
+    const fill = (x, y, width, height, color, alpha) => {
+      context.fillStyle = color; context.globalAlpha = geometry * alpha; context.fillRect(left + x, top + y, width, height);
+    };
+    context.save(); context.textAlign = "left"; context.textBaseline = "middle";
+    label("framebuffer / from byte to pixel", 4, 15, palette.accent, 11);
+    label("READ MEMORY  →  DECODE  →  SCANOUT", 4, 35, palette.muted, 9);
+    const pixel = Math.min((w - 112) / 32, (h - 166) / 20), screenX = w - pixel * 32 - 5, screenY = 64;
+    const screenW = pixel * 32, screenH = pixel * 20;
+    fill(screenX - 5, screenY - 5, screenW + 10, screenH + 10, palette.paper, .96);
+    line([[screenX - 5, screenY - 5], [screenX + screenW + 5, screenY - 5], [screenX + screenW + 5, screenY + screenH + 5], [screenX - 5, screenY + screenH + 5], [screenX - 5, screenY - 5]], palette.muted, .5);
+    label("32 × 20 / 1 bit", screenX, screenY - 17, palette.muted, 9);
+    for (let y = 0; y < 20; y++) for (let x = 0; x < 32; x++) {
+      const offset = y * 4 + (x >> 3), value = (framebuffer[offset] >> (7 - (x & 7))) & 1;
+      const scanned = complete || quiet || offset <= address;
+      fill(screenX + x * pixel, screenY + y * pixel, Math.max(1, pixel - .7), Math.max(1, pixel - .7),
+        offset === address && !complete ? palette.highlight : palette.accent, value ? (scanned ? .88 : .12) : .035);
+    }
+    if (!complete) {
+      fill(screenX, screenY + row * pixel, screenW, pixel, palette.accent, .10);
+      const bx = screenX + column * 8 * pixel, by = screenY + row * pixel;
+      line([[bx, by], [bx + 8 * pixel, by], [bx + 8 * pixel, by + pixel], [bx, by + pixel], [bx, by]], palette.highlight, .95, 1.5);
+    }
+    const memoryY = 72, memoryStep = 24, start = Math.max(0, Math.min(75, address - 2));
+    label("ADDRESS / BYTE", 4, 49, palette.muted, 9);
+    for (let index = 0; index < 5; index++) {
+      const offset = start + index, selected = offset === address;
+      fill(2, memoryY + index * memoryStep - 11, 83, 22, selected ? palette.accent : palette.muted, selected ? .17 : .045);
+      label(offset.toString(16).padStart(4, "0").toUpperCase(), 7, memoryY + index * memoryStep, selected ? palette.highlight : palette.muted, 10);
+      label(framebuffer[offset].toString(16).padStart(2, "0").toUpperCase(), 58, memoryY + index * memoryStep, selected ? palette.ink : palette.accent, 11);
+    }
+    const busY = memoryY + (address - start) * memoryStep, targetY = screenY + (row + .5) * pixel;
+    line([[86, busY], [screenX - 13, busY], [screenX - 13, targetY], [screenX - 6, targetY]], palette.accent, .7, 1.5);
+    const bitsY = Math.max(screenY + screenH + 27, 214), bitWidth = (w - 16) / 8;
+    label("BYTE " + byte.toString(16).padStart(2, "0").toUpperCase() + "  /  MOST SIGNIFICANT BIT FIRST", 4, bitsY - 19, palette.muted, 9);
+    for (let bit = 0; bit < 8; bit++) {
+      const value = (byte >> (7 - bit)) & 1, x = 4 + bit * bitWidth;
+      fill(x, bitsY - 8, bitWidth - 4, 27, value ? palette.accent : palette.muted, value ? .24 : .07);
+      label(String(value), x + bitWidth / 2 - 6, bitsY + 5, value ? palette.highlight : palette.muted, 15);
+      label(String(7 - bit), x + bitWidth / 2 - 4, bitsY + 31, palette.muted, 9);
+    }
+    label(complete ? "frame complete / 80 bytes → 640 pixels" : `byte ${String(address + 1).padStart(2, "0")}/80  ·  row ${String(row).padStart(2, "0")}  ·  x ${column * 8}–${column * 8 + 7}`,
+      4, h - 14, palette.accent, w < 340 ? 9 : 10);
+    context.restore(); context.globalAlpha = 1;
   }
 
   function drawInputHud(time) {
     if (!hudContext) return;
     const phase = scene.dataset.phase;
-    const allowed = visible() && (!still() || frozenTime !== null) && !entryLayout && !leaving
+    const allowed = visible() && (!still() || frozenTime !== null) && !entryLayout && !leaving && !interaction
       && window.innerHeight >= (window.innerWidth < 600 ? 700 : 680) && phase !== "boot";
     inputHud.hidden = !allowed;
     if (!allowed) return;
@@ -545,7 +582,7 @@ const snippets = [{"repo": "glassbox", "title": "source → WebAssembly", "path"
     "automata-lab": ["graph", "pathfinding", "automaton", "quadtree", "attractor", "tokens", "fourier", "convolution", "phyllotaxis", "ecdsa", "sort", "interference"],
   };
   const effectNames = {
-    history: "git history", tokens: "compile sketch", avatar: "source portrait", object: "source field",
+    history: "git history", tokens: "compile sketch", avatar: "source portrait", object: "framebuffer scan",
     interference: "interference field", sort: "bubble sort", automaton: "rule 110 cellular automaton",
     graph: "breadth-first search", ecdsa: "ECDSA signing and verification", fourier: "Fourier synthesis",
     attractor: "Lorenz attractor", phyllotaxis: "golden-angle spiral", pathfinding: "shortest-path search",
@@ -605,8 +642,9 @@ const snippets = [{"repo": "glassbox", "title": "source → WebAssembly", "path"
 
     lastInput = now;
     announceScene(`${effectNames[kind]} from source characters. ${kind === "history" ? "left and right select commits. " : ""}escape returns to code.`);
-    if (kind === "ecdsa") { scene.dataset.effect = "ecdsa"; resize(); }
-    if (staticEffect) drawScene(elapsed);
+    // Measure the expanded scene before the first frame, including on short phones.
+    scene.dataset.effect = kind;
+    resize();
     schedule();
   }
 
