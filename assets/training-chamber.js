@@ -13,6 +13,7 @@
   const score = document.getElementById("training-score");
   const lives = document.getElementById("training-lives");
   const wave = document.getElementById("training-wave");
+  const chain = document.getElementById("training-chain");
   const action = document.getElementById("training-action");
   const pause = document.getElementById("training-pause");
   const reducedMotion = window.matchMedia("(prefers-reduced-motion: reduce)");
@@ -39,6 +40,38 @@
   let previousPhase = game.phase;
   let lastCollected = 0;
   let lastAnnouncement = "";
+  const recordKey = "portfolio:breaker:pulse-v1";
+  let best = readRecord(), resultSaved = false, newBest = false, lastFeedback = -10;
+
+  function readRecord() {
+    try {
+      const raw = window.localStorage?.getItem(recordKey);
+      if (!raw || raw.length > 512) return null;
+      const value = JSON.parse(raw);
+      if (value?.version === 1 && Number.isSafeInteger(value.score) && value.score > 0 && value.score <= 1e9
+        && Number.isSafeInteger(value.chain) && value.chain >= 0 && value.chain <= 10000
+        && Number.isFinite(value.time) && value.time > 0 && value.time <= 86400) return value;
+    } catch { /* Storage can be unavailable; playing never depends on it. */ }
+    return null;
+  }
+
+  function mergeRecords(session, stored) {
+    if (!session || !stored) return session || stored;
+    const winner = session.score > stored.score || session.score === stored.score && session.time < stored.time ? session : stored;
+    return { version: 1, score: winner.score, time: winner.time, chain: Math.max(session.chain, stored.chain) };
+  }
+
+  function saveResult() {
+    if (resultSaved || !["won", "lost"].includes(game.phase)) return;
+    resultSaved = true;
+    if (game.score <= 0 || game.time <= 0) return;
+    const points = game.score * 15;
+    best = mergeRecords(best, readRecord());
+    newBest = !best || points > best.score || points === best.score && game.time < best.time;
+    best = { version: 1, score: newBest ? points : best.score,
+      chain: Math.max(best?.chain || 0, game.bestChain), time: newBest ? game.time : best.time };
+    try { window.localStorage?.setItem(recordKey, JSON.stringify(best)); } catch { /* Keep the result for this visit. */ }
+  }
 
   const decorative = () => !reducedMotion.matches && root.dataset.motion !== "paused";
   const active = () => dialog.open && !document.hidden && !paused;
@@ -82,9 +115,11 @@
     text(score, String(game.score * 15));
     text(lives, String(game.lives));
     text(wave, `${game.wave} / ${game.totalWaves}`);
+    text(chain, `×${1 + Math.min(4, game.chain)}`);
+    saveResult();
     if (action) {
-      text(action, game.phase === "clear" ? "next arena ↵" : terminal() ? "again ↵" : game.phase === "ready" ? "release ki ↵" : "ki in flight");
-      action.disabled = paused || game.phase === "playing";
+      text(action, game.phase === "clear" ? "next arena ↵" : terminal() ? "beat your run ↵" : game.phase === "ready" ? "release ki ↵" : game.time < game.pulseReadyAt ? "pulse cooling…" : "pulse · space");
+      action.disabled = paused || game.phase === "playing" && game.time < game.pulseReadyAt;
     }
     if (pause) {
       text(pause, paused ? ":resume" : ":pause");
@@ -95,13 +130,15 @@
     }
     if (paused) announce("training paused");
     else if (game.phase === "clear") announce(`${engine.arenas[game.wave - 1]} cleared. Seven Dragon Balls collected. Continue to ${engine.arenas[game.wave]}; recover one life, up to three.`);
-    else if (game.phase === "won") announce("All three arenas cleared. Seven dragon balls collected. Wish granted — train again?");
-    else if (game.phase === "lost") announce("training complete. try again to collect all seven dragon balls.");
-    else if (game.phase === "ready") announce(`${game.lives < 3 ? "Ki lost. " : ""}${engine.arenas[game.wave - 1]} · arena ${game.wave} of ${game.totalWaves}. ${game.lives} ${game.lives === 1 ? "life" : "lives"} remaining. Drag to aim, then tap or press space to release ki.`);
+    else if (["won", "lost"].includes(game.phase)) announce(`${game.phase === "won" ? "All three arenas cleared!" : "Run complete."} ${game.score * 15} power · ${game.perfects} perfect returns · best chain ${game.bestChain}. ${newBest ? "New personal best!" : best ? `Best ${best.score}.` : "Time your pulse just before the return."}`);
+    else if (game.phase === "ready") announce(`${game.lives < 3 ? "Ki lost. " : ""}${engine.arenas[game.wave - 1]} · arena ${game.wave} of ${game.totalWaves}. Launch, then pulse just before the ball lands: three powered hits and a multiplier.${best ? ` Best ${best.score}.` : ""}`);
+    else if (game.feedbackAt !== lastFeedback && game.feedback === "perfect") announce(`Perfect return! Multiplier ×${1 + Math.min(4, game.chain)}. Three powered shield hits. Chain ${game.chain}.`);
+    else if (game.feedbackAt !== lastFeedback && game.feedback === "early") announce("Pulse too early. Try just before the ball meets the paddle.");
     else if (game.collected.length !== lastCollected) announce(`${game.collected.length} of seven dragon balls collected.`);
-    else if (game.phase !== previousPhase || lastAnnouncement === "training paused") announce("ki released. clear the shields to collect all seven dragon balls.");
+    else if (game.phase !== previousPhase || lastAnnouncement === "training paused") announce("Aim with the paddle. Tap pulse or Space as the ball enters the return zone.");
     previousPhase = game.phase;
     lastCollected = game.collected.length;
+    lastFeedback = game.feedbackAt;
   }
 
   function orb(star, x, y, size, opacity = 1) {
@@ -292,6 +329,22 @@
     context.fillText(`${engine.arenas[game.wave - 1].toUpperCase()} / ${game.wave} OF ${game.totalWaves}`, width / 2, 46);
     drawEffects(ball);
 
+    // The last 0.22s of descent is shown as a stable timing band, including
+    // reduced motion. The pulse never changes collision geometry or ball speed.
+    if (game.phase === "playing") {
+      const band = Math.max(20, Math.min(90, Math.max(0, ball.vy) * .22));
+      const incoming = ball.vy > 0 && ball.y >= paddle.y - ball.radius - band && ball.y < paddle.y;
+      context.save();
+      context.fillStyle = incoming ? "rgba(109,220,255,.16)" : "rgba(109,220,255,.04)";
+      context.fillRect(18, paddle.y - ball.radius - band, width - 36, band);
+      context.fillStyle = incoming ? palette.ink : palette.muted;
+      context.font = '10px "Plex Mono", monospace'; context.textAlign = "center";
+      const hint = game.feedback === "perfect" && game.time - game.feedbackAt < 1 ? `PERFECT · ×${1 + Math.min(4, game.chain)}`
+        : game.pulseUntil > game.time ? "PULSE ARMED" : incoming && game.time >= game.pulseReadyAt ? "PULSE NOW" : game.powerHits > 0 ? `${game.powerHits} POWERED HITS` : "PULSE ON THE RETURN";
+      context.fillText(hint, width / 2, 375);
+      context.restore();
+    }
+
     context.save();
     const left = paddle.x - paddle.width / 2;
     // The catch platform has a static halo too; reduced motion retains the
@@ -300,7 +353,7 @@
     roundRect(left - 6, paddle.y - 4, paddle.width + 12, paddle.height + 10, 8); context.fill();
     context.fillStyle = palette.panel; context.strokeStyle = palette.blue; context.lineWidth = 1;
     shieldPath(left, paddle.y, paddle.width, paddle.height, 4); context.fill(); context.stroke();
-    context.fillStyle = palette.blue; context.fillRect(left + 5, paddle.y, paddle.width - 10, 2);
+    context.fillStyle = game.pulseUntil > game.time ? palette.orange : palette.blue; context.fillRect(left + 5, paddle.y, paddle.width - 10, 2);
     context.fillStyle = palette.ink; context.fillRect(left + 11, paddle.y + 1, paddle.width - 22, 1);
     context.globalAlpha = .6;
     context.fillRect(left + 5, paddle.y + 5, 7, 1); context.fillRect(left + paddle.width - 12, paddle.y + 5, 7, 1);
@@ -318,7 +371,7 @@
       context.fillStyle = "rgba(255, 173, 72, .15)";
       context.beginPath(); context.arc(ball.x, ball.y, ball.radius + 5, 0, Math.PI * 2); context.fill();
       context.shadowColor = palette.orange; context.shadowBlur = decorative() ? 16 : 0;
-      context.fillStyle = palette.orange;
+      context.fillStyle = game.powerHits > 0 ? palette.blue : palette.orange;
       context.beginPath(); context.arc(ball.x, ball.y, ball.radius + 1, 0, Math.PI * 2); context.fill();
       context.shadowBlur = 0; context.fillStyle = palette.white;
       context.beginPath(); context.arc(ball.x - .6, ball.y - .6, ball.radius * .68, 0, Math.PI * 2); context.fill();
@@ -338,8 +391,8 @@
     context.fillStyle = palette.muted;
     context.fillText("drag anywhere to guide", width / 2, height - 12);
     if (paused || game.phase !== "playing") {
-      const title = paused ? "time stands still" : game.phase === "clear" ? "arena cleared" : game.phase === "won" ? "wish granted" : game.phase === "lost" ? "another round?" : game.lives < 3 ? "ki scattered" : "gather the seven";
-      const subtitle = paused ? "resume when you’re ready" : game.phase === "clear" ? "next arena / +1 life, up to 3" : game.phase === "won" ? "three arenas. one little secret." : game.phase === "lost" ? "even saiyans need practice" : game.lives < 3 ? `${game.lives} ${game.lives === 1 ? "life" : "lives"} left · tap / space to release` : "tap / space to release ki";
+      const title = paused ? "time stands still" : game.phase === "clear" ? "arena cleared" : game.phase === "won" ? "wish granted" : game.phase === "lost" ? "another round?" : game.lives < 3 ? "ki scattered" : "master the return";
+      const subtitle = paused ? "resume when you’re ready" : game.phase === "clear" ? "next arena / +1 life, up to 3" : game.phase === "won" ? "three arenas. one little secret." : game.phase === "lost" ? "even saiyans need practice" : game.lives < 3 ? `${game.lives} ${game.lives === 1 ? "life" : "lives"} left · tap / space to release` : "launch / pulse just before contact";
       context.save();
       context.fillStyle = "rgba(7, 15, 32, .9)"; context.strokeStyle = palette.line;
       shieldPath(34, height * .49 - 33, width - 68, 72, 9); context.fill(); context.stroke();
@@ -472,6 +525,7 @@
     stop();
     releasePointer();
     engine.reset(game);
+    best = mergeRecords(best, readRecord()); resultSaved = false; newBest = false; lastFeedback = -10;
     previousHealth = new Map(game.bricks.map((brick) => [brick.id, brick.health]));
     previousPhase = game.phase;
     lastCollected = 0;
@@ -485,7 +539,7 @@
     flushInput(event);
     // An input arriving at the end of a flight must leave the new result or
     // ready serve visible; starting another round needs a fresh action.
-    if (wasPlaying) { draw(); return; }
+    if (wasPlaying) { if (game.phase === "playing") engine.pulse(game); updateUI(); draw(); return; }
     if (game.phase === "clear") {
       stop(); releasePointer(); keys.clear(); clearEffects();
       engine.nextArena(game);
@@ -506,6 +560,7 @@
     if (next) flushInput(event);
     if (terminal()) { keys.clear(); releasePointer(); stop(); draw(); return; }
     paused = next;
+    engine.cancelPulse(game);
     keys.clear();
     releasePointer();
     stop();
@@ -521,7 +576,7 @@
   function close() { if (dialog.open) dialog.close(); }
 
   function cleanup() {
-    stop(); keys.clear(); releasePointer(); clearEffects();
+    stop(); keys.clear(); releasePointer(); clearEffects(); engine.cancelPulse(game);
     if (dialog.open) return;
     const arcadeOpen = ["arcade-dialog", "piccolo-dialog", "platformer-dialog", "goku-dialog", "game-loading-dialog"].some(id => document.getElementById(id)?.open);
     if (!arcadeOpen) opener?.focus?.({ preventScroll: true });

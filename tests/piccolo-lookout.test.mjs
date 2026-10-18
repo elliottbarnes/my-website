@@ -7,6 +7,8 @@ const require = createRequire(import.meta.url);
 const engine = require('../assets/piccolo-lookout.js');
 const source = await readFile(new URL('../assets/piccolo-lookout.js', import.meta.url), 'utf8');
 const run = (game, seconds, input = {}) => { for (let i = 0; i < Math.round(seconds * 120); i++) engine.step(game, input, 1 / 120); };
+const tap = game => { run(game, .02, { action: true }); run(game, .4); };
+const beam = game => { run(game, .8, { action: true }); engine.step(game); };
 
 test('the adventure waits for start and collision blocks walls, water, and unopened gates', () => {
   const game = engine.create(); run(game, 1, { x: 1, action: true }); assert.equal(game.player.x, 40); assert.equal(game.shots, 0);
@@ -15,21 +17,22 @@ test('the adventure waits for start and collision blocks walls, water, and unope
   assert.equal(engine.canStand(game, 308, 96), false); assert.equal(engine.unlocked(game), false);
   assert.equal(engine.canStand(game, 160, 96), true);
 });
-test('ki lights the first crystal at range and a wall absorbs shots before they reach it', () => {
-  const game = engine.create(); engine.start(game);
-  Object.assign(game.player, { x: 120, y: 80, facing: 'up' }); run(game, .5, { action: true });
-  assert.equal(engine.unlocked(game), true); assert.equal(engine.canStand(game, 308, 96), true);
+test('the opening rings teach a charged beam from the initial position and walls stop it', () => {
+  const game = engine.create(); engine.start(game); tap(game);
+  assert.equal(engine.unlocked(game), false, 'quick ki cannot activate paired rings');
+  beam(game); assert.equal(engine.unlocked(game), true); assert.equal(game.beamsFired, 1); assert.equal(game.alignment, 80);
+  assert.equal(engine.canStand(game, 308, 96), true);
   const blocked = engine.create(); engine.start(blocked);
-  Object.assign(blocked.player, { x: 216, y: 96, facing: 'up' }); run(blocked, 1, { action: true });
-  assert.equal(blocked.projectiles.length, 0); assert.equal(engine.unlocked(blocked), false);
+  Object.assign(blocked.player, { x: 216, y: 96, facing: 'up' }); beam(blocked);
+  assert.ok(blocked.beam.length < 8); assert.equal(engine.unlocked(blocked), false);
 });
 test('the garden requires moon before sun and its warden before opening the gate', () => {
   const game = engine.create(); engine.start(game); game.room = 2;
-  Object.assign(game.player, { x: 264, y: 64, facing: 'up' }); run(game, .4, { action: true });
+  Object.assign(game.player, { x: 264, y: 64, facing: 'up' }); tap(game);
   assert.equal(game.rooms[2].crystals[1].lit, false); assert.match(game.event, /moon.*first/);
-  Object.assign(game.player, { x: 56, y: 64 }); run(game, .4, { action: true }); assert.equal(game.rooms[2].crystals[0].lit, true);
-  Object.assign(game.player, { x: 264, y: 64 }); run(game, .4, { action: true }); assert.equal(game.rooms[2].crystals[1].lit, true);
-  Object.assign(game.player, { x: 160, y: 56 }); run(game, .4, { action: true }); assert.equal(game.phase, 'playing'); assert.equal(engine.unlocked(game), false);
+  Object.assign(game.player, { x: 56, y: 64 }); tap(game); assert.equal(game.rooms[2].crystals[0].lit, true);
+  Object.assign(game.player, { x: 264, y: 64 }); tap(game); assert.equal(game.rooms[2].crystals[1].lit, true);
+  Object.assign(game.player, { x: 160, y: 56 }); tap(game); assert.equal(game.phase, 'playing'); assert.equal(engine.unlocked(game), false);
 });
 test('guard shots are telegraphed, damage has a grace period, and death freezes the world', () => {
   const game = engine.create(); engine.start(game); game.room = 1;
@@ -56,30 +59,27 @@ test('diagonal movement keeps the same speed and invalid timing cannot advance t
 test('the tide seal raises only the central bridge and the far seal still locks the exit', () => {
   const game = engine.create(); engine.start(game); game.room = 3;
   assert.equal(engine.canStand(game, 160, 96), false);
-  Object.assign(game.player, { x: 72, y: 72, facing: 'up' }); run(game, .3, { action: true });
+  Object.assign(game.player, { x: 72, y: 96, facing: 'up' }); beam(game);
   assert.equal(engine.tileAt(game, 9, 5), '='); assert.equal(engine.canStand(game, 160, 96), true);
   assert.equal(engine.canStand(game, 160, 64), false); assert.equal(engine.canStand(game, 160, 144), false);
   assert.equal(engine.unlocked(game), false);
-  Object.assign(game.player, { x: 248, y: 128, facing: 'down' }); run(game, .3, { action: true });
+  Object.assign(game.player, { x: 248, y: 128, facing: 'down' }); run(game, .3); tap(game);
   assert.equal(engine.unlocked(game), true);
 });
-test('the bell keeper rejects ki until both seals are lit, and the bell waits for the keeper', () => {
+test('the keeper needs linked rings and a beam during its post-fan opening', () => {
   const game = engine.create(); engine.start(game); game.room = 5;
-  const keeper = game.rooms[5].guards[0];
-  Object.assign(game.player, { x: 160, y: 160, facing: 'up' }); keeper.timer = .5;
-  run(game, .1, { action: true }); assert.equal(keeper.hp, 8); assert.match(game.event, /shield holds/);
-  Object.assign(game.player, { x: 56, y: 64, facing: 'up', cooldown: 0 }); run(game, .01, { action: true });
-  assert.equal(game.rooms[5].crystals[0].lit, true);
-  Object.assign(game.player, { x: 264, y: 64, cooldown: 0 }); run(game, .01, { action: true });
-  assert.equal(game.rooms[5].crystals[1].lit, true);
-  Object.assign(game.player, { x: 160, y: 56, cooldown: 0 }); run(game, .01, { action: true });
-  assert.equal(game.phase, 'playing'); assert.match(game.event, /defeat the keeper/);
-  Object.assign(game.player, { x: keeper.x, y: 160, facing: 'up', cooldown: 0 }); run(game, .1, { action: true });
-  assert.equal(keeper.hp, 7);
+  const keeper = game.rooms[5].guards[0]; keeper.timer = 100;
+  Object.assign(game.player, { x: 160, y: 160, facing: 'up' }); beam(game); assert.equal(keeper.hp, 8);
+  Object.assign(game.player, { x: 32, y: 48, facing: 'right' }); beam(game);
+  assert.ok(game.rooms[5].crystals.every(crystal => crystal.lit));
+  Object.assign(game.player, { x: 160, y: 56, cooldown: 0 }); tap(game); assert.equal(game.phase, 'playing');
+  Object.assign(game.player, { x: keeper.x, y: 160, facing: 'up' }); beam(game); assert.equal(keeper.hp, 8, 'closed guard rejects beam');
+  Object.assign(keeper, { timer: 2.4, exposed: 1.35 }); beam(game); assert.equal(keeper.hp, 5);
+  run(game, .3); assert.equal(keeper.hp, 5, 'visible beam cannot damage twice');
 });
 test('continue restores the current checkpoint with fresh inputs and keeps completed rooms', () => {
   const game = engine.create(); engine.start(game);
-  game.rooms[0].crystals[0].lit = true; game.rooms[0].cleared = true;
+  game.rooms[0].crystals.forEach(crystal => { crystal.lit = true; }); game.rooms[0].cleared = true;
   Object.assign(game.player, { x: 307, y: 96 }); run(game, .04, { x: 1 });
   assert.equal(game.room, 1); assert.equal(game.checkpoint, 1);
   const earlier = JSON.stringify(game.rooms[0]);
@@ -100,7 +100,7 @@ test('ki deflects one incoming bolt, lit seals do not absorb shots, and lethal d
   const bolt = { x: 160, y: 96, vx: 0, vy: 0, life: 1 };
   game.projectiles = [{ ...bolt, enemy: false }, { ...bolt, enemy: true }, { ...bolt, enemy: true }];
   engine.step(game); assert.equal(game.deflections, 1); assert.equal(game.projectiles.length, 1); assert.equal(game.projectiles[0].enemy, true);
-  game.rooms[0].crystals[0].lit = true; game.projectiles = [{ ...bolt, x: 120, y: 48, enemy: false }];
+  game.rooms[0].crystals[0].lit = true; game.projectiles = [{ ...bolt, x: 40, y: 96, enemy: false }];
   engine.step(game); assert.equal(game.projectiles.length, 1);
   const lethal = engine.create(); engine.start(lethal); lethal.room = 1; lethal.hearts = 1;
   const guard = lethal.rooms[1].guards[0]; guard.hp = 1;
@@ -111,6 +111,74 @@ test('a quick action near the end of cooldown is buffered once rather than dropp
   const game = engine.create(); engine.start(game); game.player.cooldown = .09;
   engine.step(game, { action: true }); run(game, .12);
   assert.equal(game.shots, 1); run(game, .6); assert.equal(game.shots, 1);
+});
+
+test('a beam needs a full 0.8 second hold and fires once on release; charging locks aim and slows movement', () => {
+  const short = engine.create(); engine.start(short); run(short, 95 / 120, { action: true }); engine.step(short);
+  assert.equal(short.beamsFired, 0); assert.equal(short.shots, 1); assert.equal(engine.unlocked(short), false);
+  const full = engine.create(); engine.start(full); run(full, .8, { action: true });
+  assert.equal(full.player.charge, engine.CHARGE_TIME); assert.equal(full.beamsFired, 0); assert.equal(full.shots, 0);
+  run(full, 1, { action: true }); engine.step(full); assert.equal(full.beamsFired, 1); run(full, 1); assert.equal(full.beamsFired, 1);
+  const moving = engine.create(); engine.start(moving); Object.assign(moving.player, { x: 160, y: 144, facing: 'up' });
+  run(moving, .5, { x: 1, action: true }); assert.equal(moving.player.facing, 'up'); assert.equal(moving.player.chargeFacing, 'up');
+  assert.ok(Math.abs(moving.player.x - 173.5) < 1e-8); assert.equal(moving.player.y, 144);
+  engine.cancelAction(moving); engine.step(moving); assert.equal(moving.beamsFired, 0); assert.equal(moving.shots, 0);
+});
+test('paired rings require the same beam and every successful target counts at most once for alignment', () => {
+  const partial = engine.create(); engine.start(partial); partial.player.y = 80; beam(partial);
+  assert.ok(partial.rooms[0].crystals.every(crystal => !crystal.lit)); assert.equal(partial.alignment, 0);
+  const game = engine.create(); engine.start(game); game.room = 1;
+  Object.assign(game.player, { x: 104, y: 96, facing: 'right' });
+  game.rooms[1].guards.forEach(guard => Object.assign(guard, { y: 96, low: 96, high: 96, timer: 100, hp: 5 }));
+  beam(game); assert.deepEqual(game.rooms[1].guards.map(guard => guard.hp), [2, 2]); assert.equal(game.alignment, 80); assert.equal(game.maxChain, 2);
+  run(game, .4); assert.deepEqual(game.rooms[1].guards.map(guard => guard.hp), [2, 2], 'the visible beam cannot tick damage repeatedly');
+  beam(game); assert.deepEqual(game.rooms[1].guards.map(guard => guard.hp), [0, 0]); assert.equal(game.alignment, 80, 'the same two targets cannot farm alignment');
+  game.phase = 'lost'; game.checkpoint = 1; engine.retry(game);
+  Object.assign(game.player, { x: 104, y: 96, facing: 'right' }); game.rooms[1].guards.forEach(guard => Object.assign(guard, { y: 96, low: 96, high: 96, timer: 100 }));
+  beam(game); assert.equal(game.alignment, 80, 'checkpoint resets cannot farm the same targets either'); assert.equal(game.attempts, 2);
+});
+test('a beam stops at a wall before a guard and does not wrap to targets behind the player', () => {
+  const game = engine.create(); engine.start(game); game.room = 1;
+  Object.assign(game.player, { x: 216, y: 96, facing: 'up' });
+  Object.assign(game.rooms[1].guards[0], { x: 216, y: 40, axis: 'x', low: 216, high: 216, timer: 100, hp: 5 });
+  Object.assign(game.rooms[1].guards[1], { x: 216, y: 160, axis: 'x', low: 216, high: 216, timer: 100, hp: 5 });
+  beam(game); assert.equal(game.beam.length, 16); assert.deepEqual(game.rooms[1].guards.map(guard => guard.hp), [5, 5]);
+});
+test('completed records include score breakdown, retries, and time; score wins before time', () => {
+  const game = engine.create(); assert.equal(engine.completedRecord(game), null);
+  game.phase = 'won'; game.rooms.forEach(room => { room.cleared = true; }); game.alignment = 240; game.hits = 2; game.attempts = 2; game.time = 83.125;
+  assert.deepEqual(engine.scoreBreakdown(game), { rooms: 600, alignment: 240, health: 300, retries: 100, score: 1040 });
+  const result = engine.completedRecord(game); assert.deepEqual(result, { version: 1, score: 1040, ms: 83125, attempts: 2, hits: 2, maxChain: 0 });
+  const values = new Map(), storage = { getItem: key => values.get(key), setItem: (key, value) => values.set(key, value) };
+  assert.equal(engine.saveRecord(storage, result).improved, true); assert.ok(values.get(engine.RECORD_KEY).length < 512);
+  assert.equal(engine.saveRecord(storage, { ...result, score: 1039, ms: 1 }).improved, false);
+  assert.equal(engine.saveRecord(storage, { ...result, ms: 83000 }).improved, true);
+  assert.equal(engine.saveRecord(storage, { ...result, ms: 83000 }).improved, false);
+  assert.equal(engine.saveRecord(storage, { ...result, score: 1041, ms: 90000 }).improved, true);
+  assert.equal(engine.readRecord(storage).score, 1041);
+});
+test('personal records reject malformed or unbounded values and unavailable storage is harmless', () => {
+  const valid = { version: 1, score: 1000, ms: 60000, attempts: 1, hits: 0, maxChain: 2 };
+  for (const value of [null, [], {}, { ...valid, version: 2 }, { ...valid, score: -1 }, { ...valid, score: 2201 }, { ...valid, ms: Infinity }, { ...valid, ms: 0 }, { ...valid, attempts: 1000 }, { ...valid, hits: .5 }, { ...valid, maxChain: 16 }]) assert.ok(!engine.validRecord(value));
+  for (const raw of ['{', 'x'.repeat(513), JSON.stringify({ ...valid, version: 0 }), JSON.stringify(null)]) assert.equal(engine.readRecord({ getItem: () => raw }), null);
+  const unavailable = { getItem() { throw new Error('blocked'); }, setItem() { throw new Error('quota'); } };
+  assert.equal(engine.readRecord(unavailable), null);
+  const attempt = engine.saveRecord(unavailable, valid); assert.equal(attempt.saved, false); assert.equal(attempt.best.score, 1000);
+  assert.equal(engine.saveRecord(unavailable, { ...valid, score: 500 }, attempt.best).improved, false, 'a worse result cannot replace the in-memory best');
+  let stored; engine.saveRecord({ getItem: () => null, setItem: (_, value) => { stored = value; } }, { ...valid, extra: 'x'.repeat(5000) });
+  assert.ok(stored.length < 512); assert.equal(JSON.parse(stored).extra, undefined);
+});
+test('recovering writes saves the better session record even after a lower completed score', () => {
+  const initial = { version: 1, score: 1000, ms: 60000, attempts: 1, hits: 0, maxChain: 2 };
+  let stored = JSON.stringify(initial), blocked = true, writes = 0;
+  const storage = { getItem: () => stored, setItem(_, value) { if (blocked) throw new Error('quota'); stored = value; writes++; } };
+  const session = engine.saveRecord(storage, { ...initial, score: 1400, ms: 80000 });
+  assert.equal(session.improved, true); assert.equal(session.saved, false); assert.equal(engine.readRecord(storage).score, 1000);
+  blocked = false;
+  const recovered = engine.saveRecord(storage, { ...initial, score: 1200 }, session.best);
+  assert.equal(recovered.improved, false, 'the lower run is not a new personal best'); assert.equal(recovered.saved, true);
+  assert.equal(engine.readRecord(storage).score, 1400); assert.equal(engine.readRecord(storage).ms, 80000); assert.equal(writes, 1);
+  engine.saveRecord(storage, { ...initial, score: 1200 }, recovered.best); assert.equal(writes, 1, 'an unchanged best does not need another write');
 });
 
 function navigator(game) {
@@ -139,42 +207,34 @@ function navigator(game) {
   }
   return { input, walkTo };
 }
-test('a complete six-room run wins through ordinary movement and ki input without teleporting or editing state', () => {
+test('a complete six-room beam run wins through ordinary movement and action input without editing state', () => {
   const game = engine.create(); engine.start(game); const { input, walkTo } = navigator(game);
-  walkTo(120, 72); input({ y: -1 }); input({ action: true }, 36); assert.equal(engine.unlocked(game), true);
-  walkTo(304, 96); input({ x: 1 }, 30); assert.equal(game.room, 1);
-  walkTo(104, 96); input({ x: 1 }); input({ action: true }, 120 * 8);
-  assert.ok(game.rooms[1].guards.every(guard => guard.hp === 0));
-  walkTo(200, 96); input({ x: 1 }); input({ action: true }, 120 * 8);
-  walkTo(304, 96); input({ x: 1 }, 30); assert.equal(game.room, 2);
-  walkTo(56, 64); input({ y: -1 }); input({ action: true }, 36);
-  walkTo(264, 64); input({ y: -1 }); input({ action: true }, 36);
-  walkTo(104, 144); input({ x: 1 }); input({ action: true }, 120 * 14);
-  assert.equal(engine.unlocked(game), true);
-  walkTo(304, 96); input({ x: 1 }, 30); assert.equal(game.room, 3);
-  walkTo(72, 72); input({ y: -1 }); input({ action: true }, 36);
-  assert.equal(engine.tileAt(game, 9, 5), '=');
-  walkTo(248, 128); input({ y: 1 }); input({ action: true }, 36);
-  assert.equal(engine.unlocked(game), true);
-  walkTo(304, 96); input({ x: 1 }, 30); assert.equal(game.room, 4);
-  walkTo(152, 88); input({ y: -1 }); input({ action: true }, 120 * 4);
-  assert.equal(game.rooms[4].guards[0].hp, 0);
-  walkTo(248, 168); input({ y: -1 }); input({ action: true }, 120 * 4);
-  assert.equal(engine.unlocked(game), true);
-  walkTo(304, 96); input({ x: 1 }, 30); assert.equal(game.room, 5);
-  walkTo(56, 64); input({ y: -1 }); input({ action: true }, 36);
-  walkTo(264, 64); input({ y: -1 }); input({ action: true }, 36);
-  walkTo(144, 168);
-  for (let volley = 0; game.rooms[5].guards[0].hp > 0 && volley < 24; volley++) {
-    walkTo(Math.round(game.rooms[5].guards[0].x / 8) * 8, 168);
-    input({ y: -1 }); input({ action: true }, 24);
+  const charge = () => { input({ action: true }, 96); input({}); };
+  const quick = () => { input({ action: true }, 2); input({}, 48); };
+  const next = room => { walkTo(304, 96); input({ x: 1 }, 30); assert.equal(game.room, room); };
+  charge(); assert.equal(engine.unlocked(game), true); assert.equal(game.alignment, 80); next(1);
+  walkTo(152, 168); input({ y: -1 }); charge();
+  walkTo(248, 168); input({ y: -1 }); charge(); assert.equal(engine.unlocked(game), true); next(2);
+  walkTo(32, 48); input({ x: 1 }); charge();
+  walkTo(104, 144); input({ x: 1 }); charge(); assert.equal(engine.unlocked(game), true); next(3);
+  walkTo(72, 96); input({ y: -1 }); charge(); assert.equal(engine.tileAt(game, 9, 5), '=');
+  walkTo(248, 128); input({ y: 1 }); quick(); assert.equal(engine.unlocked(game), true); next(4);
+  walkTo(152, 88); input({ y: -1 }); charge();
+  walkTo(248, 168); input({ y: -1 }); charge(); assert.equal(engine.unlocked(game), true); next(5);
+  walkTo(32, 48); input({ x: 1 }); charge();
+  walkTo(160, 168); input({ y: -1 });
+  for (let frame = 0; game.rooms[5].guards[0].hp > 0 && frame < 120 * 30; frame++) {
+    const keeper = game.rooms[5].guards[0], offset = keeper.x - game.player.x;
+    if (game.player.charge + 1e-9 >= engine.CHARGE_TIME && keeper.exposed > .1 && Math.abs(offset) < 8) input({});
+    else input({ action: true, x: Math.abs(offset) > 4 ? Math.sign(offset) : 0 });
   }
-  assert.equal(engine.unlocked(game), true); walkTo(160, 56); input({ action: true });
+  assert.equal(engine.unlocked(game), true); walkTo(160, 56); quick();
   assert.equal(game.phase, 'won'); assert.ok(game.hearts > 0); assert.ok(game.rooms.every(room => room.cleared));
+  assert.ok(game.beamsFired >= 10); assert.ok(game.alignment >= 160); assert.equal(engine.completedRecord(game).attempts, 1);
   const finished = JSON.stringify(game); input({ x: 1, action: true }, 60); assert.equal(JSON.stringify(game), finished);
 });
 
-function harness() {
+function harness(options = {}) {
   let now = 0, next = 0, focus, painting = []; const frames = new Map(), nodes = new Map(), holds = [];
   class Element {
     constructor() { this.listeners = {}; this.dataset = {}; this.attributes = {}; this.isConnected = true; this.open = false; this.textContent = ''; }
@@ -197,10 +257,11 @@ function harness() {
   dialog.querySelector = selector => { const id = selector.startsWith('#') ? selector.slice(1) : selector; const node = get(id); if (selector.includes('data-piccolo') || ['#piccolo-start', '#piccolo-pause'].includes(selector)) node.button = true; return node; };
   const document = Object.assign(new Element(), { documentElement: root, hidden: false, getElementById: id => nodes.get(id) });
   const window = new Element(); window.dispatchEvent = () => {}; let back;
+  Object.defineProperty(window, 'localStorage', { get() { if (options.blockStorage) throw new Error('blocked'); return options.storage; } });
   window.PortfolioGames = { run(mode, trigger) { back = { mode, trigger }; } };
   vm.runInNewContext(source, { document, window, performance: { now: () => now }, matchMedia: () => motion, CustomEvent: class {}, requestAnimationFrame: fn => { frames.set(++next, fn); return next; }, cancelAnimationFrame: id => frames.delete(id) });
   function advance(ms) { const until = now + ms; while (now < until) { now += Math.min(1000 / 60, until - now); const callbacks = [...frames.values()]; frames.clear(); callbacks.forEach(callback => callback(now)); } }
-  return { get, dialog, document, window, root, footer, frames, advance, holds, motion, focus: () => focus, back: () => back, shots: () => painting.filter(args => args[2] === 5 && args[3] === 5).length, shadow: () => painting.findLast(args => args[2] === 18 && args[3] === 3) };
+  return { get, dialog, document, window, root, footer, frames, advance, holds, motion, focus: () => focus, back: () => back, shots: () => painting.filter(args => args[2] === 5 && args[3] === 5).length, beam: () => painting.some(args => args[2] === 9 && args[3] > 50 || args[3] === 9 && args[2] > 50), shadow: () => painting.findLast(args => args[2] === 18 && args[3] === 3) };
 }
 test('UI starts explicitly, exposes room/hearts, and keyboard movement stops after blur until resume', () => {
   const h = harness(); h.window.PortfolioPiccolo.open(h.footer);
@@ -280,7 +341,54 @@ test('physical aliases release independently and native button keyup cannot leav
   h.advance(100); h.window.fire('keyup', { key: 'ArrowUp' }); const y = h.shadow()[1]; h.advance(100); assert.ok(h.shadow()[1] < y);
   h.window.fire('keyup', { key: 'w' }); const released = h.shadow()[1]; h.advance(100); assert.equal(h.shadow()[1], released);
   h.get('piccolo-start').fire('click');
-  h.dialog.fire('keydown', { key: ' ', target: h.get('piccolo-canvas') }); h.advance(50); assert.equal(h.shots(), 1);
+  h.dialog.fire('keydown', { key: ' ', target: h.get('piccolo-canvas') }); h.advance(50); assert.equal(h.shots(), 0);
   const event = h.dialog.fire('keyup', { key: ' ', target: h.get('piccolo-pause') }); assert.equal(event.prevented, undefined);
-  h.advance(450); assert.equal(h.shots(), 1, 'native Space release must stop continuous fire');
+  h.advance(50); assert.equal(h.shots(), 1, 'release fires exactly one quick bolt'); h.advance(450); assert.equal(h.shots(), 0, 'no continuing fire remains after release');
+});
+
+test('pointer, keyboard, focused A, and hold-free native activation all charge and release the opening beam', () => {
+  for (const mode of ['pointer', 'keyboard', 'button-space', 'button-enter', 'assistive']) {
+    const h = harness({ blockStorage: true }); h.window.PortfolioPiccolo.open(h.footer);
+    assert.equal(h.get('piccolo-score').textContent, 'SCORE 0'); assert.equal(h.frames.size, 0);
+    h.get('piccolo-start').fire('click'); const button = h.get('hold-action');
+    const target = mode === 'button-space' ? button : h.get('piccolo-canvas');
+    if (mode === 'pointer') button.fire('pointerdown');
+    else if (mode === 'assistive') button.fire('click', { detail: 0 });
+    else if (mode === 'button-enter') { h.dialog.fire('keydown', { key: 'Enter', target: button }); h.dialog.fire('keydown', { key: 'Enter', target: button, repeat: true }); }
+    else h.dialog.fire('keydown', { key: ' ', target });
+    h.advance(900); assert.equal(h.get('piccolo-charge').textContent, 'READY · RELEASE'); assert.equal(h.beam(), false);
+    if (mode === 'pointer') button.fire('pointerup');
+    else if (mode === 'assistive') button.fire('click', { detail: 0 });
+    else if (mode === 'button-enter') h.dialog.fire('keydown', { key: 'Enter', target: button });
+    else h.dialog.fire('keyup', { key: ' ', target });
+    h.advance(30); assert.equal(h.beam(), true, mode); assert.equal(h.get('piccolo-objective').textContent, 'Eastern gate →'); assert.equal(h.get('piccolo-score').textContent, 'SCORE 180');
+    h.advance(500); assert.equal(h.beam(), false); assert.equal(h.frames.size, 1);
+  }
+});
+test('every interruption cancels a full charge without firing, and a fresh press still works', () => {
+  for (const cancel of ['pointercancel', 'capture', 'blur', 'hidden', 'focus', 'pause', 'close', 'restart']) {
+    const h = harness(); h.window.PortfolioPiccolo.open(h.footer); h.get('piccolo-start').fire('click'); const button = h.get('hold-action');
+    button.fire('pointerdown', { pointerId: 4 }); h.advance(900); assert.equal(h.get('piccolo-charge').textContent, 'READY · RELEASE');
+    if (cancel === 'pointercancel') h.window.fire('pointercancel', { pointerId: 4 });
+    if (cancel === 'capture') button.fire('lostpointercapture', { pointerId: 4 });
+    if (cancel === 'blur') { h.window.fire('blur'); h.get('piccolo-pause').fire('click'); }
+    if (cancel === 'hidden') { h.document.hidden = true; h.document.fire('visibilitychange'); h.document.hidden = false; h.get('piccolo-pause').fire('click'); }
+    if (cancel === 'focus') h.dialog.fire('focusout', { relatedTarget: h.get('piccolo-pause') });
+    if (cancel === 'pause') { h.get('piccolo-pause').fire('click'); h.get('piccolo-pause').fire('click'); }
+    if (cancel === 'close') { h.dialog.close(); h.window.PortfolioPiccolo.open(h.footer); h.get('piccolo-pause').fire('click'); }
+    if (cancel === 'restart') h.get('piccolo-start').fire('click');
+    button.fire('pointerup', { pointerId: 4 }); h.advance(40);
+    assert.equal(h.beam(), false, cancel); assert.equal(h.shots(), 0); assert.equal(h.get('piccolo-score').textContent, 'SCORE 0');
+    button.fire('pointerdown', { pointerId: 5 }); h.advance(900); button.fire('pointerup', { pointerId: 5 }); h.advance(30);
+    assert.equal(h.get('piccolo-objective').textContent, 'Eastern gate →', `${cancel} permits a fresh charge`);
+  }
+});
+test('reduced motion retains a readable beam and a loaded best remains local without starting the game', () => {
+  const best = { version: 1, score: 1080, ms: 73500, attempts: 1, hits: 0, maxChain: 2 }; let writes = 0;
+  const h = harness({ storage: { getItem: key => key === engine.RECORD_KEY ? JSON.stringify(best) : null, setItem() { writes++; } } });
+  h.motion.matches = true; h.window.PortfolioPiccolo.open(h.footer); assert.equal(h.frames.size, 0);
+  assert.match(h.get('piccolo-record').textContent, /1080.*1:13.*1 attempt/); assert.equal(writes, 0);
+  h.get('piccolo-start').fire('click'); h.get('hold-action').fire('pointerdown'); h.advance(900); h.get('hold-action').fire('pointerup'); h.advance(30);
+  assert.equal(h.beam(), true); assert.equal(h.get('piccolo-score').textContent, 'SCORE 180'); assert.equal(writes, 0, 'an unfinished room cannot write a record');
+  h.dialog.close(); assert.equal(h.frames.size, 0);
 });

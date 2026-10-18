@@ -19,6 +19,65 @@ function alone(state, brick) {
   for (const other of state.bricks) other.active = other === brick;
 }
 
+test("a precisely timed pulse powers three hits and rewards consecutive skilled returns", () => {
+  const state = engine.create(); engine.launch(state);
+  for (let count = 1; count <= 6; count++) {
+    state.time += 1;
+    Object.assign(state.ball, { x: state.paddle.x, y: state.paddle.y - 30, vx: 0, vy: state.ball.speed });
+    assert.equal(engine.pulse(state), true);
+    const until = state.pulseUntil;
+    assert.equal(engine.pulse(state), false, "spamming cannot extend the pulse window");
+    assert.equal(state.pulseUntil, until);
+    engine.step(state, .1);
+    assert.equal(state.chain, count);
+    assert.equal(state.bestChain, count);
+    assert.equal(state.powerHits, 3);
+    assert.equal(state.perfects, count);
+  }
+  const brick = state.bricks[14]; aimAtBottom(state, brick);
+  engine.step(state, .02);
+  assert.equal(brick.health, 0, "a powered return breaks a two-hit shield in one impact");
+  assert.equal(state.score, 35 * 5, "the chain multiplier caps at five");
+  assert.equal(state.powerHits, 2);
+  state.time += 1;
+  Object.assign(state.ball, { x: state.paddle.x, y: state.paddle.y - 6, vx: 0, vy: state.ball.speed });
+  engine.step(state, .02);
+  assert.equal(state.chain, 0, "an ordinary return ends the multiplier");
+  assert.equal(state.powerHits, 0);
+  assert.equal(state.bestChain, 6);
+});
+
+test("early, cancelled, and inactive pulses cannot create perfect returns", () => {
+  const state = engine.create(); assert.equal(engine.pulse(state), false);
+  engine.launch(state); state.chain = 3;
+  engine.pulse(state);
+  for (let i = 0; i < 3; i++) engine.step(state, .1);
+  assert.equal(state.feedback, "early"); assert.equal(state.chain, 0);
+  assert.equal(engine.pulse(state), false, "a missed window still has its cooldown");
+  state.time += 1; engine.pulse(state); engine.cancelPulse(state);
+  Object.assign(state.ball, { x: state.paddle.x, y: state.paddle.y - 6, vx: 0, vy: state.ball.speed });
+  engine.step(state, .02);
+  assert.equal(state.perfects, 0);
+  state.phase = "clear"; assert.equal(engine.pulse(state), false);
+  engine.nextArena(state); assert.equal(state.pulseUntil, 0); assert.equal(state.powerHits, 0);
+  engine.reset(state); assert.equal(state.bestChain, 0); assert.equal(state.perfects, 0);
+});
+
+test("ordinary paddle and pulse inputs can complete all three arenas without state shortcuts", () => {
+  const state = engine.create();
+  for (let frame = 0; frame < 72000 && !["won", "lost"].includes(state.phase); frame++) {
+    if (state.phase === "clear") engine.nextArena(state);
+    if (state.phase === "ready") engine.launch(state);
+    engine.movePaddle(state, state.ball.x);
+    const untilReturn = (state.paddle.y - state.ball.radius - state.ball.y) / state.ball.vy;
+    if (state.ball.vy > 0 && untilReturn > 0 && untilReturn < .16) engine.pulse(state);
+    engine.step(state, 1 / 120);
+  }
+  assert.equal(state.phase, "won");
+  assert.ok(state.perfects > 10); assert.ok(state.bestChain > 2);
+  assert.equal(state.wave, 3);
+});
+
 test("the chamber starts ready with three lives and seven complete columns", () => {
   const state = engine.create();
   assert.equal(state.width, 360);
