@@ -2,7 +2,7 @@ import vm from "node:vm";
 
 // Synthetic DOM and virtual display clock, not a browser or human playtest.
 // Production engine/UI bytes run unchanged; wrappers only observe their state.
-export function trainingHarness({ engineSource, uiSource, cssWidth = 360 }) {
+export function trainingHarness({ engineSource, uiSource, cssWidth = 360, storage = new Map(), storageBlocked = false, storageWriteBlocked = false }) {
   let document, wallMs = 0, state, nextId = 0, paints = 0;
   const frames = new Map(), timers = new Map(), requests = [], images = [], engineSteps = [];
   let drawing = [];
@@ -64,7 +64,10 @@ export function trainingHarness({ engineSource, uiSource, cssWidth = 360 }) {
     getElementById: id => nodes.get(id), querySelectorAll: () => [], querySelector: () => null });
   const motion = Object.assign(new Element(), { matches: false });
   const window = Object.assign(new Element(), { devicePixelRatio: 1,
-    matchMedia: () => motion, dispatchEvent() {} });
+    matchMedia: () => motion, dispatchEvent() {}, localStorage: {
+      getItem(key) { if (storageBlocked) throw new Error("Storage unavailable"); return storage.get(key) ?? null; },
+      setItem(key, value) { if (storageBlocked || storageWriteBlocked) throw new Error("Storage unavailable"); storage.set(key, value); },
+    } });
   const performance = { now: () => wallMs };
   class Image {
     constructor() { this.complete = false; this.naturalWidth = 0; this.naturalHeight = 0; images.push(this); }
@@ -121,7 +124,7 @@ export function trainingHarness({ engineSource, uiSource, cssWidth = 360 }) {
     } else document.emit(event.type, { ...event, target: canvas });
     return snapshot();
   }
-  return { window, document, root, motion, canvas, dialog, action, pause, status, engine: actualEngine, engineSteps, requests, images,
+  return { window, document, root, motion, canvas, dialog, action, pause, status, storage, engine: actualEngine, engineSteps, requests, images,
     open: () => window.PortfolioTraining.open(), displayFrame, advanceTo, input, snapshot,
     api: window.PortfolioTraining,
     setBounds(next) { bounds = { ...bounds, ...next }; },

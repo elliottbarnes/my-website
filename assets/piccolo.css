@@ -34,6 +34,10 @@
 #piccolo-dialog .piccolo-ab button { width:58px; height:58px; border-radius:50%; background:#84415f; color:#edbecb; border:2px solid #71354e; box-shadow:0 4px 0 #9d7e89,inset 1px 2px 0 #a86a83; font-size:24px; font-weight:bold; touch-action:none; user-select:none; -webkit-user-select:none; -webkit-touch-callout:none; }
 #piccolo-dialog .piccolo-ab button:hover,#piccolo-dialog .piccolo-ab button[data-held] { background:#6b304a; transform:translateY(2px); }
 #piccolo-dialog .piccolo-ab span { font-size:7px; font-weight:bold; }
+#piccolo-dialog .piccolo-ab button[data-ready="true"] { background:#425b3b; color:#e4efb6; border-color:#263b2b; box-shadow:0 4px 0 #829077,inset 0 0 0 3px #a9b96c; }
+#piccolo-dialog #piccolo-charge { min-width:92px; text-align:center; font-size:7px; }
+#piccolo-dialog #piccolo-score { color:#465742; font-size:8px; }
+#piccolo-record { padding-top:7px; border-top:1px solid #a5aca1; }
 #piccolo-dialog .piccolo-speaker { display:none; color:#8c9292; font-size:14px; letter-spacing:2px; line-height:1.4; transform:rotate(-20deg); }
 #piccolo-dialog .piccolo-actions { display:flex; align-items:center; gap:7px; margin-top:10px; }
 #piccolo-dialog .piccolo-actions button { min-height:40px; padding:7px 10px; font-size:10px; }

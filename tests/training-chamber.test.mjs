@@ -27,6 +27,68 @@ function flight(page) {
   page.displayFrame(0);
 }
 
+test("pulse is available through the native button and Space, with repeat and pause protection", () => {
+  for (const source of ["button", "keyboard"]) {
+    const page = chamber(); flight(page);
+    assert.equal(page.action.disabled, false);
+    if (source === "button") page.action.emit("click"); else key(page, "keydown", " ");
+    assert.ok(page.state.pulseUntil > page.state.time);
+    assert.equal(page.action.disabled, true);
+    const until = page.state.pulseUntil;
+    page.document.emit("keydown", { key: " ", target: page.canvas, repeat: true });
+    assert.equal(page.state.pulseUntil, until);
+    page.pause.emit("click");
+    assert.equal(page.state.pulseUntil, 0, "pause cancels an armed window");
+    page.pause.emit("click");
+    assert.equal(page.state.pulseUntil, 0, "resume cannot recover a cancelled pulse");
+  }
+});
+
+test("finished runs keep bounded personal records and ignore invalid or unavailable storage", () => {
+  const recordKey = "portfolio:breaker:pulse-v1";
+  for (const invalid of ["not json", "null", JSON.stringify({version:1,score:999,time:0,chain:2}), JSON.stringify({version:1,score:999,time:20,chain:-1}), "x".repeat(513)]) {
+    const page = chamber({storage:new Map([[recordKey,invalid]])}); page.open();
+    assert.doesNotMatch(page.status.textContent, /Best 999/);
+    page.action.emit("click");
+    page.state.score = 10; page.state.time = 12; page.state.bestChain = 2; page.state.perfects = 3;
+    page.window.emit("portfolio:preferences");
+    assert.equal(page.storage.get(recordKey), invalid, "ongoing games do not write records");
+    page.state.phase = "lost"; page.displayFrame(16);
+    const record = JSON.parse(page.storage.get(recordKey));
+    assert.equal(record.score, 150); assert.equal(record.chain, 2);
+    assert.match(page.status.textContent, /New personal best/);
+    page.api.close(); page.open();
+    assert.match(page.status.textContent, /Best 150/);
+    page.action.emit("click");
+    page.state.score = 5; page.state.time = 12; page.state.bestChain = 4; page.state.phase = "lost";
+    page.displayFrame(32);
+    const next = JSON.parse(page.storage.get(recordKey));
+    assert.equal(next.score, 150); assert.equal(next.chain, 4);
+  }
+  const blocked = chamber({storageBlocked:true}); blocked.open(); blocked.action.emit("click");
+  blocked.state.score = 10; blocked.state.time = 12; blocked.state.phase = "lost";
+  assert.doesNotThrow(()=>blocked.displayFrame(16));
+  assert.match(blocked.status.textContent, /150 power/);
+});
+
+test("a failed record write retains the session best and newer stored bests are merged", () => {
+  const recordKey = "portfolio:breaker:pulse-v1";
+  const storage = new Map([[recordKey,JSON.stringify({version:1,score:1000,chain:2,time:60})]]);
+  const page = chamber({storage,storageWriteBlocked:true}); page.open(); page.action.emit("click");
+  page.state.score = 100; page.state.time = 30; page.state.bestChain = 3; page.state.phase = "lost";
+  page.displayFrame(16);
+  assert.match(page.status.textContent,/New personal best/);
+  page.api.close(); page.open();
+  assert.match(page.status.textContent,/Best 1500/);
+  page.action.emit("click"); page.state.score = 90; page.state.time = 40; page.state.phase = "lost";
+  page.displayFrame(32);
+  assert.doesNotMatch(page.status.textContent,/New personal best/);
+  assert.match(page.status.textContent,/Best 1500/);
+  storage.set(recordKey,JSON.stringify({version:1,score:2000,chain:5,time:20}));
+  page.api.close(); page.open();
+  assert.match(page.status.textContent,/Best 2000/);
+});
+
 test("training artwork waits for entry, then loads only once across reopening", () => {
   const page = chamber();
   assert.equal(page.requests.length, 0, "a visitor who never opens the game does not request its artwork");
@@ -67,7 +129,7 @@ test("failed artwork leaves the board playable with a complete canvas fallback",
   page.window.emit("portfolio:preferences");
   assert.ok(!page.drawing.some(call => call.method === "drawImage"), "failed images must not be drawn");
   assert.ok(page.drawing.some(call => call.method === "roundRect"), "shield and paddle geometry remains visible");
-  assert.ok(frameText(page).includes("gather the seven"));
+  assert.ok(frameText(page).includes("master the return"));
   page.action.emit("click");
   page.displayFrame(100);
   assert.equal(page.state.phase, "playing");

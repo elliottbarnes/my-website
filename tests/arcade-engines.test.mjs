@@ -105,17 +105,19 @@ test('the entire Cloud Trail is physically completable through ordinary run/jump
     }
     shouldJump ||= game.hazards.some(shot => Math.abs(shot.x - p.x) < 95 && (shot.x - p.x) * shot.vx < 0);
     if (target && Math.abs(targetX - p.x) < 25 && target.y + target.h < p.y + p.h - 15) shouldJump = true;
-    platform.step(game, { direction, jump: p.grounded ? !p.jumpHeld && shouldJump : p.jumpHeld, attack: true }, 1 / 120);
+    const lock = platform.targetForDash(game);
+    const rush = lock && target && direction > 0 && lock.point.x <= targetX + 25;
+    platform.step(game, { direction, jump: p.grounded ? !p.jumpHeld && shouldJump : p.jumpHeld, attack: !p.attackHeld && (p.grounded ? p.cooldown === 0 : Boolean(rush)) }, 1 / 120);
   }
   assert.equal(game.phase, 'won'); assert.equal(game.orbs.filter(orb => orb.collected).length, 7);
-  assert.ok(game.lives >= 1); assert.equal(game.checkpoint, 5170); assert.ok(game.score >= 3250);
+  assert.ok(game.lives >= 1); assert.ok(game.connections >= 5); assert.ok(game.longestChain >= 3); assert.equal(game.checkpoint, 5170); assert.ok(game.score >= 3250);
   assert.equal(game.enemies.find(enemy => enemy.kind === 'guardian').alive, false);
   assert.ok(game.camera >= 0 && game.camera <= platform.WIDTH - 640);
   assert.ok(game.player.x - game.camera < 640);
 });
 
 const source = await readFile(new URL('../assets/goku-platformer.js', import.meta.url), 'utf8');
-function controlsHarness() {
+function controlsHarness({ storage } = {}) {
   let focus, now = 0, sequence = 0; const frames = new Map(), timers = new Map(), nodes = new Map();
   const trace = { x: 0, y: 0, blasts: 0 };
   const paint = main => ({ fillRect() {}, fillText() {}, save() {}, restore() {}, scale() {}, drawImage() {},
@@ -134,13 +136,14 @@ function controlsHarness() {
     querySelector(selector) { if (!nodes.has(selector)) nodes.set(selector, new Element(selector === '#platform-canvas' ? 'canvas' : selector.includes('platform-') && !selector.includes('status') ? 'button' : 'span')); return nodes.get(selector); }
     querySelectorAll() { return buttons; }
     getContext() { return this.ctx ||= paint(this === canvas); }
-    closest(selector) { return selector === 'button' && this.tag === 'button' ? this : null; }
+    closest(selector) { return selector.split(',').some(tag => tag.trim() === this.tag) ? this : null; }
     setPointerCapture() {} showModal() { this.open = true; } close() { this.open = false; this.fire('close'); } focus() { focus = this; }
   }
   const dialog = new Element('dialog'), root = new Element(), window = new Element(), opener = new Element('button');
   const buttons = ['left', 'right', 'jump', 'attack'].map(control => { const button = new Element('button'); button.dataset.platformHold = control; return button; });
   const canvas = dialog.querySelector('#platform-canvas');
   const document = new Element(); Object.assign(document, { documentElement: root, hidden: false, getElementById: id => id === 'platformer-dialog' ? dialog : null, createElement: tag => new Element(tag) });
+  Object.defineProperty(window, 'localStorage', { get() { if (storage instanceof Error) throw storage; return storage; } });
   window.dispatchEvent = () => {}; window.PortfolioGames = { run() { dialog.close(); } };
   vm.runInNewContext(source, { document, window, matchMedia: () => ({ matches: false, addEventListener() {} }), CustomEvent: class {}, requestAnimationFrame: fn => { frames.set(++sequence, fn); return sequence; }, cancelAnimationFrame: id => frames.delete(id), setTimeout: fn => { timers.set(++sequence, fn); return sequence; }, clearTimeout: id => timers.delete(id) });
   const pump = (elapsed = 20) => { now += elapsed; trace.blasts = 0; const active = [...frames.values()]; frames.clear(); active.forEach(fn => fn(now)); };
@@ -168,15 +171,17 @@ test('pause and closing discard pending taps and switch timers, with no work whi
   h.window.PortfolioPlatformer.close(); assert.equal(h.frames.size, 0); assert.equal(h.timers.size, 0); assert.equal(h.focus(), h.opener); assert.equal(h.root.dataset.training, undefined);
   h.window.PortfolioPlatformer.open(h.opener); assert.equal(h.frames.size, 0, 'reopening retains the paused state');
 });
-test('equivalent physical keys remain independent and Space on native buttons is not swallowed', () => {
+test('equivalent physical keys remain independent and Space preserves native button and help activation', () => {
   const h = controlsHarness(); h.start();
   h.key('keydown', 'd'); h.key('keydown', 'ArrowRight'); h.key('keyup', 'd');
   for (let i = 0; i < 10; i++) h.pump(20);
   assert.ok(h.trace.x > 105, 'the right arrow remains held after D is released');
-  let prevented = false;
-  h.dialog.fire('keydown', { target: h.button('jump'), key: ' ', preventDefault() { prevented = true; } });
-  h.dialog.fire('keyup', { target: h.button('jump'), key: ' ', preventDefault() { prevented = true; } });
-  assert.equal(prevented, false);
+  for (const target of [h.button('jump'), h.document.createElement('summary')]) {
+    let prevented = false;
+    h.dialog.fire('keydown', { target, key: ' ', preventDefault() { prevented = true; } });
+    h.dialog.fire('keyup', { target, key: ' ', preventDefault() { prevented = true; } });
+    assert.equal(prevented, false);
+  }
 });
 
 test('cancelled touch actions are discarded before the next simulation tick', () => {
@@ -210,7 +215,7 @@ test('armored enemies need separate hits and the guardian can be defeated by ord
   assert.ok(guardian.hp < initialHealth && guardian.hp > 0, 'one volley cannot instantly defeat the guardian');
   for (let frame = 0; frame < 120 * 12 && guardian.alive && game.phase === 'playing'; frame++) {
     const imminent = game.hazards.some(shot => shot.x - game.player.x < 95 && shot.x > game.player.x);
-    platform.step(game, { attack: true, jump: game.player.grounded ? imminent && !game.player.jumpHeld : game.player.jumpHeld });
+    platform.step(game, { attack: game.player.grounded && !game.player.attackHeld && game.player.cooldown === 0, jump: game.player.grounded ? imminent && !game.player.jumpHeld : game.player.jumpHeld });
   }
   assert.equal(guardian.alive, false); assert.equal(guardian.hp, 0); assert.equal(game.score, 1000);
   const score = game.score; simulate(game, 1, { attack: true }); assert.equal(game.score, score);
@@ -273,4 +278,169 @@ test('blur stops all game work, Escape hands off to the chooser, and opening nev
   h.dialog.querySelector('#platform-action').fire('click'); h.pump(0);
   h.window.fire('blur'); assert.equal(h.frames.size, 0); assert.equal(h.dialog.querySelector('#platform-pause').textContent, 'resume');
   h.dialog.fire('cancel'); assert.equal(h.dialog.open, false); assert.equal(h.frames.size, 0); assert.equal(h.focus(), h.opener);
+});
+
+test('the opening lesson supports a five-target chain over safe ground through ordinary button presses', () => {
+  const game = platform.create(); platform.start(game);
+  for (let frame = 0; frame < 120 * 10 && game.connections < 5; frame++) {
+    const p = game.player, lock = platform.targetForDash(game);
+    platform.step(game, { direction: 1, jump: p.grounded ? p.x > 100 && !p.jumpHeld : p.jumpHeld, attack: Boolean(lock) && !p.attackHeld }, 1 / 120);
+    assert.equal(game.lives, 3); assert.equal(game.phase, 'playing');
+  }
+  assert.equal(game.connections, 5); assert.equal(game.longestChain, 5); assert.equal(game.chain, 5);
+  assert.equal(game.score, 1800); assert.equal(game.breakdown.targets, 650); assert.equal(game.breakdown.chain, 1150);
+  assert.equal(game.orbs[0].collected, true, 'contact during a ball rush must connect before ordinary pickup removes the target');
+  assert.ok(game.time < 10); assert.ok(game.player.x < 720); assert.equal(game.player.dashReady, true);
+});
+
+test('holding B fires once on ground, never becomes an air rush, and never auto-chains after a connection', () => {
+  const game = platform.create(); platform.start(game); platform.step(game, { attack: true });
+  const firstShot = game.player.fired; simulate(game, .3, { attack: true });
+  assert.equal(game.player.fired, firstShot);
+  simulate(game, .2, { jump: true, attack: true }); assert.equal(game.rushes, 0);
+  platform.step(game, { jump: true, attack: false }); platform.step(game, { jump: true, attack: true });
+  assert.equal(game.rushes, 1);
+  simulate(game, .7, { jump: true, attack: true });
+  assert.equal(game.rushes, 1); assert.equal(game.connections, 1);
+  assert.equal(game.player.fired, firstShot);
+});
+
+test('a fresh B press between physics frames is distinct from an older held press', () => {
+  for (const mode of ['keyboard', 'pointer']) {
+    const h = controlsHarness(); h.start(); h.key('keydown', 'd'); h.key('keydown', ' ');
+    for (let i = 0; i < 13; i++) h.pump(20);
+    if (mode === 'keyboard') h.key('keydown', 'x');
+    else h.button('attack').fire('pointerdown', { button: 0, pointerId: 7 });
+    for (let i = 0; i < 9; i++) h.pump(20);
+    assert.equal(h.dialog.querySelector('#platform-chain').textContent, '1');
+    // No physics step observes the release, but the next down is a real edge.
+    if (mode === 'keyboard') { h.key('keyup', 'x'); h.key('keydown', 'x'); }
+    else { h.button('attack').fire('pointerup', { pointerId: 7 }); h.button('attack').fire('pointerdown', { button: 0, pointerId: 8 }); }
+    for (let i = 0; i < 15; i++) h.pump(20);
+    assert.equal(h.dialog.querySelector('#platform-chain').textContent, '2', `${mode} second deliberate tap must connect to the ball`);
+    for (let i = 0; i < 8; i++) h.pump(20);
+    assert.equal(h.dialog.querySelector('#platform-chain-best').textContent, '2', 'continuing to hold does not queue a third rush');
+  }
+});
+
+test('a missed rush spends ki until landing, and damage clears the active dash and chain', () => {
+  const game = platform.create(); platform.start(game); simulate(game, .18, { jump: true, direction: -1 });
+  platform.step(game, { attack: true, jump: true }); assert.equal(game.rushes, 1); assert.equal(game.player.dashReady, false);
+  simulate(game, .2, { jump: true }); platform.step(game, { attack: true, jump: true }); assert.equal(game.rushes, 1);
+  simulate(game, 1); assert.equal(game.player.grounded, true); assert.equal(game.player.dashReady, true); assert.equal(game.chain, 0);
+  game.chain = 3; game.player.y = 450; game.player.dash = { vx: 1, vy: 0, left: .1, target: null }; platform.step(game);
+  assert.equal(game.lives, 2); assert.equal(game.chain, 0); assert.equal(game.player.dash, null); assert.equal(game.player.dashReady, true);
+});
+
+test('target selection excludes reused flight targets and spent rings cannot farm run points', () => {
+  const game = platform.create(); platform.start(game); simulate(game, .2, { jump: true });
+  platform.step(game, { attack: true, jump: true }); simulate(game, .25, { jump: true });
+  assert.equal(game.connections, 1); assert.equal(game.score, 100);
+  Object.assign(game.player, { x: 235, y: 210, facing: -1, grounded: false, dashReady: true, dash: null });
+  assert.notEqual(platform.targetForDash(game)?.id, 'ring-0', 'one flight cannot repeatedly target the same ring');
+  // Simulate the next flight's reset; the old ring is still a useful movement
+  // anchor, but contributes neither points nor extra chain length a second time.
+  Object.assign(game.player, { x: 120, y: 210, facing: 1, grounded: false, airTargets: [], attackHeld: false, dashReady: true });
+  game.chain = 0; platform.step(game, { attack: true }); simulate(game, .25);
+  assert.equal(game.connections, 2); assert.equal(game.score, 100); assert.equal(game.chain, 0); assert.equal(game.longestChain, 1);
+  assert.equal(game.scored.filter(id => id === 'ring-0').length, 1);
+});
+
+test('rush target visibility uses the full body and swept travel cannot tunnel through a ledge', () => {
+  const game = platform.create(); platform.start(game);
+  Object.assign(game.player, { x: 225, y: 245, grounded: false, coyote: 0 });
+  game.orbs = []; game.enemies = []; game.rings = [{ id: 'behind-wall', x: 310, y: 250, w: 14, h: 14 }];
+  assert.equal(platform.targetForDash(game), null, 'the platform blocks the body-width path to a tempting target');
+  platform.step(game, { attack: true }, 1 / 30);
+  for (let i = 0; i < 5; i++) platform.step(game, {}, 1 / 30);
+  assert.ok(game.player.x + game.player.w <= 260); assert.equal(game.player.dash, null); assert.equal(game.player.dashReady, false);
+  assert.ok(platform.solids.every(tile => !platform.overlaps(game.player, tile)));
+  const moving = platform.create(); platform.start(moving);
+  Object.assign(moving.player, { x: 220, y: 175, grounded: false, coyote: 0 });
+  moving.orbs = []; moving.enemies = [];
+  moving.rings = [{ id: 'moving-target', x: 330, y: 180, w: 14, h: 14 }];
+  assert.ok(platform.targetForDash(moving)); platform.step(moving, { attack: true }, 1 / 120);
+  moving.rings[0].y = 275; // A target can move after lock; the sweep must still win.
+  for (let i = 0; i < 12; i++) platform.step(moving, {}, 1 / 30);
+  assert.ok(platform.solids.every(tile => !platform.overlaps(moving.player, tile)));
+  assert.equal(moving.connections, 0);
+});
+
+const finishFixture = (score = 4000, chain = 5, seconds = 65) => {
+  const game = platform.create(); platform.start(game); game.orbs.forEach(orb => { orb.collected = true; });
+  game.enemies.find(enemy => enemy.kind === 'guardian').alive = false;
+  game.phase = 'won'; game.score = score; game.longestChain = chain; game.time = seconds;
+  return game;
+};
+const memoryStorage = () => {
+  const values = new Map(); let writes = 0;
+  return { getItem(key) { return values.get(key) ?? null; }, setItem(key, value) { writes++; values.set(key, value); }, values, writes: () => writes };
+};
+test('completed-run records preserve independent score, longest-chain and fastest-time bests', () => {
+  const storage = memoryStorage();
+  const first = platform.recordFinish(storage, finishFixture());
+  assert.equal(first.saved, true); assert.equal(first.previous, null); assert.equal(first.record.version, 1);
+  const faster = platform.recordFinish(storage, finishFixture(3000, 7, 55));
+  assert.equal(faster.record.best.score, 4000); assert.equal(faster.record.longestChain, 7); assert.equal(faster.record.fastestMs, 55000);
+  assert.equal(faster.previous.score, 4000); assert.equal(faster.record.previous.score, 3000);
+  const higher = platform.recordFinish(storage, finishFixture(6000, 6, 70));
+  assert.equal(higher.record.best.score, 6000); assert.equal(higher.record.best.timeMs, 70000);
+  assert.equal(higher.record.longestChain, 7); assert.equal(higher.record.fastestMs, 55000);
+  assert.deepEqual(platform.loadRecord(storage), higher.record);
+  assert.equal(storage.writes(), 3);
+});
+test('a finish merges a fresh record from another tab with the cached session record', () => {
+  const storage = memoryStorage();
+  const cached = platform.recordFinish(storage, finishFixture(4000, 8, 60)).record;
+  const anotherTab = platform.recordFinish(storage, finishFixture(8000, 6, 50)).record;
+  const finish = platform.recordFinish(storage, finishFixture(5000, 5, 70), cached);
+  assert.equal(finish.record.best.score, 8000);
+  assert.equal(finish.previousBest.score, 8000);
+  assert.deepEqual(finish.previous, anotherTab.previous, 'compare with the fresh stored completion');
+  assert.equal(finish.record.longestChain, 8); assert.equal(finish.record.fastestMs, 50000);
+  assert.deepEqual(platform.loadRecord(storage), finish.record);
+  const tied = platform.recordFinish(storage, finishFixture(8000, 5, 45), cached);
+  assert.equal(tied.record.best.timeMs, 45000, 'equal scores retain the faster clear');
+});
+test('readable but unwritable storage cannot erase a better session score, chain or time', () => {
+  const storage = memoryStorage();
+  const persisted = platform.recordFinish(storage, finishFixture()).record;
+  const readOnly = { getItem: key => storage.getItem(key), setItem() { throw new Error('quota'); } };
+  const first = platform.recordFinish(readOnly, finishFixture(9000, 9, 40), persisted);
+  const second = platform.recordFinish(readOnly, finishFixture(5000, 4, 80), first.record, first.saved);
+  assert.equal(first.saved, false); assert.equal(second.saved, false);
+  assert.equal(second.record.best.score, 9000); assert.equal(second.record.longestChain, 9); assert.equal(second.record.fastestMs, 40000);
+  assert.equal(second.previous.score, 9000, 'an unsaved completion remains the previous session run');
+  assert.deepEqual(platform.loadRecord(storage), persisted);
+  const recovered = platform.recordFinish(storage, finishFixture(6000, 6, 70), second.record, second.saved);
+  assert.equal(recovered.saved, true); assert.equal(platform.loadRecord(storage).best.score, 9000);
+});
+test('records reject corrupt, old, non-finite, overlarge and inconsistent values', () => {
+  const valid = platform.recordFinish(null, finishFixture()).record;
+  const variants = [null, {}, { ...valid, version: 0 }, { ...valid, longestChain: platform.MAX_CHAIN + 1 }, { ...valid, fastestMs: -1 },
+    { ...valid, fastestMs: 999999 }, { ...valid, best: { ...valid.best, score: 1000001 } }, { ...valid, best: { ...valid.best, score: '4000' } },
+    { ...valid, previous: { ...valid.previous, score: 8000 } }, { ...valid, previous: { ...valid.previous, timeMs: Infinity } },
+    { ...valid, longestChain: 1 }];
+  for (const candidate of variants) assert.equal(platform.validateRecord(candidate), null);
+  const storage = memoryStorage();
+  for (const raw of ['{broken', 'null', ' '.repeat(2049), JSON.stringify({ ...valid, version: 2 })]) {
+    storage.values.set(platform.RECORD_KEY, raw); assert.equal(platform.loadRecord(storage), null);
+  }
+  assert.match(platform.RECORD_KEY, /v1$/);
+});
+test('only valid finishes write a record and blocked or quota-limited storage is harmless', () => {
+  const storage = memoryStorage(), game = platform.create(); platform.start(game);
+  assert.equal(platform.recordFinish(storage, game), null); game.phase = 'lost'; assert.equal(platform.recordFinish(storage, game), null);
+  game.phase = 'won'; assert.equal(platform.recordFinish(storage, game), null, 'seven balls and guardian completion are required');
+  assert.equal(platform.recordFinish(storage, finishFixture(10, 0, .01)), null);
+  assert.equal(storage.writes(), 0);
+  const blocked = { getItem() { throw new Error('disabled'); }, setItem() { throw new Error('quota'); } };
+  assert.equal(platform.loadRecord(blocked), null);
+  const result = platform.recordFinish(blocked, finishFixture()); assert.equal(result.saved, false); assert.equal(result.record.best.score, 4000);
+  for (const store of [storage, blocked, new Error('storage getter blocked')]) {
+    const h = controlsHarness({ storage: store }); h.start(); h.pump(25);
+    assert.equal(h.dialog.querySelector('#platform-record').textContent, 'first run');
+    assert.equal(h.dialog.querySelector('#platform-results').hidden, true);
+  }
+  assert.equal(storage.writes(), 0, 'opening and playing never write completed records');
 });

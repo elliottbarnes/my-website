@@ -39,6 +39,8 @@
 .arcade-loading { border-radius:13px; max-width:360px; padding:25px; }
 .arcade-loading h2 { font-size:18px; }.arcade-loading p { font-size:12px; line-height:1.6; }.arcade-loading button { padding:9px; }
 #training-dialog .training-heading h2 { color:#fff1ce; }#training-dialog .training-hud,#training-dialog #training-instructions { color:#c1cbd4; }
+#training-dialog .training-hud { gap:4px; }
+#training-dialog .training-hud>span { gap:4px; white-space:nowrap; }
 @media (max-width:520px) {
   #arcade-dialog { padding:18px; }
   #arcade-dialog .game-choice { grid-template-columns:75px 1fr 12px; gap:12px; padding:10px; }

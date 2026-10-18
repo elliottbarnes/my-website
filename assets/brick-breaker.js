@@ -31,6 +31,7 @@
     const state = {
       width, height, phase: "ready", lives: 3, score: 0, collected: [], time: 0, lastHit: null,
       wave: 1, totalWaves: arenas.length,
+      chain: 0, bestChain: 0, perfects: 0, powerHits: 0, pulseUntil: 0, pulseReadyAt: 0, feedback: "", feedbackAt: -10,
       paddle: { x: width / 2, y: 442, width: 68, height: 10 },
       ball: { x: width / 2, y: 435, radius: 5, vx: 0, vy: 0, speed: 260 },
       bricks: shields(1),
@@ -46,6 +47,7 @@
     state.bricks = shields(state.wave);
     state.collected = [];
     state.lastHit = null;
+    state.powerHits = 0; state.pulseUntil = 0; state.pulseReadyAt = state.time;
     state.lives = Math.min(3, state.lives + 1);
     state.ball.speed = 260 + (state.wave - 1) * 20;
     state.phase = "ready";
@@ -74,6 +76,18 @@
     state.phase = "playing";
     return state;
   }
+
+  // A fresh tap opens a brief return window. Holding or rapid tapping cannot
+  // extend it; the cooldown makes timing a decision rather than an auto-fire.
+  function pulse(state) {
+    if (state.phase !== "playing" || state.time + 1e-8 < state.pulseReadyAt) return false;
+    state.pulseUntil = state.time + .22;
+    state.pulseReadyAt = state.time + .7;
+    state.feedback = "pulse"; state.feedbackAt = state.time;
+    return true;
+  }
+
+  function cancelPulse(state) { state.pulseUntil = 0; }
 
   // The nearest point gives the correct normal for both faces and round corners.
   function contact(ball, rectangle) {
@@ -106,12 +120,15 @@
   }
 
   function damage(state, brick) {
-    brick.health--;
-    state.score += 10;
+    const strength = state.powerHits > 0 ? 2 : 1;
+    const removed = Math.min(brick.health, strength), multiplier = 1 + Math.min(4, state.chain);
+    brick.health -= removed;
+    if (state.powerHits > 0) state.powerHits--;
+    state.score += 10 * removed * multiplier;
     state.lastHit = { id: brick.id, x: state.ball.x, y: state.ball.y, star: brick.star, time: state.time };
     if (brick.health === 0) {
       brick.active = false;
-      state.score += 15;
+      state.score += 15 * multiplier;
       if (!state.bricks.some(other => other.active && other.star === brick.star)) {
         state.collected.push(brick.star);
         state.collected.sort((a, b) => a - b);
@@ -133,6 +150,7 @@
 
   function loseLife(state) {
     state.lives--;
+    state.chain = 0; state.powerHits = 0; state.pulseUntil = 0;
     state.phase = state.lives > 0 ? "ready" : "lost";
     dock(state);
   }
@@ -167,6 +185,14 @@
       const angle = direction * Math.max(minimumReturnAngle, Math.abs(aimedAngle));
       ball.vx = Math.sin(angle) * ball.speed;
       ball.vy = -Math.cos(angle) * ball.speed;
+      if (state.pulseUntil > 0 && state.time <= state.pulseUntil + 1e-8) {
+        state.chain++; state.bestChain = Math.max(state.bestChain, state.chain);
+        state.perfects++; state.powerHits = 3; state.pulseUntil = 0;
+        state.feedback = "perfect"; state.feedbackAt = state.time;
+      } else {
+        state.chain = 0; state.powerHits = 0;
+        state.feedback = "return"; state.feedbackAt = state.time;
+      }
     }
 
     // Near-simultaneous approaching contacts share one normal. In particular,
@@ -225,10 +251,14 @@
     const delta = duration / count;
     for (let index = 0; index < count && state.phase === "playing"; index++) {
       state.time += delta;
+      if (state.pulseUntil > 0 && state.time > state.pulseUntil + 1e-8) {
+        state.pulseUntil = 0; state.chain = 0;
+        state.feedback = "early"; state.feedbackAt = state.time;
+      }
       advance(state, delta);
     }
     return state;
   }
 
-  window.PortfolioBreakerEngine = Object.freeze({ arenas, create, reset, nextArena, launch, movePaddle, step });
+  window.PortfolioBreakerEngine = Object.freeze({ arenas, create, reset, nextArena, launch, pulse, cancelPulse, movePaddle, step });
 })();

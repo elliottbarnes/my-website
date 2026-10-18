@@ -56,3 +56,30 @@
   #platformer-dialog .console-actions button{width:100%;padding:4px;font-size:8px}
   #platformer-dialog .console-help{grid-column:2;grid-row:6;margin:0;font-size:8px}
 }
+/* Ki Rush feedback shares the existing controller; no extra action buttons. */
+#platformer-dialog .platform-mastery{display:flex;justify-content:space-between;align-items:center;gap:8px;margin:0 2px 7px;font-size:9px;line-height:1.5;color:#d5e9dc}
+#platformer-dialog .platform-mastery strong{color:#fff0af;font-size:11px}
+#platformer-dialog #platform-ki{color:#b9f5d2;white-space:nowrap;font-size:9px}
+#platformer-dialog #platform-ki[data-ready=false]{color:#e9c39d}
+#platformer-dialog #platform-record{color:#bdcce3;font-size:8px;white-space:nowrap}
+#platformer-dialog .platform-results[hidden]{display:none}
+#platformer-dialog .platform-results{display:grid;grid-template-columns:1fr auto;gap:4px 10px;padding:9px 12px;margin:5px 0;border:1px solid #9ec5c4;border-radius:7px;background:#203e57;color:#d3e5df;font-size:9px;line-height:1.5}
+#platformer-dialog #platform-result-total{color:#fff0b7;font-size:12px}
+#platformer-dialog #platform-result-run{color:#c4f1d7}
+#platformer-dialog #platform-result-points,#platformer-dialog #platform-result-compare,#platformer-dialog #platform-result-records{grid-column:1/-1}
+#platformer-dialog[data-phase=won] .platform-touch,#platformer-dialog[data-phase=lost] .platform-touch{display:none}
+#platformer-dialog[data-phase=won] #platform-status,#platformer-dialog[data-phase=lost] #platform-status{min-height:0;margin:5px 3px;font-size:9px}
+@media(min-width:650px){#platformer-dialog .platform-stage{width:min(100%,max(360px,calc((100dvh - 455px)*16/9)))}}
+@media(max-width:520px){#platformer-dialog .platform-mastery{font-size:8px;gap:4px}#platformer-dialog .platform-mastery strong{font-size:10px}#platformer-dialog #platform-record{font-size:7px}#platformer-dialog .platform-results{padding:8px;font-size:8px}#platformer-dialog #platform-result-total{font-size:10px}}
+@media(orientation:landscape) and (max-height:520px) and (min-width:650px){
+  #platformer-dialog .platform-stage{grid-row:1/8;width:100%}
+  #platformer-dialog .platform-mastery{grid-column:2;grid-row:3;margin:0;font-size:8px;gap:4px}
+  #platformer-dialog #platform-ki{font-size:8px}
+  #platformer-dialog #platform-record{font-size:7px}
+  #platformer-dialog #platform-status{grid-row:4}
+  #platformer-dialog .platform-touch,#platformer-dialog .platform-results{grid-column:2;grid-row:5}
+  #platformer-dialog .platform-results{padding:5px 7px;margin:0;gap:2px 6px;font-size:8px}
+  #platformer-dialog #platform-result-total{font-size:10px}
+  #platformer-dialog .console-actions{grid-row:6}
+  #platformer-dialog .console-help{grid-row:7}
+}
