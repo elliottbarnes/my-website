@@ -48,6 +48,10 @@ const snippets = [{"repo": "glassbox", "title": "source → WebAssembly", "path"
   const positionLabel = document.querySelector("#entrance .status-position");
   const codeSurface = document.querySelector("#scene .scene-body") || canvas.parentElement;
   const sceneFeedback = document.querySelector("#scene-feedback");
+  const sourceLoad = document.querySelector("[data-source-load]");
+  const sourceLoadMessage = document.querySelector("[data-source-load-message]");
+  const sourceLoadRetry = document.querySelector("[data-source-load-retry]");
+  const sourceLoadDismiss = document.querySelector("[data-source-load-dismiss]");
   const projectLinks = document.querySelector(".scene-project-links");
   const projectSource = document.querySelector("[data-scene-source]");
   const projectDemo = document.querySelector("[data-scene-demo]");
@@ -98,6 +102,7 @@ const snippets = [{"repo": "glassbox", "title": "source → WebAssembly", "path"
   let currentFile = "", currentMode = "", currentCommand = "", currentPosition = "";
   let selectedSource = "", keyboardFocus = false;
   let heldSnippet = null, projectHovered = false;
+  let pendingGraphic = null, graphicRequest = 0;
   const clamp = (number, low = 0, high = 1) => Math.max(low, Math.min(high, number));
   const ease = number => { const t = clamp(number); return t * t * (3 - 2 * t); };
   const visible = () => !document.hidden && root.dataset.view !== "workspace";
@@ -613,11 +618,70 @@ const snippets = [{"repo": "glassbox", "title": "source → WebAssembly", "path"
     return kind;
   }
 
+  function cancelPendingGraphic() {
+    graphicRequest++;
+    pendingGraphic = null;
+    if (sourceLoad) sourceLoad.hidden = true;
+    delete scene.dataset.loadingEffect;
+  }
+
+  function requestGraphic(row, pointerType, kind) {
+    const focusInStatus = sourceLoad?.contains?.(document.activeElement);
+    const token = ++graphicRequest;
+    const pending = { row, pointerType, kind, snippet: renderedSnippet };
+    pendingGraphic = pending;
+    interaction = null; displayedGraphic = null;
+    scene.dataset.effect = "";
+    scene.dataset.loadingEffect = kind;
+    if (sourceLoad) sourceLoad.hidden = false;
+    if (sourceLoadRetry) sourceLoadRetry.hidden = true;
+    // Keep focus on a visible action while the retry button is hidden.
+    if (focusInStatus) sourceLoadDismiss?.focus?.({ preventScroll: true });
+    if (sourceLoadMessage) sourceLoadMessage.textContent = `Loading ${effectNames[kind]}…`;
+    drawScene(elapsed);
+    window.PortfolioEffects.load(kind).then(() => {
+      if (token !== graphicRequest) return;
+      const restoreFocus = sourceLoad?.contains?.(document.activeElement);
+      cancelPendingGraphic();
+      if (!visible() || leaving || root.dataset.training === "open" || document.querySelector("dialog[open]")) return;
+      resumedSnippet = pending.snippet;
+      resumeUntil = elapsed + cycleLength - elapsed % cycleLength;
+      drawScene(elapsed);
+      const currentRow = sourceRows.find(candidate => sourceKey(candidate) === sourceKey(row)) || selectedRow();
+      openGraphic(currentRow, pointerType, kind);
+      if (restoreFocus || pointerType === "button") codeSurface?.focus?.({ preventScroll: true });
+    }).catch(() => {
+      if (token !== graphicRequest) return;
+      if (sourceLoadMessage) sourceLoadMessage.textContent = "This experiment could not load. Retry or continue exploring.";
+      if (sourceLoadRetry) sourceLoadRetry.hidden = false;
+    });
+  }
+
+  sourceLoadRetry?.addEventListener("click", () => {
+    if (pendingGraphic) requestGraphic(pendingGraphic.row, pendingGraphic.pointerType, pendingGraphic.kind);
+  });
+  sourceLoadDismiss?.addEventListener("click", () => {
+    closeGraphic(); codeSurface?.focus?.({ preventScroll: true });
+  });
+  sourceLoad?.addEventListener("keydown", event => {
+    if (event.key !== "Escape") return;
+    event.preventDefault(); event.stopPropagation?.();
+    closeGraphic(); codeSurface?.focus?.({ preventScroll: true });
+  });
+  document.addEventListener("focusin", event => {
+    if (pendingGraphic && event.target?.closest?.("dialog")?.open) cancelPendingGraphic();
+  });
+
   function openGraphic(row, pointerType, requestedKind) {
-    if (!row || !visible() || leaving || document.querySelector("dialog[open]")) return;
+    if (!row || !visible() || leaving || root.dataset.training === "open" || document.querySelector("dialog[open]")) return;
+    const kind = requestedKind || (row.gutter ? "history" : nextSourceEffect(renderedSnippet.repo));
+    if (window.PortfolioEffects && !window.PortfolioEffects.ready(kind)) {
+      requestGraphic(row, pointerType, kind);
+      return;
+    }
+    cancelPendingGraphic();
     const staticEffect = still();
     const now = performance.now();
-    const kind = requestedKind || (row.gutter ? "history" : nextSourceEffect(renderedSnippet.repo));
     const next = { kind, snippet: renderedSnippet, anchor: makeAnchor(row), visualStarted: elapsed,
       amount: staticEffect ? 1 : 0, velocity: 0, target: 1, static: staticEffect,
       pointerType, pull: { x: 0, y: 0 }, pullTarget: { x: 0, y: 0 },
@@ -649,6 +713,8 @@ const snippets = [{"repo": "glassbox", "title": "source → WebAssembly", "path"
   }
 
   function closeGraphic() {
+    if (pendingGraphic) announceScene("returned to source code.");
+    cancelPendingGraphic();
     if (!interaction && displayedGraphic) interaction = { ...displayedGraphic, velocity: 0 };
     if (interaction) {
       interaction.target = 0; interaction.next = null;
@@ -739,7 +805,7 @@ const snippets = [{"repo": "glassbox", "title": "source → WebAssembly", "path"
     syncECDSA();
     if (!width || !height) return;
     const clock = time % cycleLength;
-    const snippet = heldSnippet || (resumedSnippet && time < resumeUntil ? resumedSnippet : snippets[Math.floor(time / cycleLength) % snippets.length]);
+    const snippet = pendingGraphic?.snippet || heldSnippet || (resumedSnippet && time < resumeUntil ? resumedSnippet : snippets[Math.floor(time / cycleLength) % snippets.length]);
     if (interaction && (interaction.static || interaction.frozen || !still())) { drawInteraction(time); return; }
     if (still()) {
       const frozen = frozenTime !== null;
@@ -786,6 +852,7 @@ const snippets = [{"repo": "glassbox", "title": "source → WebAssembly", "path"
   }
 
   function completeEntry() {
+    cancelPendingGraphic();
     if (!leaving && !finishEntry) return;
     clearTimeout(entryTimer);
     leaving = null;
@@ -803,6 +870,7 @@ const snippets = [{"repo": "glassbox", "title": "source → WebAssembly", "path"
   }
 
   function enter() {
+    cancelPendingGraphic();
     if (entryPromise) return entryPromise;
     if (!visible() || still() || motion.matches) return Promise.resolve();
     gesture = null; interaction = null;
@@ -873,11 +941,13 @@ const snippets = [{"repo": "glassbox", "title": "source → WebAssembly", "path"
   function schedule() { if (!frame && running()) frame = requestAnimationFrame(tick); }
 
   function refresh() {
+    if (root.dataset.training === "open") cancelPendingGraphic();
     colors();
     if (frame) cancelAnimationFrame(frame);
     frame = 0; lastFrame = 0;
     const quiet = still();
     if (!visible()) {
+      cancelPendingGraphic();
       heldSnippet = null; projectHovered = false;
       cancelGesture();
       interaction = null;
@@ -1070,7 +1140,7 @@ const snippets = [{"repo": "glassbox", "title": "source → WebAssembly", "path"
     schedule();
   });
   inputSurface.addEventListener("keydown", event => {
-    if (event.key !== "Escape" || event.defaultPrevented || event.isComposing || !interaction || !visible()
+    if (event.key !== "Escape" || event.defaultPrevented || event.isComposing || (!interaction && !pendingGraphic) || !visible()
       || document.querySelector("dialog[open]")) return;
     event.preventDefault(); event.stopPropagation?.();
     closeGraphic(); schedule();
@@ -1111,6 +1181,11 @@ const snippets = [{"repo": "glassbox", "title": "source → WebAssembly", "path"
     openGraphic(row, "button", kind);
     codeSurface?.focus?.({ preventScroll: true });
   });
+  function updateECDSALabel(node, text) {
+    // A focus/blur redraw can run between pointerdown and click. Replacing an
+    // unchanged Text node can discard that click in WebKit.
+    if (node && node.textContent !== text) node.textContent = text;
+  }
   function syncECDSA() {
     const active = interaction?.kind === "ecdsa" && interaction.target && Boolean(interaction.ecdsa);
     if (ecdsaControls) {
@@ -1120,16 +1195,16 @@ const snippets = [{"repo": "glassbox", "title": "source → WebAssembly", "path"
     }
     if (!active) { ecdsaAnnouncement = ""; return; }
     const state = interaction.ecdsa, step = Math.floor(state.position / ecdsaStepLength);
-    if (ecdsaLabel) ecdsaLabel.textContent = `${step + 1} / 6`;
+    updateECDSALabel(ecdsaLabel, `${step + 1} / 6`);
     if (ecdsaButtons.back) ecdsaButtons.back.disabled = step === 0;
     if (ecdsaButtons.next) ecdsaButtons.next.disabled = step === 5;
     if (ecdsaButtons.play) {
       ecdsaButtons.play.disabled = still();
-      ecdsaButtons.play.textContent = still() ? "paused" : state.playing ? "pause" : step === 5 ? "replay" : "play";
+      updateECDSALabel(ecdsaButtons.play, still() ? "paused" : state.playing ? "pause" : step === 5 ? "replay" : "play");
       ecdsaButtons.play.setAttribute("aria-label", still() ? "Animation paused; use arrows to step" : state.playing ? "Pause ECDSA playback" : "Play ECDSA animation");
     }
     ecdsaButtons.tamper?.setAttribute("aria-pressed", String(state.tampered));
-    if (ecdsaButtons.tamper) ecdsaButtons.tamper.textContent = state.tampered ? "restore hash" : "tamper hash";
+    updateECDSALabel(ecdsaButtons.tamper, state.tampered ? "restore hash" : "tamper hash");
     const key = `${step}:${state.tampered}`;
     if (ecdsaAnnouncement !== key) {
       ecdsaAnnouncement = key;
@@ -1174,7 +1249,7 @@ const snippets = [{"repo": "glassbox", "title": "source → WebAssembly", "path"
   if (typeof ResizeObserver !== "undefined") new ResizeObserver(resize).observe(codeSurface);
   window.PortfolioAnimation = Object.freeze({ enter, cancel: completeEntry, openECDSA,
 
-    get state() { return Object.freeze({ effect: interaction?.kind || null, glyphCount: interaction?.glyphs?.length || 0,
+    get state() { return Object.freeze({ effect: interaction?.kind || null, loadingEffect: pendingGraphic?.kind || null, glyphCount: interaction?.glyphs?.length || 0,
       static: Boolean(interaction?.static), frozen: Boolean(interaction?.frozen), amount: interaction?.amount || 0,
       pull: Object.freeze({ x: interaction?.pull?.x || 0, y: interaction?.pull?.y || 0 }), selectedCommit: interaction?.selectedCommit || null,
       ecdsaStep: interaction?.ecdsa ? Math.floor(interaction.ecdsa.position / ecdsaStepLength) : null,

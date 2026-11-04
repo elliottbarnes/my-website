@@ -1,16 +1,16 @@
 /* Native, searchable counterpart to the reference's compact terminal picker. */
 dialog.theme-picker {
-  --theme-row-height: 13px;
+  --theme-row-height: 28px;
   position: fixed;
   inset: 0;
   width: 332px;
   max-width: calc(100vw - 32px);
-  height: 169px;
+  height: 289px;
   max-height: calc(100svh - 32px);
   margin: auto;
   padding: 9px 13px 12px;
   overflow: visible;
-  border: 1px solid var(--faint);
+  border: 1px solid var(--ui-border);
   border-radius: 5px;
   background: var(--paper);
   color: var(--ink);
@@ -30,7 +30,7 @@ dialog.theme-picker {
   margin: 0;
   padding: 0 5px;
   background: var(--paper);
-  color: var(--muted);
+  color: var(--ui-muted);
   font: inherit;
   line-height: 13px;
 }
@@ -53,10 +53,11 @@ dialog.theme-picker {
   outline: none;
   background: transparent;
   color: var(--ink);
-  caret-color: var(--accent);
+  caret-color: var(--ui-accent);
   font: inherit;
   line-height: 16px;
 }
+.theme-picker-search:focus-within { outline: 2px solid var(--ink); outline-offset: 2px; }
 .theme-picker-search input:focus-visible { outline: none; }
 .theme-picker-cancel { display: none; }
 .theme-picker-options {
@@ -67,36 +68,36 @@ dialog.theme-picker {
   overscroll-behavior: contain;
   touch-action: pan-y;
   scrollbar-width: thin;
-  scrollbar-color: var(--faint) transparent;
+  scrollbar-color: var(--ui-faint) transparent;
 }
 .theme-picker-options::-webkit-scrollbar { width: 3px; }
-.theme-picker-options::-webkit-scrollbar-thumb { background: var(--faint); }
+.theme-picker-options::-webkit-scrollbar-thumb { background: var(--ui-faint); }
 .theme-picker-option {
   display: grid;
   grid-template-columns: 14px 119px 64px auto;
   align-items: center;
   min-height: var(--theme-row-height);
   height: var(--theme-row-height);
-  color: var(--muted);
+  color: var(--ui-muted);
   white-space: nowrap;
   cursor: pointer;
   user-select: none;
 }
 .theme-picker-option[aria-selected="true"],
 .theme-picker-option:hover { color: var(--ink); }
-.theme-picker-arrow { color: var(--accent); }
+.theme-picker-arrow { color: var(--ui-accent); }
 .theme-picker-name { overflow: hidden; text-overflow: clip; }
 .theme-picker-swatches { display: flex; width: 64px; height: 10px; gap: 0; }
 .theme-picker-swatches > span { width: 8px; height: 10px; }
-.theme-picker-light { padding-left: 9px; color: var(--faint); font-size: 11px; }
-.theme-picker-empty { display: block; padding-left: 14px; color: var(--muted); }
+.theme-picker-light { padding-left: 9px; color: var(--ui-faint); font-size: 11px; }
+.theme-picker-empty { display: block; padding-left: 14px; color: var(--ui-muted); }
 .theme-picker-counter {
   position: absolute;
   right: 12px;
   bottom: -7px;
   padding: 0 5px;
   background: var(--paper);
-  color: var(--muted);
+  color: var(--ui-muted);
   line-height: 13px;
 }
 .theme-picker-sr {
@@ -110,21 +111,21 @@ dialog.theme-picker {
   white-space: nowrap;
   border: 0;
 }
-::selection { background: var(--selection); color: var(--selection-ink); }
-.syntax-keyword { color: var(--syntax-keyword, var(--highlight)); }
-.syntax-value { color: var(--syntax-number, var(--accent)); }
-.syntax-comment { color: var(--syntax-comment, var(--muted)); }
+::selection { background: var(--selection); color: var(--ui-selection-ink); }
+.syntax-keyword { color: var(--ui-syntax-keyword, var(--ui-highlight)); }
+.syntax-value { color: var(--ui-syntax-number, var(--ui-accent)); }
+.syntax-comment { color: var(--ui-syntax-comment, var(--ui-muted)); }
 @media (max-width: 360px) {
   .theme-picker-option { grid-template-columns: 13px minmax(100px, 1fr) 64px 38px; }
   .theme-picker-light { padding-left: 6px; font-size: 10px; }
 }
 @media (max-width: 600px), (pointer: coarse) {
   dialog.theme-picker {
-    --theme-row-height: 32px;
+    --theme-row-height: 44px;
     width: 332px;
     height: max-content;
     max-height: calc(100dvh - 32px);
-    padding-top: 42px;
+    padding-top: 54px;
     padding-bottom: 15px;
     font-size: 13px;
   }
@@ -134,7 +135,7 @@ dialog.theme-picker {
     top: 5px;
     right: 10px;
     min-width: 54px;
-    min-height: 32px;
+    min-height: 44px;
     padding: 0 5px;
     color: var(--ink);
     font: inherit;
@@ -143,7 +144,7 @@ dialog.theme-picker {
   .theme-picker-cancel:focus-visible { outline-offset: 0; }
   .theme-picker-search { height: 38px; align-items: center; }
   .theme-picker-search input { height: 32px; font-size: 16px; line-height: 32px; }
-  .theme-picker-options { max-height: max(64px, calc(100dvh - 160px)); }
+  .theme-picker-options { max-height: max(88px, calc(100dvh - 172px)); }
   .theme-picker-option { grid-template-columns: 14px minmax(112px, 1fr) 64px 41px; }
   .theme-picker-light { padding-left: 6px; font-size: 11px; }
 }

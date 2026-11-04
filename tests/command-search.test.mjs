@@ -209,6 +209,26 @@ test("native result buttons, feedback relationships, and Escape focus restoratio
   assert.equal(cancelled.window.location.hash, "");
 });
 
+test("a delayed native close event cannot steal focus from the next action", () => {
+  const page = setup();
+  page.dialog.open = false; // Native closure precedes its queued close event.
+  const next = page.document.createElement('button');
+  page.document.body.append(next); next.focus();
+  page.dialog.emit('close');
+  assert.equal(page.document.activeElement, next);
+  page.opener.emit('click');
+  page.dialog.emit('close'); // An earlier close event can arrive after reopening.
+  assert.equal(page.document.activeElement, page.input);
+});
+
+test("pointer command openings restore the actual trigger even without native button focus", () => {
+  const page = setup(); page.escape();
+  page.enter.focus();
+  page.opener.emit('click');
+  page.escape();
+  assert.equal(page.document.activeElement, page.opener);
+});
+
 test("native Tab order matches ranked search results and resets with the empty query", () => {
   const page = setup();
   const original = page.results.children.map(button => button.dataset.command);

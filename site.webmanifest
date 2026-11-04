@@ -1,10 +1,10 @@
 {
-  "name": "elliott",
+  "name": "Elliott Barnes — Senior Software Developer",
   "short_name": "elliott",
   "start_url": "/",
   "display": "standalone",
-  "background_color": "#0c0c0c",
-  "theme_color": "#0c0c0c",
+  "background_color": "#090e18",
+  "theme_color": "#090e18",
   "icons": [
     {
       "src": "/assets/dragon-ball.png",

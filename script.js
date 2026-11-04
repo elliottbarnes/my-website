@@ -282,9 +282,10 @@
     if (feedback) feedback.textContent = message;
   }
 
-  function openCommands() {
+  function openCommands(event) {
     if (!dialog || !commandInput || dialog.open) return;
-    dialogOpener = document.activeElement;
+    dialogOpener = event?.currentTarget?.hasAttribute?.("data-command-open")
+      ? event.currentTarget : document.activeElement;
     restoreDialogFocus = true;
     if (typeof dialog.showModal === "function") dialog.showModal();
     else dialog.setAttribute("open", "");
@@ -414,7 +415,13 @@
     else say("no matching projects or commands. try compiler, mac, regex, attention, or batching.");
   });
   dialog?.addEventListener("close", () => {
-    if (restoreDialogFocus && dialogOpener?.isConnected) dialogOpener.focus({ preventScroll: true });
+    // Native close events are queued. Do not steal focus from a later action or
+    // another modal after the browser has already restored the original focus.
+    const active = document.activeElement;
+    if (restoreDialogFocus && !dialog.open && dialogOpener?.isConnected
+      && (!active || active === document.body || dialog.contains(active))) {
+      dialogOpener.focus({ preventScroll: true });
+    }
   });
 
   selectors.forEach((button) => button.addEventListener("click", () => navigate(button.dataset.select, false)));

@@ -1,0 +1,17 @@
+{
+  "name": "elliottbarnes-portfolio",
+  "private": true,
+  "engines": { "node": ">=24 <25" },
+  "scripts": {
+    "test": "node --test",
+    "build": "node build.mjs",
+    "verify": "node scripts/verify-site.mjs dist --source .",
+    "check:performance": "node scripts/check-performance.mjs dist",
+    "browser:install": "PLAYWRIGHT_BROWSERS_PATH=${PLAYWRIGHT_BROWSERS_PATH:-0} playwright install --only-shell chromium webkit",
+    "test:browser": "PLAYWRIGHT_BROWSERS_PATH=${PLAYWRIGHT_BROWSERS_PATH:-0} playwright test"
+  },
+  "devDependencies": {
+    "@axe-core/playwright": "4.14.0",
+    "@playwright/test": "1.64.1"
+  }
+}

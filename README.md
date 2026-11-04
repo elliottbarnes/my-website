@@ -1,6 +1,6 @@
-# elliott / ai wizard
+# Elliott Barnes / terminal portfolio
 
-A dependency-free terminal portfolio for [elliottbarnes.ca](https://elliottbarnes.ca).
+A static terminal portfolio for [elliottbarnes.ca](https://elliottbarnes.ca), with no runtime dependencies. The terminal, source discoveries, and Dragon Ball arcade remain optional ways to explore the projects; the header also links directly to the connection panel.
 
 The animated entrance renders Elliott’s selected Memoji as moving source-code characters. The entrance shows the existing role and project-focus copy before any interaction. A minimal header links directly to GitHub; “explore projects” opens the featured Architecture Lab project directly. The `whoami` panel remains available in the wheel and command menu. Pause and theme controls remain visible with 44px minimum targets. Each project has a public repository and a full interactive playground hosted on GitHub Pages:
 
@@ -28,18 +28,33 @@ The layout adapts its reading height to the viewport, keeps wheel controls separ
 
 ## Preview and verification
 
-Use Node.js 24 or newer; no package installation is needed.
+Use Node.js 24. Run these commands from the Git checkout containing this README and `build.mjs`, not an organizational parent folder. The build and Node tests need no package installation.
 
 ```sh
 node --test
 node build.mjs
 node scripts/verify-site.mjs dist --source .
+node scripts/check-performance.mjs dist
 node server.mjs --dir dist
 ```
 
 Open `http://localhost:4173`. The explicit publication list is in `scripts/public-files.mjs`. Build checks reject extra artifacts, symlinks, broken local links, stale asset hashes, and incorrect project destinations.
 
+Browser checks use locked development-only dependencies:
+
+```sh
+npm ci --ignore-scripts --no-fund --no-audit
+npm run browser:install
+npm run test:browser
+```
+
+See [browser checks](docs/browser-checks.md) for the Chromium/WebKit journeys, accessibility scope, failure evidence and measurement limits. These tools and their output are excluded from the public artifact. CI runs them against the same build later uploaded for deployment. Dependency updates are proposed weekly through grouped Dependabot PRs; they do not merge or deploy automatically.
+
+`performance-budgets.json` caps eager script count/bytes, CSS, HTML and total artifact size. These are deterministic regression gates, not Core Web Vitals or a complete page-transfer measurement. Review a budget increase with evidence of its visitor benefit. Optional source-effect modules load only when activated, with bounded loading, retry and cancellation; games remain lazy-loaded. Theme text and control colors are contrast-adjusted separately from the original decorative palettes.
+
 Production still uses the existing GitHub Actions deployment to a private S3 origin and CloudFront, with version-based recovery. See [DEPLOYMENT.md](DEPLOYMENT.md).
+
+[Website operations](docs/aws-operations.md) covers read-only drift checks, build-derived security-header proposals and a local recovery validator. These tools do not mutate AWS. Proposed CSP/HSTS changes, recurring monitoring and production recovery still require review and authorization.
 
 The former handheld design is recoverable in Git history. Existing experimental work under `side-projects/live-demo-lab` is preserved and excluded from publication. The old project repositories remain independent and unchanged.
 

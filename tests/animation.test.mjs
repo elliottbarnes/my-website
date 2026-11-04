@@ -15,7 +15,7 @@ const source = await readFile(new URL("../assets/animation.js", import.meta.url)
 // Exercise the shipped animation controller and its clock without a browser
 // dependency. These checks cover lifecycle and response time; visual quality
 // and actual frame cost still need a real browser.
-function animation({ reduced = false, paused = false, hidden = false, view = "entrance", density = 1, fieldWidth = 640, featured = "glassbox" } = {}) {
+function animation({ reduced = false, paused = false, hidden = false, view = "entrance", density = 1, fieldWidth = 640, featured = "glassbox", effectLoader } = {}) {
   let now = 100, nextId = 1;
   const frames = new Map(), timers = new Map(), images = [];
   function surface() {
@@ -120,6 +120,13 @@ function animation({ reduced = false, paused = false, hidden = false, view = "en
     nodes.set(`#${project.id}`, panel);
   }
   const ecdsaControls = node(), ecdsaButtons = {};
+  const loadStatus = node(), loadRetry = node("button"), loadDismiss = node("button");
+  loadStatus.hidden = true;
+  loadRetry.parentElement = loadStatus; loadDismiss.parentElement = loadStatus;
+  nodes.set("[data-source-load]", loadStatus);
+  nodes.set("[data-source-load-message]", node());
+  nodes.set("[data-source-load-retry]", loadRetry);
+  nodes.set("[data-source-load-dismiss]", loadDismiss);
   ecdsaControls.hidden = true;
   ecdsaControls.parentElement = scene;
   nodes.set("[data-ecdsa-controls]", ecdsaControls);
@@ -146,7 +153,7 @@ function animation({ reduced = false, paused = false, hidden = false, view = "en
   const performance = { now: () => now };
   const window = Object.assign(surface(), {
     matchMedia: () => motion, innerWidth: 1280, innerHeight: 800, devicePixelRatio: density,
-    requestAnimationFrame, cancelAnimationFrame, performance,
+    requestAnimationFrame, cancelAnimationFrame, performance, PortfolioEffects: effectLoader,
   });
   class Image {
     constructor() { this.naturalWidth = 420; this.naturalHeight = 500; images.push(this); }
@@ -163,7 +170,7 @@ function animation({ reduced = false, paused = false, hidden = false, view = "en
     clearTimeout: (id) => timers.delete(id),
   });
   return {
-    root, entrance, scene, field, readout, document, motion, window, frames, timers, images, node, ecdsaControls, ecdsaButtons, projectLinks, projectSource, projectDemo, projectTry,
+    root, entrance, scene, field, readout, document, motion, window, frames, timers, images, node, ecdsaControls, ecdsaButtons, projectLinks, projectSource, projectDemo, projectTry, loadStatus, loadRetry, loadDismiss,
     api: window.PortfolioAnimation,
     frame(ms = 16) {
       now += ms;
@@ -841,6 +848,31 @@ test("reduced motion keeps ECDSA manual, keyboard operable, and free of animatio
   assert.equal(controls.frames.size, 0);
 });
 
+test("ECDSA focus redraw preserves the pressed control's text node until activation", () => {
+  for (const paused of [true, false]) {
+    const controls = animation({ paused });
+    const labels = [controls.document.querySelector("[data-ecdsa-step]"), controls.ecdsaButtons.play, controls.ecdsaButtons.tamper];
+    // DOM textContent assignment replaces the child Text node, even if its text
+    // is identical. WebKit can then lose the pending click during focus/blur.
+    for (const label of labels) {
+      let child = { nodeValue: label.textContent };
+      Object.defineProperties(label, {
+        firstChild: { get: () => child },
+        textContent: { get: () => child.nodeValue, set: value => { child = { nodeValue: String(value) }; } },
+      });
+    }
+    controls.api.openECDSA();
+    const textNodes = labels.map(label => label.firstChild);
+    controls.ecdsaButtons.tamper.focus();
+    controls.field.parentElement.dispatch("blur");
+    labels.forEach((label, index) => assert.equal(label.firstChild, textNodes[index], "focus redraw must preserve an unchanged text node"));
+    controls.ecdsaButtons.tamper.dispatch("click");
+    assert.equal(controls.api.state.ecdsaTampered, true);
+    assert.equal(controls.ecdsaButtons.tamper.textContent, "restore hash");
+    assert.notEqual(controls.ecdsaButtons.tamper.firstChild, textNodes[2], "activation still updates a changed label");
+  }
+});
+
 test("global pause freezes ECDSA mid-step and resumes without consuming paused time", () => {
   const controls = animation();
   controls.api.openECDSA();
@@ -989,4 +1021,66 @@ test("lazy arcade loading and every game stop entrance frames until the handoff 
   delete controls.root.dataset.training;
   controls.window.dispatch("portfolio:training");
   assert.equal(controls.frames.size, 1);
+});
+
+function deferredEffects() {
+  let ready = false;
+  const requests = [];
+  return { requests, ready: () => ready, load: () => {
+    const request = Promise.withResolvers();
+    requests.push({ ...request, complete() { ready = true; request.resolve(); } });
+    return request.promise;
+  } };
+}
+const finishEffectLoad = () => new Promise(resolve => setImmediate(resolve));
+
+test("pending source loads can be cancelled without late graphics after escape or navigation", async () => {
+  for (const action of ['escape', 'workspace', 'hidden', 'training']) {
+    const loader = deferredEffects(), controls = animation({ paused: true, effectLoader: loader });
+    controls.api.openECDSA();
+    assert.equal(controls.api.state.loadingEffect, 'ecdsa');
+    assert.equal(controls.api.state.effect, null);
+    assert.equal(controls.loadStatus.hidden, false);
+    if (action === 'escape') controls.entrance.dispatch('keydown', { key: 'Escape' });
+    else if (action === 'workspace') {
+      controls.root.dataset.view = 'workspace'; controls.window.dispatch('portfolio:view');
+    } else if (action === 'training') {
+      controls.root.dataset.training = 'open'; controls.window.dispatch('portfolio:training');
+    } else {
+      controls.document.hidden = true; controls.document.dispatch('visibilitychange');
+    }
+    loader.requests[0].complete(); await finishEffectLoad();
+    assert.equal(controls.api.state.loadingEffect, null, action);
+    assert.equal(controls.api.state.effect, null, action);
+    assert.equal(controls.loadStatus.hidden, true, action);
+  }
+});
+
+test("failed discoveries retry the requested effect and restore focus to its controls", async () => {
+  const loader = deferredEffects(), controls = animation({ reduced: true, effectLoader: loader });
+  controls.api.openECDSA();
+  loader.requests[0].reject(new Error('offline')); await finishEffectLoad();
+  assert.equal(controls.loadRetry.hidden, false);
+  assert.match(controls.document.querySelector('[data-source-load-message]').textContent, /Retry/);
+  controls.loadRetry.focus(); controls.loadRetry.dispatch('click');
+  assert.equal(controls.document.activeElement, controls.loadDismiss, 'focus stays on a visible loading action');
+  assert.equal(loader.requests.length, 2);
+  loader.requests[1].complete(); await finishEffectLoad();
+  assert.equal(controls.loadStatus.hidden, true);
+  assert.equal(controls.api.state.effect, 'ecdsa');
+  assert.equal(controls.api.state.static, true);
+  assert.equal(controls.frames.size, 0);
+  assert.equal(controls.document.activeElement, controls.field.parentElement);
+});
+
+test("the most recent source request wins and opening a dialog cancels late activation", async () => {
+  const loader = deferredEffects(), controls = animation({ paused: true, effectLoader: loader });
+  controls.api.openECDSA();
+  controls.api.openECDSA();
+  loader.requests[0].complete(); await finishEffectLoad();
+  assert.equal(controls.api.state.effect, null);
+  controls.document.openDialog = controls.node('dialog');
+  loader.requests[1].complete(); await finishEffectLoad();
+  assert.equal(controls.api.state.effect, null);
+  assert.equal(controls.api.state.loadingEffect, null);
 });
