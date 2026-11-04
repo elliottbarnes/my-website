@@ -416,10 +416,13 @@ html.is-leaving .entrance-intro{opacity:0;transition:opacity .25s}
  :is([data-view=entrance],:root:where(:not([data-view]))) .masthead,:is([data-view=entrance],:root:where(:not([data-view]))) .entrance-intro,:is([data-view=entrance],:root:where(:not([data-view]))) .entrance-footer{width:calc(100% - 42px);min-width:0}
 }
 @media(max-height:620px){
- :is([data-view=entrance],:root:where(:not([data-view]))) .entrance{min-height:375px}
+ /* Wrapped copy and loading messages need space beyond a short viewport.
+    Keep the footer in flow so every source and entrance control is reachable. */
+ :is([data-view=entrance],:root:where(:not([data-view]))) .entrance{height:auto;min-height:max(375px,100svh)}
  :is([data-view=entrance],:root:where(:not([data-view]))) .entrance-intro{margin-top:78px}
- :is([data-view=entrance],:root:where(:not([data-view]))) .scene{margin-top:14px}
+ :is([data-view=entrance],:root:where(:not([data-view]))) .scene{margin-top:14px;flex-shrink:0}
  :is([data-view=entrance],:root:where(:not([data-view]))) .scene-body{height:clamp(84px,calc(100svh - 310px),250px)}
+ :is([data-view=entrance],:root:where(:not([data-view]))) .entrance-footer{position:static;transform:none;margin:auto auto 0;padding:24px 0 14px;flex-shrink:0}
 }
 
 /* Hidden arcade: a self-contained instrument palette in every outer theme. */
