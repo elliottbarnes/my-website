@@ -45,6 +45,21 @@ async function noOverflow(page) {
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth + 1), 'horizontal document overflow').toBe(true);
 }
 
+async function unobstructed(controls) {
+  for (const control of await controls.all()) {
+    await expect(control).toBeVisible();
+    await control.scrollIntoViewIfNeeded();
+    const hit = await control.evaluate(element => {
+      const rect = element.getBoundingClientRect();
+      const target = document.elementFromPoint(rect.x + rect.width / 2, rect.y + rect.height / 2);
+      return { label: element.textContent.trim(), clear: target === element || element.contains(target) };
+    });
+    expect(hit.clear, `${hit.label} is not covered by another control`).toBe(true);
+  }
+}
+
+const entranceControls = '.scene-project-links a, .scene-project-links button, .entrance-controls button, [data-enter]';
+
 async function accessible(page, testInfo, name) {
   const result = await new AxeBuilder({ page }).withTags(['wcag2a', 'wcag2aa', 'wcag21aa', 'wcag22aa']).analyze();
   await testInfo.attach(`accessibility-${name}`, { body: JSON.stringify(result.violations, null, 2), contentType: 'application/json' });
@@ -74,10 +89,23 @@ for (const viewport of [
     await page.setViewportSize(viewport);
     await loaded(page);
     await noOverflow(page);
+    await unobstructed(page.locator(entranceControls));
+    // Short viewports may scroll; controls must remain reachable without overlap.
+    await page.locator('[data-enter]').scrollIntoViewIfNeeded();
     await expect(page.locator('[data-enter]')).toBeInViewport();
     const entranceScreenshot = testInfo.outputPath('entrance.png');
-    await page.screenshot({ path: entranceScreenshot });
+    await page.screenshot({ path: entranceScreenshot, fullPage: true });
     await testInfo.attach(`${viewport.name}-entrance`, { path: entranceScreenshot, contentType: 'image/png' });
+    await page.locator('[data-scene-try]').click();
+    await expect.poll(() => page.evaluate(() => window.PortfolioAnimation.state.effect)).not.toBeNull();
+    await page.locator('.scene-body').focus();
+    await page.keyboard.press('Escape');
+    await expect.poll(() => page.evaluate(() => window.PortfolioAnimation.state.effect)).toBeNull();
+    const themeButton = page.locator('.entrance-controls [data-theme-toggle]');
+    await themeButton.click();
+    await expect(page.locator('#theme-dialog')).toBeVisible();
+    await page.keyboard.press('Escape');
+    await expect(themeButton).toBeFocused();
     await page.locator('[data-enter]').click();
     await expect(page).toHaveURL(/#architecture-lab$/);
     await expect(page.locator('#architecture-lab')).toBeVisible();
@@ -96,6 +124,25 @@ for (const viewport of [
     await expect(page.locator('#architecture-lab')).toBeVisible();
   });
 }
+
+test('short entrance keeps pending and failed source-load controls unobstructed', async ({ page }, testInfo) => {
+  testInfo.annotations.push({ type: 'expected-resource-failure', description: 'ecdsa-math' });
+  await page.setViewportSize({ width: 320, height: 568 });
+  let release;
+  const gate = new Promise(resolve => { release = resolve; });
+  await page.route(/\/assets\/ecdsa-math\.[a-f0-9]+\.js$/, async route => { await gate; await route.abort(); });
+  await loaded(page);
+  await runCommand(page, 'ecdsa');
+  await expect(page.locator('[data-source-load]')).toBeVisible();
+  try {
+    await unobstructed(page.locator(`${entranceControls}, [data-source-load-dismiss]`));
+  } finally { release(); }
+  await expect(page.locator('[data-source-load-retry]')).toBeVisible();
+  await unobstructed(page.locator(`${entranceControls}, [data-source-load-retry], [data-source-load-dismiss]`));
+  await page.locator('[data-source-load-dismiss]').click();
+  await expect(page.locator('[data-source-load]')).not.toBeVisible();
+  await expect(page.locator('.scene-body')).toBeFocused();
+});
 
 test('keyboard commands, Escape, and theme cancellation restore focus', async ({ page }) => {
   await loaded(page, '/#architecture-lab');

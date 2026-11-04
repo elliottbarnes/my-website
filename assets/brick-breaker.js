@@ -67,6 +67,39 @@
     return state;
   }
 
+  function returnVelocity(ball, paddle, x = ball.x) {
+    const offset = clamp((x - paddle.x) / (paddle.width / 2), -1, 1);
+    const aimedAngle = offset * maximumReturnAngle;
+    // Center catches keep the incoming direction and cannot settle into an
+    // empty vertical column. The same rule drives the late-round aim guide.
+    const incoming = Math.sign(ball.vx) || (x <= width / 2 ? 1 : -1);
+    const direction = Math.abs(aimedAngle) < minimumReturnAngle ? incoming : Math.sign(aimedAngle);
+    const angle = direction * Math.max(minimumReturnAngle, Math.abs(aimedAngle));
+    return { vx: Math.sin(angle) * ball.speed, vy: -Math.cos(angle) * ball.speed };
+  }
+
+  function returnGuide(state) {
+    const { ball, paddle } = state;
+    if (state.phase !== "playing" || ball.vy <= 0) return null;
+    const seconds = (paddle.y - ball.radius - ball.y) / ball.vy;
+    if (seconds < 0 || seconds > .55) return null;
+    const span = state.width - ball.radius * 2;
+    const travel = ball.x - ball.radius + ball.vx * seconds;
+    const folded = ((travel % (span * 2)) + span * 2) % (span * 2);
+    const x = ball.radius + (folded <= span ? folded : span * 2 - folded);
+    const vx = (folded <= span ? 1 : -1) * ball.vx;
+    // The chamber catches on 120 Hz simulation steps. Across a center-angle
+    // threshold a substep of horizontal travel can flip the return direction;
+    // hide that ambiguous preview rather than promise the opposite shot.
+    const uncertainty = Math.abs(vx) / 120 + separation;
+    const offset = Math.abs(x - paddle.x);
+    const centerThreshold = paddle.width / 2 * minimumReturnAngle / maximumReturnAngle;
+    if (Math.abs(offset - centerThreshold) <= uncertainty) return null;
+    // A miss or uncertain corner graze has no guide either.
+    if (offset > paddle.width / 2 - 1 - uncertainty) return null;
+    return { x, y: paddle.y - ball.radius, ...returnVelocity({ ...ball, vx }, paddle, x), seconds };
+  }
+
   function launch(state) {
     if (state.phase !== "ready") return state;
     dock(state);
@@ -176,15 +209,7 @@
     if (paddleHit && ball.vy > 0 && ball.y <= paddle.y && paddleHit.ny < 0
       && ball.vx * paddleHit.nx + ball.vy * paddleHit.ny < 0) {
       separate(ball, paddleHit);
-      const offset = clamp((ball.x - paddle.x) / (paddle.width / 2), -1, 1);
-      const aimedAngle = offset * maximumReturnAngle;
-      // Center catches retain the incoming direction, with a small deterministic
-      // lateral return so an empty column cannot become a permanent vertical orbit.
-      const incoming = Math.sign(ball.vx) || (ball.x <= state.width / 2 ? 1 : -1);
-      const direction = Math.abs(aimedAngle) < minimumReturnAngle ? incoming : Math.sign(aimedAngle);
-      const angle = direction * Math.max(minimumReturnAngle, Math.abs(aimedAngle));
-      ball.vx = Math.sin(angle) * ball.speed;
-      ball.vy = -Math.cos(angle) * ball.speed;
+      Object.assign(ball, returnVelocity(ball, paddle));
       if (state.pulseUntil > 0 && state.time <= state.pulseUntil + 1e-8) {
         state.chain++; state.bestChain = Math.max(state.bestChain, state.chain);
         state.perfects++; state.powerHits = 3; state.pulseUntil = 0;
@@ -260,5 +285,5 @@
     return state;
   }
 
-  window.PortfolioBreakerEngine = Object.freeze({ arenas, create, reset, nextArena, launch, pulse, cancelPulse, movePaddle, step });
+  window.PortfolioBreakerEngine = Object.freeze({ arenas, create, reset, nextArena, launch, pulse, cancelPulse, movePaddle, returnGuide, step });
 })();

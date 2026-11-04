@@ -1,0 +1,145 @@
+import { test, expect } from '@playwright/test';
+
+// This observer returns a serialized copy. Navigation uses real browser key or
+// touch events; it never alters a life, actor, collectible, or game phase.
+async function openGame(page) {
+  await page.route(/\/assets\/goku-platformer(?:\.[a-f0-9]+)?\.js/, async route => {
+    const response = await route.fetch(), source = await response.text();
+    const anchor = '  const keys = new Set()';
+    expect(source).toContain(anchor);
+    const body = source.replace(anchor, `  Object.defineProperty(window, '__gokuSnapshot', { get() { return JSON.parse(JSON.stringify({game, lock: targetForDash(game), solids, paused})); } });\n${anchor}`);
+    await route.fulfill({ response, body });
+  });
+  await page.goto('/');
+  await page.locator('.scene-body').focus(); await page.keyboard.press('/');
+  await page.locator('#command-input').fill('platformer'); await page.locator('#command-input').press('Enter');
+  await expect(page.locator('#platformer-dialog')).toBeVisible();
+}
+const snapshot = page => page.evaluate(() => window.__gokuSnapshot);
+async function clearHit(control) {
+  await control.scrollIntoViewIfNeeded();
+  expect(await control.evaluate(element => {
+    const r = element.getBoundingClientRect(), hit = document.elementFromPoint(r.x + r.width / 2, r.y + r.height / 2);
+    return hit === element || element.contains(hit);
+  })).toBe(true);
+}
+
+test('Goku: normal keyboard play completes the course and an immediate retry starts fresh', async ({ page }, testInfo) => {
+  test.setTimeout(90_000);
+  const errors = []; page.on('pageerror', error => errors.push(error.message));
+  await openGame(page);
+  // Run every browser animation/physics callback in small clock batches. IPC
+  // and runner CPU speed must not turn a requested jump into a late air rush.
+  // The separate real-time play evidence verifies the unmodified live clock.
+  await page.clock.install(); await page.clock.pauseAt(new Date());
+  await page.locator('#platform-action').click(); await page.clock.runFor(32);
+  const held = new Set(), events = [], bankedChains = new Map(); let lastEvent = -1;
+  const key = async (name, on) => {
+    if (on === held.has(name)) return;
+    if (on) { await page.keyboard.down(name); held.add(name); }
+    else { await page.keyboard.up(name); held.delete(name); }
+  };
+  const start = Date.now();
+  while (Date.now() - start < 75_000) {
+    const { game, lock, solids, paused } = await snapshot(page), p = game.player;
+    if (game.eventId !== lastEvent) { lastEvent = game.eventId; events.push({ event: game.event, time: game.time, lives: game.lives, chain: game.chain }); }
+    // Banking persists after its short-lived event/announcement; a slow runner
+    // need not observe the exact landing frame to verify the earned result.
+    if (game.bankedChain) bankedChains.set(game.bankedChain.at, game.bankedChain);
+    if (game.phase !== 'playing') break;
+    // Focus can change during a browser run. Resume only through the same P key
+    // a player uses; inputs cleared by pause must receive fresh physical edges.
+    if (paused) { for (const name of held) await page.keyboard.up(name); held.clear(); await page.locator('#platform-canvas').focus(); await page.keyboard.press('p'); continue; }
+    const ball = game.orbs.find(orb => !orb.collected), guardian = game.enemies.find(enemy => enemy.kind === 'guardian');
+    const goal = ball ? ball.x : guardian.alive ? 5480 : 5890;
+    let direction = Math.abs(goal - p.x) > (!ball && guardian.alive ? 12 : 4) ? Math.sign(goal - p.x) : 0;
+    if (!ball && guardian.alive && Math.abs(goal - p.x) < 18 && p.facing < 0) direction = 1;
+    let jump = false;
+    if (direction > 0) {
+      jump = solids.some(tile => tile.y < 306 && tile.y < p.y + p.h && tile.y > p.y + p.h - 105 && tile.x - p.x > 15 && tile.x - p.x < 80);
+      jump ||= game.enemies.some(enemy => enemy.alive && enemy.x - p.x > 5 && enemy.x - p.x < 90 && Math.abs(p.y + p.h - 306) < 6);
+      jump ||= solids.some(tile => tile.y === 306 && p.x >= tile.x && p.x < tile.x + tile.w && tile.x + tile.w - p.x < 75 && tile.x + tile.w < 6000);
+    }
+    jump ||= game.hazards.some(shot => Math.abs(shot.x - p.x) < 100 && (shot.x - p.x) * shot.vx < 0);
+    if (ball && Math.abs(goal - p.x) < 25 && ball.y + ball.h < p.y + p.h - 15) jump = true;
+    const rush = lock && ball && direction > 0 && lock.point.x <= goal + 25;
+    await key('ArrowRight', direction > 0); await key('ArrowLeft', direction < 0);
+    await key('Space', p.grounded ? !p.jumpHeld && jump : p.jumpHeld);
+    await key('x', !p.attackHeld && (p.grounded ? p.cooldown === 0 : Boolean(rush)));
+    await page.clock.runFor(32);
+  }
+  for (const name of held) await page.keyboard.up(name);
+  const { game } = await snapshot(page);
+  await testInfo.attach('normal-input-run', { body: JSON.stringify({ events, bankedChains: [...bankedChains.values()], phase: game.phase, score: game.score, longestChain: game.longestChain, time: game.time }), contentType: 'application/json' });
+  expect(game.phase).toBe('won'); expect(game.orbs.filter(orb => orb.collected)).toHaveLength(7);
+  expect(game.enemies.find(enemy => enemy.kind === 'guardian').alive).toBe(false);
+  expect(game.longestChain).toBeGreaterThanOrEqual(3); expect(game.checkpoint).toBe(5170);
+  expect([...bankedChains.values()].some(chain => chain.count >= 2 && chain.points > 0)).toBe(true);
+  await expect(page.locator('#platform-result-total')).toContainText('CLEAR');
+  await page.screenshot({ path: testInfo.outputPath('goku-clear.png') });
+  await page.locator('#platform-action').click();
+  const fresh = await snapshot(page); expect(fresh.game.lives).toBe(3); expect(fresh.game.score).toBe(0);
+  expect(fresh.game.orbs.every(orb => !orb.collected)).toBe(true);
+  await page.keyboard.press('p'); await expect(page.locator('#platform-pause')).toHaveAttribute('aria-pressed', 'true');
+  await page.keyboard.press('Escape'); await expect(page.locator('#arcade-picker')).toBeVisible();
+  expect(errors).toEqual([]);
+});
+
+test('Goku: collision failure, retry and cleared held inputs are visible to the player', async ({ page }) => {
+  test.setTimeout(35_000);
+  await openGame(page); await page.locator('#platform-action').click();
+  await page.keyboard.down('ArrowRight');
+  await expect(page.locator('#platformer-dialog')).toHaveAttribute('data-phase', 'lost', { timeout: 25_000 });
+  await page.keyboard.up('ArrowRight');
+  await expect(page.locator('#platform-status')).toContainText('Run ended');
+  await page.locator('#platform-action').click();
+  await expect(page.locator('#platform-lives')).toHaveText('3');
+  await page.keyboard.down('ArrowRight'); await page.waitForTimeout(120);
+  await page.keyboard.press('p'); await page.keyboard.up('ArrowRight');
+  const paused = await snapshot(page); await page.waitForTimeout(120);
+  expect((await snapshot(page)).game.time).toBe(paused.game.time);
+  await page.keyboard.press('p');
+  await expect.poll(async () => (await snapshot(page)).game.player.vx).toBe(0);
+  const settled = await snapshot(page); await page.waitForTimeout(150);
+  expect((await snapshot(page)).game.player.x).toBe(settled.game.player.x);
+  await page.evaluate(() => window.dispatchEvent(new Event('blur')));
+  await expect(page.locator('#platform-pause')).toHaveAttribute('aria-pressed', 'true');
+});
+
+for (const viewport of [{ width: 320, height: 568 }, { width: 390, height: 844 }, { width: 844, height: 375 }]) {
+  test(`Goku: ${viewport.width}×${viewport.height} touch controls remain reachable`, async ({ browser, baseURL }, testInfo) => {
+    const context = await browser.newContext({ baseURL, viewport, hasTouch: true, reducedMotion: 'reduce' });
+    const page = await context.newPage();
+    try {
+      await openGame(page);
+      for (const control of await page.locator('#platformer-dialog button:not(:disabled), #platformer-dialog summary').all()) await clearHit(control);
+      await page.locator('#platform-action').tap();
+      const jump = page.locator('[data-platform-hold="jump"]'); await clearHit(jump); await jump.tap();
+      await expect.poll(async () => (await snapshot(page)).game.player.y).toBeLessThan(275);
+      await page.screenshot({ path: testInfo.outputPath(`goku-${viewport.width}.png`) });
+      await page.locator('#platform-pause').tap();
+      await expect(page.locator('#platform-pause')).toHaveAttribute('aria-pressed', 'true');
+      expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth + 1)).toBe(true);
+    } finally { await context.close(); }
+  });
+}
+
+test('Goku: a cancelled real multitouch hold releases movement and jump', async ({ browser, browserName, baseURL }) => {
+  test.skip(browserName !== 'chromium', 'Continuous multitouch injection requires Chromium CDP; native taps are covered on both engines.');
+  const context = await browser.newContext({ baseURL, viewport: { width: 390, height: 844 }, hasTouch: true, reducedMotion: 'reduce' });
+  const page = await context.newPage();
+  try {
+    await openGame(page); await page.locator('#platform-action').tap();
+    const center = async selector => { const r = await page.locator(selector).boundingBox(); return { x: r.x + r.width / 2, y: r.y + r.height / 2, radiusX: 2, radiusY: 2 }; };
+    const right = await center('[data-platform-hold="right"]'), jump = await center('[data-platform-hold="jump"]');
+    const cdp = await context.newCDPSession(page);
+    await cdp.send('Input.dispatchTouchEvent', { type: 'touchStart', touchPoints: [{ ...right, id: 1 }, { ...jump, id: 2 }] });
+    await page.waitForTimeout(220);
+    const moving = await snapshot(page); expect(moving.game.player.x).toBeGreaterThan(100); expect(moving.game.player.y).toBeLessThan(250);
+    await cdp.send('Input.dispatchTouchEvent', { type: 'touchCancel', touchPoints: [] });
+    await expect(page.locator('[data-platform-hold][data-held]')).toHaveCount(0);
+    await expect.poll(async () => (await snapshot(page)).game.player.vx).toBe(0); const released = await snapshot(page);
+    await page.waitForTimeout(200); expect((await snapshot(page)).game.player.x).toBe(released.game.player.x);
+    await cdp.detach();
+  } finally { await context.close(); }
+});

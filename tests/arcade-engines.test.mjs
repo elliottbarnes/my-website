@@ -444,3 +444,64 @@ test('only valid finishes write a record and blocked or quota-limited storage is
   }
   assert.equal(storage.writes(), 0, 'opening and playing never write completed records');
 });
+
+test('landing celebrates a completed aerial chain without awarding its points twice', () => {
+  const game = platform.create(); platform.start(game);
+  for (let frame = 0; frame < 1200 && game.connections < 3; frame++) {
+    const p = game.player, lock = platform.targetForDash(game);
+    platform.step(game, { direction: 1, jump: p.grounded ? p.x > 100 && !p.jumpHeld : p.jumpHeld, attack: Boolean(lock) && !p.attackHeld });
+  }
+  assert.equal(game.chain, 3);
+  const score = game.score, points = game.chainScore;
+  simulate(game, 1.2);
+  assert.equal(game.chain, 0); assert.equal(game.chainScore, 0);
+  assert.equal(game.bankedChain.count, 3); assert.equal(game.bankedChain.points, points);
+  assert.equal(game.score, score, 'banking explains earned points rather than adding them again');
+  assert.equal(game.event, 'chain-land'); assert.ok(game.player.landed > 0);
+  const bank = game.bankedChain; simulate(game, .5); assert.equal(game.bankedChain, bank, 'a held landing cannot retrigger the celebration');
+});
+
+test('render interpolation changes only the visual player and camera pose, never physics', () => {
+  const game = platform.create(); platform.start(game);
+  const previous = platform.pose(game); simulate(game, .1, { direction: 1, jump: true });
+  const state = JSON.stringify(game), halfway = platform.interpolatePose(game, previous, .5);
+  assert.equal(halfway.player.x, (previous.x + game.player.x) / 2);
+  assert.equal(halfway.player.y, (previous.y + game.player.y) / 2);
+  assert.equal(halfway.camera, (previous.camera + game.camera) / 2);
+  assert.equal(JSON.stringify(game), state);
+  assert.equal(platform.interpolatePose(game, previous, 2).player.x, game.player.x);
+  assert.equal(platform.interpolatePose(game, previous, -1).player.x, previous.x);
+  assert.equal(platform.interpolatePose(game, previous, NaN).player.x, game.player.x);
+});
+
+test('respawn and terminal poses snap instead of interpolating across the course', () => {
+  const game = platform.create(); platform.start(game); simulate(game, .5, { direction: 1 });
+  const previous = platform.pose(game); game.player.y = 450; platform.step(game);
+  assert.equal(platform.interpolatePose(game, previous, 0).player, game.player);
+  game.phase = 'lost';
+  assert.equal(platform.interpolatePose(game, previous, .5).camera, game.camera);
+});
+
+test('high-refresh rendering advances on every frame after warmup with fixed-step physics', () => {
+  for (const hz of [90, 144, 240]) {
+    const h = controlsHarness(); h.start(); h.key('keydown', 'd');
+    for (let i = 0; i < 8; i++) h.pump(1000 / hz);
+    let previous = h.trace.x;
+    for (let i = 0; i < Math.floor(hz * .35); i++) {
+      h.pump(1000 / hz);
+      assert.ok(h.trace.x > previous, `${hz} Hz must not repeat a moving player pose`);
+      assert.ok(h.trace.x - previous <= 220 / hz + .00001, `${hz} Hz should not bunch movement into larger visual steps`);
+      previous = h.trace.x;
+    }
+  }
+});
+
+test('slow frames remain bounded and resuming does not interpolate stale movement', () => {
+  const h = controlsHarness(); h.start(); h.key('keydown', 'd');
+  h.pump(1000);
+  assert.ok(h.trace.x < 110, 'a one-second stall consumes at most the existing 100 ms recovery cap');
+  h.key('keydown', 'p'); const paused = h.trace.x;
+  h.pump(5000); assert.equal(h.trace.x, paused);
+  h.key('keydown', 'p'); h.pump(0);
+  assert.equal(h.trace.x, paused, 'resume starts from the current pose');
+});

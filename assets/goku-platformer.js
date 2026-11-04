@@ -30,9 +30,9 @@
     enemies.push({ kind: 'sentry', x: 4785, y: GROUND - 30, w: 29, h: 30, left: 4785, right: 4785, vx: 0, alive: true, hp: 2, maxHp: 2, hit: 0, cooldown: 1.2 });
     enemies.push({ kind: 'guardian', x: 5660, y: GROUND - 52, w: 44, h: 52, left: 5610, right: 5740, vx: -24, alive: true, hp: 6, maxHp: 6, hit: 0, cooldown: 1.7 });
     enemies.forEach((enemy, index) => { enemy.id = `enemy-${index}`; });
-    return { width: WIDTH, height: HEIGHT, phase: 'ready', time: 0, lives: 3, score: 0, chain: 0, longestChain: 0, scored: [],
+    return { width: WIDTH, height: HEIGHT, phase: 'ready', time: 0, lives: 3, score: 0, chain: 0, chainScore: 0, bankedChain: null, longestChain: 0, scored: [],
       breakdown: { targets: 0, chain: 0, finish: 0 }, rushes: 0, connections: 0, checkpoint: 80, event: 'ready', eventId: 0, camera: 0, shots: [], hazards: [], bursts: [],
-      player: { x: 80, y: GROUND - 31, w: 20, h: 31, vx: 0, vy: 0, grounded: true, facing: 1, coyote: .1, buffer: 0, jumpHeld: false, attackHeld: false, dashReady: true, dash: null, airTargets: [], immune: 0, cooldown: 0, fired: -10 },
+      player: { x: 80, y: GROUND - 31, w: 20, h: 31, vx: 0, vy: 0, grounded: true, facing: 1, coyote: .1, buffer: 0, jumpHeld: false, attackHeld: false, dashReady: true, dash: null, airTargets: [], immune: 0, cooldown: 0, fired: -10, landed: -10 },
       orbs: orbLocations.map(([x, y], i) => ({ id: `ball-${i}`, x, y, w: 16, h: 16, collected: false, star: i + 1 })),
       rings: ringLocations.map(([x, y], i) => ({ id: `ring-${i}`, x, y, w: 14, h: 14 })), enemies,
     };
@@ -42,7 +42,7 @@
   function hurt(game) {
     if (game.player.immune > 0 || game.phase !== 'playing') return false;
     game.lives--; event(game, game.lives ? 'respawn' : 'lost');
-    game.shots = []; game.hazards = []; game.chain = 0; game.player.dash = null; game.player.airTargets = []; game.player.dashReady = true;
+    game.shots = []; game.hazards = []; game.chain = 0; game.chainScore = 0; game.bankedChain = null; game.player.dash = null; game.player.airTargets = []; game.player.dashReady = true;
     if (!game.lives) { game.phase = 'lost'; return true; }
     Object.assign(game.player, { x: game.checkpoint, y: GROUND - 31, vx: 0, vy: 0, grounded: true, coyote: .1, buffer: 0, immune: 1.5, cooldown: .2 });
     game.camera = Math.max(0, Math.min(WIDTH - 640, game.checkpoint - 240));
@@ -63,6 +63,7 @@
     if (chained) { game.chain++; game.longestChain = Math.max(game.longestChain, game.chain); }
     const multiplier = chained ? Math.min(game.chain, 8) : 1, points = base * multiplier;
     game.breakdown.targets += base; game.breakdown.chain += points - base; game.score += points;
+    if (chained) game.chainScore += points;
     return points;
   }
   const center = actor => ({ x: actor.x + actor.w / 2, y: actor.y + actor.h / 2 });
@@ -165,7 +166,13 @@
         if (p.vy >= 0 && oldY + p.h <= tile.y + 1) { p.y = tile.y - p.h; p.vy = 0; p.grounded = true; }
         else if (p.vy < 0 && oldY >= tile.y + tile.h - 1) { p.y = tile.y + tile.h; p.vy = 0; }
       }
-      if (p.grounded) { p.dashReady = true; p.airTargets = []; game.chain = 0; }
+      if (p.grounded) {
+        if (!wasGrounded) {
+          p.landed = game.time;
+          if (game.chain > 1) { game.bankedChain = { count: game.chain, points: game.chainScore, at: game.time }; event(game, 'chain-land'); }
+        }
+        p.dashReady = true; p.airTargets = []; game.chain = 0; game.chainScore = 0;
+      }
     }
     game.bursts = game.bursts.filter(burst => game.time - burst.at < .32);
     for (const enemy of game.enemies) {
@@ -229,6 +236,16 @@
     game.camera += (cameraTarget - game.camera) * (1 - Math.exp(-dt * 7));
     return game;
   }
+  // Draw between completed physics steps rather than repeating a pose on fast
+  // displays. This never feeds interpolated coordinates back into collision or
+  // input handling; the maximum visual delay is one 120 Hz step (8.3 ms).
+  const pose = game => ({ x: game.player.x, y: game.player.y, camera: game.camera, lives: game.lives });
+  function interpolatePose(game, previous, alpha = 1) {
+    const amount = Number.isFinite(alpha) ? Math.max(0, Math.min(1, alpha)) : 1;
+    if (!previous || previous.lives !== game.lives || game.phase !== 'playing') return { player: game.player, camera: game.camera };
+    const mix = (before, after) => before + (after - before) * amount;
+    return { player: { ...game.player, x: mix(previous.x, game.player.x), y: mix(previous.y, game.player.y) }, camera: mix(previous.camera, game.camera) };
+  }
   const RECORD_KEY = 'portfolio:goku-ki-rush:v1';
   const MAX_CHAIN = ringLocations.length + orbLocations.length + 9;
   const validRun = run => Boolean(run && Number.isSafeInteger(run.score) && run.score >= 0 && run.score <= 1000000
@@ -265,7 +282,7 @@
     try { if (storage) { storage.setItem(RECORD_KEY, JSON.stringify(record)); saved = true; } } catch { /* A full or disabled store never interrupts play. */ }
     return { record, previous: priorRun, previousBest, result, saved };
   }
-  const engine = Object.freeze({ WIDTH, HEIGHT, GROUND, GOAL, DASH_RANGE, solids, regions, checkpoints, create, start, step, overlaps, targetForDash, clearDashPath, RECORD_KEY, MAX_CHAIN, validateRecord, loadRecord, completedRun, recordFinish });
+  const engine = Object.freeze({ WIDTH, HEIGHT, GROUND, GOAL, DASH_RANGE, solids, regions, checkpoints, create, start, step, overlaps, targetForDash, clearDashPath, pose, interpolatePose, RECORD_KEY, MAX_CHAIN, validateRecord, loadRecord, completedRun, recordFinish });
   if (typeof module !== 'undefined') module.exports = engine;
   if (typeof document === 'undefined') return;
   const dialog = document.getElementById('platformer-dialog'); if (!dialog) return;
@@ -273,18 +290,18 @@
     <div class="console-hud"><span>score <strong id="platform-score">0</strong></span><span>balls <strong id="platform-orbs">0 / 7</strong></span><span>lives <strong id="platform-lives">3</strong></span><span>stage <strong id="platform-region">1 / 4</strong></span></div>
     <div class="platform-mastery"><span id="platform-ki" data-ready="true">● KI READY</span><span>chain <strong id="platform-chain">0</strong> / best <strong id="platform-chain-best">0</strong></span><span id="platform-record">first run</span></div>
     <div class="platform-stage"><canvas id="platform-canvas" width="1280" height="720" tabindex="0" aria-label="Goku Ki Rush platform game" aria-describedby="platform-help platform-status">Run, jump, and collect seven Dragon Balls on the cloud trail. Use left and right arrows to move and Space to jump.</canvas></div>
-    <p id="platform-status" role="status" aria-live="polite" aria-atomic="true">Jump with A, then tap B toward a glowing target. Chain targets for points; collect seven balls and beat the guardian.</p>
+    <p id="platform-status" role="status" aria-live="polite" aria-atomic="true">Jump with Space / touch A, then tap X / touch B toward a glowing target. Chain targets for points; collect seven balls and beat the guardian.</p>
     <section id="platform-results" class="platform-results" hidden aria-label="Run results"><strong id="platform-result-total"></strong><span id="platform-result-run"></span><span id="platform-result-points"></span><span id="platform-result-compare"></span><span id="platform-result-records"></span></section>
     <div class="platform-touch" aria-label="Game controls"><div><button type="button" data-platform-hold="left" aria-label="Move left">◀</button><button type="button" data-platform-hold="right" aria-label="Move right">▶</button></div><div class="platform-buttons"><button type="button" data-platform-hold="attack" aria-label="B: ki shot on ground; rush in air">B <span>rush</span></button><button type="button" data-platform-hold="jump" aria-label="A: jump">A <span>jump</span></button></div></div>
     <div class="console-actions"><button type="button" data-platform-back>← cartridges</button><button id="platform-action" type="button">start game ↵</button><button id="platform-pause" type="button" aria-pressed="false">pause</button></div>
-    <details class="console-help"><summary>how to play / controls</summary><p id="platform-help">← → or A/D to run · A / Space, ↑ or W to jump · B / X: ground shot or air rush · P to pause. Tap B again after jumping; holding it never auto-rushes. A target ring marks a clear dash path. Each connection lifts you and restores ki; a miss needs a landing. Land or take a hit to end the chain. Each target scores once per run, ×1 up to ×8 in a chain. Hollow rings still refill ki. Collect seven balls, defeat the guardian, then enter the red gate. Three flags save progress. Completed score, chain and time records stay on this device. Escape returns to cartridges.</p></details>`;
+    <details class="console-help"><summary>how to play / controls</summary><p id="platform-help">Keyboard: ← → or A/D to run · Space, ↑ or W to jump · X: ground shot or air rush · P to pause. Touch: A jumps, B shoots or rushes. Tap X / B again after jumping; holding it never auto-rushes. A target ring marks a clear dash path. Each connection lifts you and restores ki; a miss needs a landing. Landing banks the chain; every point already earned stays yours, even after a hit. Hold jump for height; release early for a short hop. Each target scores once per run, ×1 up to ×8 in a chain. Hollow rings still refill ki. Collect seven balls, defeat the guardian, then enter the red gate. Three flags save progress. Completed score, chain and time records stay on this device. Escape returns to cartridges.</p></details>`;
   const root = document.documentElement, canvas = dialog.querySelector('#platform-canvas'), context = canvas.getContext('2d');
   if (!context) return;
   const status = dialog.querySelector('#platform-status'), action = dialog.querySelector('#platform-action'), pause = dialog.querySelector('#platform-pause');
   const reduced = matchMedia('(prefers-reduced-motion: reduce)');
   const storage = () => { try { return window.localStorage; } catch { return null; } };
   let record = loadRecord(storage()), recordSaved = true, finish = null;
-  let game = create(), opener, frame = 0, lastTime = null, accumulator = 0, paused = false, lastEvent = -1;
+  let game = create(), opener, frame = 0, lastTime = null, accumulator = 0, paused = false, lastEvent = -1, previousPose = null;
   const keys = new Set(), pointers = new Map(), pendingActions = new Set(), pulses = new Set(), pulseTimers = new Map();
   const actionForKey = key => ({ ArrowLeft: 'left', a: 'left', ArrowRight: 'right', d: 'right', ArrowUp: 'jump', w: 'jump', ' ': 'jump', x: 'attack' }[key]);
   const quiet = () => reduced.matches || root.dataset.motion === 'paused';
@@ -292,7 +309,7 @@
   const held = control => [...keys].some(key => actionForKey(key) === control) || [...pointers.values()].includes(control) || pulses.has(control);
   const input = () => ({ direction: Number(held('right')) - Number(held('left')), jump: held('jump') || pendingActions.has('jump'), attack: held('attack') || pendingActions.has('attack'), attackPressed: pendingActions.has('attack') });
   const latch = control => { if (control === 'jump' || control === 'attack') pendingActions.add(control); };
-  function stop() { cancelAnimationFrame(frame); frame = 0; lastTime = null; accumulator = 0; }
+  function stop() { cancelAnimationFrame(frame); frame = 0; lastTime = null; accumulator = 0; previousPose = null; }
   function releaseControls() {
     keys.clear(); pointers.clear(); pendingActions.clear(); pulses.clear();
     pulseTimers.forEach(timer => clearTimeout(timer)); pulseTimers.clear();
@@ -324,7 +341,7 @@
     if (paused) status.textContent = 'Paused. Resume when you are ready.';
     else if (game.eventId !== lastEvent) {
       lastEvent = game.eventId;
-      const messages = { ready: 'Jump with A, then tap B toward a glowing target. Chain targets for points; collect seven balls and beat the guardian.', start: 'First lesson: jump toward the blue ring, then tap B / X. A connection lifts you and refills ki.', rush: 'Ki Rush! Release B, then tap again when the next target glows.', 'rush-miss': 'Free rush used. Land to refill ki.', 'rush-blocked': 'Ledge blocked the rush. Land to refill ki.', chain: `${game.chain}-target chain! Ki refilled. Tap B toward the next target.`, refill: 'Ki refilled. This target already scored; find a bright new one.', orb: `Dragon Ball ${count} of 7 collected.`, stomp: 'Bot bounced! Keep moving.', blast: 'Ki hit! Target cleared.', respawn: `${game.lives} ${game.lives === 1 ? 'life' : 'lives'} left. Back at your checkpoint; collected balls are safe.`, checkpoint: `Checkpoint ${checkpoints.indexOf(game.checkpoint) + 1} of 3 reached. Balls and defeated enemies stay saved.`, missing: `${7 - count} Dragon ${7 - count === 1 ? 'Ball remains' : 'Balls remain'}. Follow the trail back to find them.`, 'armor-hit': 'Armored bot hit. Keep firing or bounce again.', 'guardian-hit': `Sky Guardian hit. ${game.enemies.find(enemy => enemy.kind === 'guardian').hp} hits remain.`, 'guardian-down': 'Sky Guardian defeated! Reach the red gate to complete your journey.', guardian: 'The Sky Guardian still stands. Turn back and use ki or jump on its head.', won: `Wish granted! All seven Dragon Balls collected. ${game.score} points.`, lost: `Run ended. ${count} of seven Dragon Balls, ${game.score} points. Play again to try a new run.` };
+      const messages = { ready: 'Jump with Space / touch A, then tap X / touch B toward a glowing target. Chain targets for points; collect seven balls and beat the guardian.', start: 'First lesson: jump toward the blue ring, then tap B / X. A connection lifts you and refills ki.', rush: 'Ki Rush! Release B, then tap again when the next target glows.', 'rush-miss': 'Free rush used. Land to refill ki.', 'rush-blocked': 'Ledge blocked the rush. Land to refill ki.', chain: `${game.chain}-target chain! Ki refilled. Tap B toward the next target.`, 'chain-land': `${game.bankedChain?.count}-target chain banked: ${game.bankedChain?.points} points. Jump to start the next chain.`, refill: 'Ki refilled. This target already scored; find a bright new one.', orb: `Dragon Ball ${count} of 7 collected.`, stomp: 'Bot bounced! Keep moving.', blast: 'Ki hit! Target cleared.', respawn: `${game.lives} ${game.lives === 1 ? 'life' : 'lives'} left. Back at your checkpoint; collected balls are safe.`, checkpoint: `Checkpoint ${checkpoints.indexOf(game.checkpoint) + 1} of 3 reached. Balls and defeated enemies stay saved.`, missing: `${7 - count} Dragon ${7 - count === 1 ? 'Ball remains' : 'Balls remain'}. Follow the trail back to find them.`, 'armor-hit': 'Armored bot hit. Keep firing or bounce again.', 'guardian-hit': `Sky Guardian hit. ${game.enemies.find(enemy => enemy.kind === 'guardian').hp} hits remain.`, 'guardian-down': 'Sky Guardian defeated! Reach the red gate to complete your journey.', guardian: 'The Sky Guardian still stands. Turn back and use ki or jump on its head.', won: `Wish granted! All seven Dragon Balls collected. ${game.score} points.`, lost: `Run ended. ${count} of seven Dragon Balls, ${game.score} points. Play again to try a new run.` };
       status.textContent = messages[game.event] || messages.start;
     }
   }
@@ -434,7 +451,8 @@
     const feet = p.y + p.h, running = p.grounded && Math.abs(p.vx) > 20, stride = running && !quiet() ? Math.sin(game.time * 15) : 0;
     const shooting = Boolean(p.dash) || game.time - p.fired < .18, jump = !p.grounded;
     oval(p.x - camera + p.w / 2 + 3, feet + 2, 16, 3.8, '#173f4c45');
-    context.save(); context.translate(p.x - camera + p.w / 2, feet); context.scale(p.facing, 1);
+    context.save(); context.translate(p.x - camera + p.w / 2, feet); const landing = quiet() ? 0 : Math.max(0, 1 - (game.time - p.landed) / .12);
+    context.scale(p.facing * (1 + landing * .08), 1 - landing * .08);
     const ink = '#28334b', orange = '#fc8527', light = '#ffbf5c', shade = '#bb4f35', blue = '#294c86', skin = '#f3ba88';
     function limb(points, color, width = 7, lit = null) { line(points, ink, width + 2.6); line(points, color, width); if (lit) line(points.map(([x,y])=>[x-1,y-1]), lit, Math.max(1.5,width*.3)); }
     // Far limbs, torso, then near limbs create a readable articulated silhouette.
@@ -478,9 +496,9 @@
     }
     if (enemy.maxHp>1) { rect(x,y-6,w,3,'#253a55'); rect(x,y-6,w*enemy.hp/enemy.maxHp,3,boss?'#e7ab70':'#a4d8d0'); }
   }
-  function draw() {
+  function draw(alpha = 1) {
     context.setTransform(2, 0, 0, 2, 0, 0); context.imageSmoothingEnabled = true;
-    const camera = game.camera;
+    const rendered = interpolatePose(game, previousPose, alpha), camera = rendered.camera, player = rendered.player;
     background(camera); scenery(camera); solids.forEach(tile => terrain(tile, camera));
     for (const ring of game.rings) {
       const x = ring.x - camera + 7, y = ring.y + 7; if (x < -20 || x > 660) continue;
@@ -501,17 +519,17 @@
     if (lock && !paused) {
       const point = lock.point, x = point.x-camera, y=point.y;
       if (!quiet()) {
-        const origin=center(game.player), length=Math.hypot(point.x-origin.x,point.y-origin.y);
+        const origin=center(player), length=Math.hypot(point.x-origin.x,point.y-origin.y);
         for(let t=14;t<length-17;t+=14) { const u=t/length, v=Math.min(1,(t+5)/length); line([[origin.x-camera+(point.x-origin.x)*u,origin.y+(point.y-origin.y)*u],[origin.x-camera+(point.x-origin.x)*v,origin.y+(point.y-origin.y)*v]],'#d9ffdb80',1); }
       }
       for(const dx of [-1,1])for(const dy of [-1,1])line([[x+dx*17,y+dy*9],[x+dx*17,y+dy*17],[x+dx*9,y+dy*17]],'#f4ffc6',2);
       text('B',x,y-23,12,'#f4ffc6');
     }
     if(game.player.dash&&!quiet()) {
-      const p=game.player, c=center(p); line([[c.x-camera-p.dash.vx*.05,c.y-p.dash.vy*.05],[c.x-camera,c.y]],'#b2f6ee60',13);
+      const p=player, c=center(p); line([[c.x-camera-p.dash.vx*.05,c.y-p.dash.vy*.05],[c.x-camera,c.y]],'#b2f6ee60',13);
       line([[c.x-camera-p.dash.vx*.04,c.y-p.dash.vy*.04],[c.x-camera,c.y]],'#eaffdaaa',3);
     }
-    playerSprite(game.player,camera);
+    playerSprite(player,camera);
     if (!quiet()) for (const burst of game.bursts) {
       const age=(game.time-burst.at)/.32;
       for(let i=0;i<7;i++){const angle=i*Math.PI/3.5, x=burst.x-camera+Math.cos(angle)*age*27,y=burst.y+Math.sin(angle)*age*25; poly([[x,y-3*(1-age)],[x+3*(1-age),y],[x,y+3*(1-age)],[x-3*(1-age),y]],'#ffe2a1',null);}
@@ -528,7 +546,10 @@
     if(guardian.alive&&Math.abs(game.player.x-guardian.x)<450){
       rect(211,14,218,22,'#23394ddd');text('SKY GUARDIAN',320,29,11,'#f0d5ad');rect(219,39,202,5,'#253b53');rect(219,39,202*guardian.hp/guardian.maxHp,5,'#e9a66a');
     }
-    if(game.phase==='playing'&&!paused&&game.player.x<680&&game.connections<2){
+    const banked = game.bankedChain;
+    if (game.phase === 'playing' && !paused && banked && game.time - banked.at < 1.4) {
+      rect(16,69,300,32,'#244559ed'); text(`${banked.count}-TARGET CHAIN BANKED · ${banked.points} PTS`,26,89,11,'#f4ffc6','left');
+    } else if(game.phase==='playing'&&!paused&&game.player.x<680&&game.connections<2){
       rect(16,69,300,32,'#244559dd');text(game.connections?'Release B. Tap again at the next target.':'Jump → aim right → tap B at the blue ring.',26,89,11,'#e9ffcf','left');
     }
     if(game.phase==='ready'||terminal()||paused){
@@ -548,8 +569,8 @@
     const elapsed = lastTime === null ? 0 : Math.min(.1, Math.max(0, (now - lastTime) / 1000)); lastTime = now; accumulator += elapsed;
     // Keep an action edge until a physics tick consumes it, even if a quick tap
     // starts and ends between animation frames. A release still gives a short jump.
-    while (accumulator >= 1 / 120) { step(game, input(), 1 / 120); pendingActions.clear(); accumulator -= 1 / 120; }
-    announce(); draw(); schedule();
+    while (accumulator >= 1 / 120) { previousPose = pose(game); step(game, input(), 1 / 120); pendingActions.clear(); accumulator -= 1 / 120; }
+    announce(); draw(accumulator * 120); schedule();
   }
   function begin() {
     stop(); releaseControls(); if (game.phase !== 'ready') game = create(); finish = null; paused = false; lastEvent = -1;

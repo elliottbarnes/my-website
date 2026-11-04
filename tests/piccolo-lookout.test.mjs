@@ -26,6 +26,34 @@ test('the opening rings teach a charged beam from the initial position and walls
   Object.assign(blocked.player, { x: 216, y: 96, facing: 'up' }); beam(blocked);
   assert.ok(blocked.beam.length < 8); assert.equal(engine.unlocked(blocked), false);
 });
+test('the sight predicts the actual beam, distinguishes missing partners, and never changes game state', () => {
+  const game = engine.create(); engine.start(game);
+  const before = JSON.stringify(game), aim = engine.beamAim(game);
+  assert.equal(JSON.stringify(game), before, 'aim is read-only');
+  assert.equal(aim.crystals.length, 2); assert.ok(aim.crystals.every(({ linked }) => linked));
+  assert.match(engine.aimHint(game), /2 rings lined up/);
+  beam(game); assert.equal(game.beam.length, aim.length); assert.equal(game.rooms[0].crystals.filter(crystal => crystal.lit).length, aim.crystals.length);
+
+  const partial = engine.create(); engine.start(partial); partial.player.y = 80;
+  assert.match(engine.aimHint(partial), /include its partner/);
+  beam(partial); assert.match(partial.event, /Beam missed.*include its partner/); assert.equal(engine.unlocked(partial), false);
+
+  const blocked = engine.create(); engine.start(blocked);
+  Object.assign(blocked.player, { x: 216, y: 96, facing: 'up', chargeFacing: 'up' });
+  const blockedAim = engine.beamAim(blocked);
+  assert.ok(blockedAim.length < 8); assert.deepEqual(blockedAim.crystals, []); assert.match(engine.aimHint(blocked), /Aim blocked/);
+  beam(blocked); assert.match(blocked.event, /Beam missed.*Aim blocked/);
+});
+test('keeper aim feedback follows its shield and opening without inventing a damage window', () => {
+  const game = engine.create(); engine.start(game); game.room = 5;
+  Object.assign(game.player, { x: 160, y: 168, facing: 'up', chargeFacing: 'up' });
+  const keeper = game.rooms[5].guards[0];
+  assert.match(engine.aimHint(game), /shielded.*DAWN/);
+  game.rooms[5].crystals.forEach(crystal => { crystal.lit = true; });
+  assert.match(engine.aimHint(game), /guarding.*OPEN/);
+  keeper.exposed = .5; assert.match(engine.aimHint(game), /1 warden in line/);
+  keeper.x = 200; assert.match(engine.aimHint(game), /No target in line/);
+});
 test('the garden requires moon before sun and its warden before opening the gate', () => {
   const game = engine.create(); engine.start(game); game.room = 2;
   Object.assign(game.player, { x: 264, y: 64, facing: 'up' }); tap(game);
@@ -260,9 +288,20 @@ function harness(options = {}) {
   Object.defineProperty(window, 'localStorage', { get() { if (options.blockStorage) throw new Error('blocked'); return options.storage; } });
   window.PortfolioGames = { run(mode, trigger) { back = { mode, trigger }; } };
   vm.runInNewContext(source, { document, window, performance: { now: () => now }, matchMedia: () => motion, CustomEvent: class {}, requestAnimationFrame: fn => { frames.set(++next, fn); return next; }, cancelAnimationFrame: id => frames.delete(id) });
-  function advance(ms) { const until = now + ms; while (now < until) { now += Math.min(1000 / 60, until - now); const callbacks = [...frames.values()]; frames.clear(); callbacks.forEach(callback => callback(now)); } }
-  return { get, dialog, document, window, root, footer, frames, advance, holds, motion, focus: () => focus, back: () => back, shots: () => painting.filter(args => args[2] === 5 && args[3] === 5).length, beam: () => painting.some(args => args[2] === 9 && args[3] > 50 || args[3] === 9 && args[2] > 50), shadow: () => painting.findLast(args => args[2] === 18 && args[3] === 3) };
+  function frame(ms) { now += ms; const callbacks = [...frames.values()]; frames.clear(); callbacks.forEach(callback => callback(now)); }
+  function advance(ms) { const until = now + ms; while (now < until) frame(Math.min(options.frameMs || 1000 / 60, until - now)); }
+  return { get, dialog, document, window, root, footer, frames, frame, advance, holds, motion, focus: () => focus, back: () => back, shots: () => painting.filter(args => args[2] === 5 && args[3] === 5).length, beam: () => painting.some(args => args[2] === 9 && args[3] > 50 || args[3] === 9 && args[2] > 50), shadow: () => painting.findLast(args => args[2] === 18 && args[3] === 3) };
 }
+test('UI movement keeps its speed at 30, 60, and 120 Hz and a long frame cannot teleport Piccolo', () => {
+  const positions = [30, 60, 120].map(hz => {
+    const h = harness({ frameMs: 1000 / hz }); h.window.PortfolioPiccolo.open(h.footer); h.get('piccolo-start').fire('click');
+    h.frame(16); h.dialog.fire('keydown', { key: 'ArrowRight', target: h.get('piccolo-canvas') }); h.advance(500);
+    const x = h.shadow()[0]; h.frame(5000);
+    assert.ok(h.shadow()[0] - x <= 7, 'slow frame recovery advances at most the capped 0.1 seconds');
+    return x;
+  });
+  assert.ok(Math.max(...positions) - Math.min(...positions) <= 1, 'fixed-step movement is independent of drawing rate');
+});
 test('UI starts explicitly, exposes room/hearts, and keyboard movement stops after blur until resume', () => {
   const h = harness(); h.window.PortfolioPiccolo.open(h.footer);
   assert.equal(h.frames.size, 0); assert.equal(h.get('piccolo-room').textContent, 'ROOM 1 / 6'); assert.equal(h.get('piccolo-hearts').textContent, '4 HEARTS');

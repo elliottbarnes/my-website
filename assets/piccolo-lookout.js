@@ -13,7 +13,7 @@
   const ROOMS = [
     { name: 'THE QUIET COURT', map: map([[6, 6, 2, 3], [12, 3, 2, 3]], [[3, 3, 3, 2]]),
       crystals: [{ x: 40, y: 96, label: 'FOCUS', pair: 'entry' }, { x: 40, y: 56, label: 'SEAL', pair: 'entry' }], guards: [],
-      intro: 'You face both rings. Hold A until READY, then release: one beam links both!', inscription: 'HOLD A · READY · RELEASE' },
+      intro: 'You face both rings. Hold Z / touch A until READY, then release: one beam links both!', inscription: 'HOLD A · READY · RELEASE' },
     { name: 'HALL OF WARDENS', map: map([[6, 3, 2, 2], [6, 8, 2, 1], [12, 3, 2, 2], [12, 8, 2, 1]]), crystals: [],
       guards: [{ x: 152, y: 64, hp: 2, axis: 'y', low: 56, high: 136 }, { x: 248, y: 136, hp: 2, axis: 'y', low: 56, high: 136 }],
       intro: 'Tap A for quick ki. Hold and release to pierce both wardens in one line. Move slowly while charging.', inscription: 'LINE UP TWO · RELEASE ONE' },
@@ -95,27 +95,41 @@
     say(game, guard.hp ? beam ? 'Piercing hit! Find your next opening.' : 'Clean hit! Keep your distance.' : guard.kind === 'keeper' ? 'The keeper rests. The bell awaits.' : 'Warden quieted.');
     return true;
   }
-  function releaseBeam(game) {
+  function beamAim(game) {
     const p = game.player, state = game.rooms[game.room], [dx, dy] = DIRECTIONS[p.chargeFacing];
     const from = { x: p.x, y: p.y }; let length = 0;
     while (length < WIDTH && !solid(game, from.x + dx * (length + 1), from.y + dy * (length + 1))) length++;
     const along = target => (target.x - from.x) * dx + (target.y - from.y) * dy;
     const touches = target => along(target) >= 0 && along(target) <= length && Math.abs((target.x - from.x) * dy - (target.y - from.y) * dx) <= 9;
-    game.beam = { x: from.x, y: from.y, dx, dy, length, life: .32 }; game.beamsFired++; p.cooldown = .28;
+    const crystals = state.crystals.map((crystal, index) => ({ crystal, index,
+      linked: !crystal.pair || state.crystals.filter(other => other.pair === crystal.pair).every(touches) }))
+      .filter(({ crystal }) => !crystal.lit && touches(crystal)).sort((a, b) => along(a.crystal) - along(b.crystal));
+    const guards = state.guards.map((guard, index) => ({ guard, index })).filter(({ guard }) => guard.hp > 0 && touches(guard));
+    return { x: from.x, y: from.y, dx, dy, length, crystals, guards, touches };
+  }
+  function aimHint(game, aim = beamAim(game)) {
+    if (aim.crystals.some(({ linked }) => !linked)) return 'One ring in line · include its partner';
+    if (aim.crystals.length) return `${aim.crystals.length} ${aim.crystals.every(({ crystal }) => crystal.pair) ? 'rings' : aim.crystals.length === 1 ? 'seal' : 'seals'} lined up · release when READY`;
+    if (aim.guards.some(({ guard }) => shielded(game, guard))) return 'Keeper shielded · link DAWN + DUSK first';
+    if (aim.guards.some(({ guard }) => guard.kind === 'keeper' && guard.exposed <= 0)) return 'Keeper guarding · hold for OPEN after its fan';
+    if (aim.guards.length) return `${aim.guards.length} ${aim.guards.length === 1 ? 'warden' : 'wardens'} in line · release when READY`;
+    return aim.length < 24 ? 'Aim blocked · step away from the wall' : 'No target in line · move sideways while charging';
+  }
+  function releaseBeam(game) {
+    const p = game.player, aim = beamAim(game), { x, y, dx, dy, length } = aim;
+    game.beam = { x, y, dx, dy, length, life: .32 }; game.beamsFired++; p.cooldown = .28;
     const targets = [];
-    state.crystals.map((crystal, index) => ({ crystal, index })).filter(({ crystal }) => !crystal.lit && touches(crystal))
-      .sort((a, b) => along(a.crystal) - along(b.crystal)).forEach(({ crystal, index }) => {
-        const linked = !crystal.pair || state.crystals.filter(other => other.pair === crystal.pair).every(touches);
+    aim.crystals.forEach(({ index, linked }) => {
         if (linked && light(game, index, true)) targets.push(`c${index}`);
       });
-    state.guards.forEach((guard, index) => { if (guard.hp > 0 && touches(guard) && hitGuard(game, guard, 3, true)) targets.push(`g${index}`); });
+    aim.guards.forEach(({ guard, index }) => { if (hitGuard(game, guard, 3, true)) targets.push(`g${index}`); });
     // A beam resolves once, immediately. Its lingering line is only a drawing;
     // moving into it later cannot damage a target again or earn another bonus.
-    game.projectiles = game.projectiles.filter(shot => !shot.enemy || !touches(shot));
+    game.projectiles = game.projectiles.filter(shot => !shot.enemy || !aim.touches(shot));
     const fresh = targets.map(id => `${game.room}:${id}`).filter(id => !game.rewardedTargets.includes(id));
     game.rewardedTargets.push(...fresh); game.maxChain = Math.max(game.maxChain, targets.length);
     if (fresh.length > 1) { const bonus = (fresh.length - 1) * 80; game.alignment += bonus; say(game, `${fresh.length} targets. One beam. +${bonus} alignment!`); }
-    else if (!targets.length) say(game, 'Beam released. Line up the rings or catch a warden in its opening.');
+    else if (!targets.length) say(game, `Beam missed. ${aimHint(game, aim)}.`);
   }
   function cancelAction(game, blockHeld = false) {
     const p = game.player; p.actionBlocked = blockHeld && p.actionHeld;
@@ -197,7 +211,7 @@
       const wasReady = p.charge >= CHARGE_TIME;
       p.charge = Math.min(CHARGE_TIME, p.charge + dt);
       if (p.charge > CHARGE_TIME - 1e-9) p.charge = CHARGE_TIME;
-      if (!wasReady && p.charge >= CHARGE_TIME) say(game, 'READY. Release A to fire along your locked direction.');
+      if (!wasReady && p.charge >= CHARGE_TIME) say(game, `READY. ${aimHint(game).replace('release when READY', 'release A')}.`);
     }
     if (!action && p.actionHeld) {
       if (p.charge + 1e-9 >= CHARGE_TIME && p.cooldown <= 0) releaseBeam(game);
@@ -262,22 +276,23 @@
   }
   function objective(game) {
     const room = ROOMS[game.room], state = game.rooms[game.room];
+    if (game.player.actionHeld) return aimHint(game);
     if (unlocked(game)) return room.bell ? 'Press A beside the bell ↑' : 'Eastern gate →';
     const unlit = state.crystals.find(crystal => !crystal.lit);
-    if (unlit) return unlit.pair ? game.room === 0 ? 'Hold A → READY → release ↑' : `Link ${state.crystals.filter(crystal => crystal.pair === unlit.pair).map(crystal => crystal.label).join(' + ')} in one beam` : room.bridge && unlit.label === 'GATE' ? 'Cross the bridge; light GATE below' : `Light the ${unlit.label} seal with A`;
+    if (unlit) return unlit.pair ? game.room === 0 ? 'Hold Z / touch A → READY → release ↑' : `Link ${state.crystals.filter(crystal => crystal.pair === unlit.pair).map(crystal => crystal.label).join(' + ')} in one beam` : room.bridge && unlit.label === 'GATE' ? 'Cross the bridge; light GATE below' : `Light the ${unlit.label} seal with A`;
     const remaining = state.guards.filter(guard => guard.hp > 0).length;
     return room.bell ? 'Beam the keeper after its fan: OPEN' : `Quiet the wardens: ${remaining} remaining`;
   }
-  const engine = Object.freeze({ TILE, WIDTH, HEIGHT, CHARGE_TIME, ROOMS, create, start, retry, step, cancelAction, solid, tileAt, canStand, unlocked, objective, scoreBreakdown, RECORD_KEY, validRecord, readRecord, completedRecord, saveRecord });
+  const engine = Object.freeze({ TILE, WIDTH, HEIGHT, CHARGE_TIME, ROOMS, create, start, retry, step, cancelAction, solid, tileAt, canStand, unlocked, objective, beamAim, aimHint, scoreBreakdown, RECORD_KEY, validRecord, readRecord, completedRecord, saveRecord });
   if (typeof module !== 'undefined') module.exports = engine;
   if (typeof document === 'undefined') return;
   const dialog = document.getElementById('piccolo-dialog'); if (!dialog) return;
   dialog.innerHTML = `<header class="piccolo-heading"><div><span class="piccolo-edition">90s HANDHELD · 8-BIT</span><h2 id="piccolo-title">Piccolo’s Lookout</h2></div><button type="button" data-piccolo-close aria-label="Close Piccolo’s Lookout">esc</button></header>
     <div class="piccolo-screen-bezel"><div class="piccolo-screen-label"><span><i aria-hidden="true"></i> POWER</span><span>FOUR SHADES / ONE SMALL WORLD</span></div><canvas id="piccolo-canvas" width="320" height="224" tabindex="0" aria-label="Piccolo's Lookout, a top-down six-room adventure" aria-describedby="piccolo-objective piccolo-help piccolo-status">Arrows or WASD move and aim. Tap Space or Z for ki; hold until READY, then release a Special Beam Cannon. Link rings and restore the bell.</canvas><div class="piccolo-screen-brand"><span id="piccolo-room">ROOM 1 / 6</span><span id="piccolo-hearts">4 HEARTS</span><span>CAPSULE POCKET</span></div></div>
-    <ol class="piccolo-route" aria-label="Adventure progress">${ROOMS.map((room, index) => `<li data-piccolo-room="${index}" title="${room.name}">${index + 1}</li>`).join('')}</ol><p id="piccolo-objective">Hold A → READY → release ↑</p><p id="piccolo-status" role="status" aria-live="polite" aria-atomic="true">You already face both rings. Hold A to charge; release when READY to link them.</p>
+    <ol class="piccolo-route" aria-label="Adventure progress">${ROOMS.map((room, index) => `<li data-piccolo-room="${index}" title="${room.name}">${index + 1}</li>`).join('')}</ol><p id="piccolo-objective">Hold Z / touch A → READY → release ↑</p><p id="piccolo-status" role="status" aria-live="polite" aria-atomic="true">You face both rings. Hold Space or Z on the keyboard, or A on screen. Release when READY.</p>
     <div class="piccolo-controller"><div class="piccolo-dpad" role="group" aria-label="Movement controls"><button type="button" data-piccolo-hold="up" aria-label="Move up">▲</button><button type="button" data-piccolo-hold="left" aria-label="Move left">◀</button><span aria-hidden="true"></span><button type="button" data-piccolo-hold="right" aria-label="Move right">▶</button><button type="button" data-piccolo-hold="down" aria-label="Move down">▼</button></div><div class="piccolo-ab"><button type="button" data-piccolo-hold="action" aria-label="A: tap for ki; hold and release for beam. Enter toggles charge and release." aria-pressed="false">A</button><span id="piccolo-charge">HOLD → BEAM</span><span id="piccolo-score">SCORE 0</span></div><div class="piccolo-speaker" aria-hidden="true">▰▰▰<br>▰▰▰<br>▰▰▰</div></div>
     <div class="piccolo-actions"><button type="button" data-piccolo-back>← cartridges</button><button type="button" id="piccolo-start">start ↵</button><button type="button" id="piccolo-pause" aria-pressed="false">pause</button></div>
-    <details class="piccolo-help"><summary>controls / score / personal best</summary><p id="piccolo-help">Arrows or WASD move and aim. Tap A, Space or Z for quick ki and nearby interactions. Hold for 0.8 seconds, then release a Special Beam Cannon. Charging locks your aim and slows movement. With A focused, Enter or assistive activation toggles charge and release without holding. Link paired rings with one beam. The keeper opens after its fan. P pauses; Escape returns to cartridges. Pausing cancels your charge. Continue at the current room after defeat, or restart a new run.</p><p>Score: 100 per restored room; +80 per extra new target in one beam; up to 400 at completion for avoiding damage (−50 per hit); −100 per checkpoint retry. Each target earns alignment credit once per run. Higher score wins; faster time breaks ties. Personal best is saved only on this device.</p><p id="piccolo-record">Complete a run to set your first personal best.</p></details>`;
+    <details class="piccolo-help"><summary>controls / score / personal best</summary><p id="piccolo-help">Keyboard: arrows or WASD move and aim; Space or Z controls ki. On screen: use A for ki. Tap for quick ki and nearby interactions; hold for 0.8 seconds, then release a Special Beam Cannon. Charging locks your aim and slows movement. The dotted sight stops at walls; corner marks show targets in its path. Move sideways to line up both rings. With the on-screen A button focused, Enter or assistive activation toggles charge and release without holding. Link paired rings with one beam. The keeper opens after its fan. P pauses; Escape returns to cartridges. Pausing cancels your charge. Continue at the current room after defeat, or restart a new run.</p><p>Score: 100 per restored room; +80 per extra new target in one beam; up to 400 at completion for avoiding damage (−50 per hit); −100 per checkpoint retry. Each target earns alignment credit once per run. Higher score wins; faster time breaks ties. Personal best is saved only on this device.</p><p id="piccolo-record">Complete a run to set your first personal best.</p></details>`;
   const root = document.documentElement, canvas = dialog.querySelector('#piccolo-canvas'), ctx = canvas.getContext('2d'); if (!ctx) return;
   const status = dialog.querySelector('#piccolo-status'), objectiveNode = dialog.querySelector('#piccolo-objective'), startButton = dialog.querySelector('#piccolo-start'), pauseButton = dialog.querySelector('#piccolo-pause');
   const reduced = matchMedia('(prefers-reduced-motion: reduce)');
@@ -311,7 +326,7 @@
     setText(pauseButton, paused ? 'resume' : 'pause'); pauseButton.disabled = game.phase !== 'playing';
     if (pauseButton.getAttribute('aria-pressed') !== String(paused)) pauseButton.setAttribute('aria-pressed', String(paused));
     if (paused) setText(status, 'Paused. Your adventure will wait for you.');
-    else if (eventId !== game.eventId) { eventId = game.eventId; setText(status, game.phase === 'won' ? `${resultNote} ${game.hits} hits · ${game.maxChain} targets in your best beam. Score breakdown below.` : game.event === 'intro' ? 'You face both rings. Hold A until READY, then release. Enter on A toggles charge and release.' : game.event); }
+    else if (eventId !== game.eventId) { eventId = game.eventId; setText(status, game.phase === 'won' ? `${resultNote} ${game.hits} hits · ${game.maxChain} targets in your best beam. Score breakdown below.` : game.event === 'intro' ? 'You face both rings. Hold Space or Z on the keyboard, or A on screen. Release when READY.' : game.event); }
   }
   const colors = ['#d8e6a0', '#a9b96c', '#647541', '#263b2b'];
   function rect(x, y, w, h, shade) { ctx.fillStyle = colors[shade]; ctx.fillRect(Math.round(x), Math.round(y), w, h); }
@@ -342,7 +357,15 @@
       const ready = unlocked(game); rect(147, 52, 26, 25, 2); rect(151, 46, 18, 17, 3); rect(154, 48, 12, 13, ready ? 0 : 1); rect(149, 61, 22, 4, 3); rect(159, 65, 3, 3, 3); label(ready ? 'A' : 'BELL', 160, 84, 7);
     }
     const state = game.rooms[game.room];
-    if (!game.room && !unlocked(game)) for (let y = 64; y < 144; y += 5) rect(39, y + 24, 2, 2, 1);
+    const aim = game.player.actionHeld ? beamAim(game) : null;
+    // A still, wall-clipped sight line explains locked aim without moving the
+    // camera or changing the shot. It stays equally readable in reduced motion.
+    if (aim) {
+      const shade = game.player.charge >= CHARGE_TIME ? 3 : 2;
+      for (let along = 18; along < aim.length; along += 6) rect(aim.x + aim.dx * along, aim.y + 24 + aim.dy * along, 1, 2, shade);
+      const x = aim.x + aim.dx * aim.length, y = aim.y + 24 + aim.dy * aim.length;
+      rect(x - (aim.dy ? 3 : 0), y - (aim.dx ? 3 : 0), aim.dy ? 7 : 1, aim.dx ? 7 : 1, shade);
+    } else if (!game.room && !unlocked(game)) for (let y = 64; y < 144; y += 5) rect(39, y + 24, 2, 2, 1);
     state.crystals.forEach(crystal => {
       const x = crystal.x, y = crystal.y + 24;
       rect(x - 9, y + 7, 18, 6, 2);
@@ -362,6 +385,12 @@
         else if (guard.exposed > 0) { rect(x - 15, y - 28, 30, 8, 3); label('OPEN', x, y - 21, 7, 0); } }
       for (let hp = 0; hp < guard.hp; hp++) rect(x - guard.hp * 2 + hp * 4, y + 7, 3, 2, 3);
       if (guard.hurt > 0 && !quiet()) { rect(x - 8, y - 10, 2, 2, 3); rect(x + 8, y, 2, 2, 3); }
+    }
+    if (aim) for (const target of [...aim.crystals.map(({ crystal }) => crystal), ...aim.guards.map(({ guard }) => guard)]) {
+      for (const dx of [-1, 1]) for (const dy of [-1, 1]) {
+        const x = target.x + dx * 12, y = target.y + 24 + dy * 12;
+        rect(x - (dx > 0 ? 3 : 0), y, 4, 1, 3); rect(x, y - (dy > 0 ? 3 : 0), 1, 4, 3);
+      }
     }
     for (const shot of game.projectiles) { const x = shot.x, y = shot.y + 24; rect(x - 2, y - 2, 5, 5, 3); rect(x - 1, y - 1, 3, 3, shot.enemy ? 2 : 0); if (!shot.enemy) rect(x - Math.sign(shot.vx) * 5, y - Math.sign(shot.vy) * 5, 2, 2, 2); }
     if (game.beam) {

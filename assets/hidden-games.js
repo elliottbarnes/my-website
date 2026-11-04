@@ -35,7 +35,7 @@
   const score = document.getElementById('arcade-score'), grid = document.getElementById('hunt-grid');
   const canvas = document.getElementById('ki-canvas'), ctx = canvas.getContext('2d');
   let mode = 'ki', opener, frame = 0, started = null, round = 0, hits = 0, energy = 0;
-  let targets = [], found = [], scanned = new Map(), scans = 0, resultAt = 0, resultHit = false, pressStarted = false;
+  let targets = [], found = [], scanned = new Map(), scans = 0, resultAt = 0, resultHit = false, pressStarted = false, chargePointer = null;
   const quiet = () => reduced.matches || root.dataset.motion === 'paused';
   function announce(text) { status.textContent = text; }
   function stop() { cancelAnimationFrame(frame); frame = 0; started = null; action.textContent = round >= 5 ? 'train again' : 'charge ki'; action.setAttribute('aria-pressed', 'false'); }
@@ -77,25 +77,28 @@
     if (started !== null || (!quiet() && now - resultAt < 700)) schedule();
   }
   function schedule() { if (!frame) frame = requestAnimationFrame(tick); }
-  function setBand() {
-    const [low, high] = bands[round % 5]; target.style.left = `${low}%`; target.style.width = `${high - low}%`;
+  function setBand(displayRound = round) {
+    const [low, high] = bands[displayRound % 5]; target.style.left = `${low}%`; target.style.width = `${high - low}%`;
     document.getElementById('ki-band').textContent = `${low}–${high}%`;
     score.textContent = `${Math.min(round + 1, 5)} / 5 · ${hits} hits`;
   }
   function begin() {
     if (round >= 5) { reset(); return; }
     if (started !== null) return;
+    setBand();
     started = performance.now(); energy = 0; action.textContent = 'release ki'; action.setAttribute('aria-pressed', 'true');
     announce(`Charging. Release at ${bands[round][0]} to ${bands[round][1]} percent.`); schedule();
   }
   function finish(now = performance.now()) {
     if (started === null) return;
+    const [low, high] = bands[round];
     const result = release(round, now - started); energy = result.power; resultHit = result.hit;
     if (result.hit) hits++;
     stop(); round++; resultAt = now;
     meter.value = energy; powerText.textContent = `${Math.round(energy)}%`;
-    announce(`${result.perfect ? 'Perfect control!' : result.hit ? 'Clean release!' : energy >= 100 ? 'Overcharged!' : 'Outside the target.'} ${Math.round(energy)}%. ${round >= 5 ? `Training complete: ${hits} of 5 hits.` : 'Ready for the next round.'}`);
-    action.textContent = round >= 5 ? 'train again' : 'charge ki'; setBand(); draw(now); schedule();
+    const feedback = result.perfect ? 'Perfect control!' : result.hit ? 'Clean release!' : energy >= 100 ? 'Overcharged! Release sooner.' : energy < low ? 'Below the target. Hold a little longer.' : 'Above the target. Release a little sooner.';
+    announce(`${feedback} ${Math.round(energy)}% against ${low}–${high}%. ${round >= 5 ? `Training complete: ${hits} of 5 hits.` : 'Ready for the next round.'}`);
+    action.textContent = round >= 5 ? 'train again' : 'charge ki'; setBand(round - 1); draw(now); schedule();
   }
   function renderGrid() {
     [...grid.children].forEach((button, index) => {
@@ -116,6 +119,10 @@
     const button = document.createElement('button'); button.type = 'button';
     button.addEventListener('click', () => {
       if (found.includes(i) || found.length === 7) return;
+      if (scanned.has(i)) {
+        announce(`${String.fromCharCode(65 + Math.floor(i / 6))}${i % 6 + 1}: ${scanned.get(i).label}. Same reading; no extra scan used.`);
+        return;
+      }
       scans++; const signal = ping(targets, found, i);
       if (signal.found) {
         found.push(i); scanned.clear();
@@ -123,13 +130,22 @@
       } else { scanned.set(i, signal); announce(`${String.fromCharCode(65 + Math.floor(i / 6))}${i % 6 + 1}: ${signal.label}. Distance counts horizontal and vertical steps.`); }
       renderGrid();
     });
+    button.tabIndex = i === 0 ? 0 : -1;
+    button.addEventListener('focus', () => {
+      [...grid.children].forEach(cell => { cell.tabIndex = cell === button ? 0 : -1; });
+    });
     button.addEventListener('keydown', event => {
-      const delta = { ArrowRight: 1, ArrowLeft: -1, ArrowDown: 6, ArrowUp: -6 }[event.key];
-      if (delta) { event.preventDefault(); grid.children[(i + delta + 36) % 36].focus(); }
+      const row = Math.floor(i / 6), column = i % 6;
+      const next = { ArrowRight: row * 6 + Math.min(5, column + 1), ArrowLeft: row * 6 + Math.max(0, column - 1),
+        ArrowDown: Math.min(5, row + 1) * 6 + column, ArrowUp: Math.max(0, row - 1) * 6 + column,
+        Home: row * 6, End: row * 6 + 5 }[event.key];
+      if (next !== undefined) { event.preventDefault(); grid.children[next].focus(); }
     }); grid.append(button);
   }
   function reset() {
-    stop(); round = 0; hits = 0; energy = 0; resultAt = 0; meter.value = 0; powerText.textContent = '0%';
+    // Keep any interrupted gesture's trailing click suppressed. A fresh
+    // pointerdown establishes its own pressStarted value.
+    round = 0; stop(); chargePointer = null; hits = 0; energy = 0; resultAt = 0; meter.value = 0; powerText.textContent = '0%';
     targets = field(); found = []; scanned.clear(); scans = 0;
     if (mode === 'ki') { setBand(); announce('Five rounds. Release inside the marked target band.'); draw(); }
     else { renderGrid(); announce('Find seven hidden balls. Scan a square; its reading points toward the nearest remaining ball.'); }
@@ -141,7 +157,7 @@
     document.getElementById('arcade-reset').hidden = choosing;
     title.textContent = choosing ? 'capsule arcade' : mode === 'ki' ? 'ki control' : 'dragon radar hunt';
     dialog.dataset.mode = mode;
-    if (choosing) { stop(); announce('Choose a training game.'); } else reset();
+    if (choosing) { stop(); chargePointer = null; announce('Choose a training game.'); } else reset();
   }
   function open(next = 'ki', trigger = document.activeElement) {
     opener = trigger;
@@ -158,21 +174,40 @@
     } else { select(game); focusGame(); }
   });
   back.addEventListener('click', () => { select('choose'); focusGame(); });
-  function cancelCharge(message) { if (started !== null) { stop(); energy = 0; meter.value = 0; powerText.textContent = '0%'; announce(message); } draw(); }
+  function cancelCharge(message) { chargePointer = null; if (started !== null) { stop(); energy = 0; meter.value = 0; powerText.textContent = '0%'; announce(message); } draw(); }
   action.addEventListener('pointerdown', event => {
-    if (event.button !== 0 || event.isPrimary === false) return;
+    if (event.button !== 0 || event.isPrimary === false || chargePointer !== null) return;
+    // Safari does not focus buttons on pointer press by default. Owning focus
+    // makes later Tab/focus changes cancel the same held charge in every engine.
+    action.focus({ preventScroll: true });
     pressStarted = started === null && round < 5;
-    if (pressStarted) { begin(); action.setPointerCapture(event.pointerId); }
+    if (pressStarted) { chargePointer = event.pointerId; begin(); action.setPointerCapture(event.pointerId); }
   });
-  action.addEventListener('pointerup', () => { if (started !== null && pressStarted && performance.now() - started > 200) finish(); });
-  action.addEventListener('pointercancel', () => { pressStarted = false; cancelCharge('Charge cancelled. Ready to try again.'); });
+  // Keep the focus explicitly assigned above. WebKit's touch compatibility
+  // mousedown otherwise blurs this button before click; cancelling only that
+  // default preserves the click needed for two-tap release and replay.
+  action.addEventListener('mousedown', event => { if (event.button === 0) event.preventDefault(); });
+  action.addEventListener('pointerup', event => {
+    if (event.pointerId !== chargePointer) return;
+    chargePointer = null;
+    if (started !== null && pressStarted && performance.now() - started > 200) finish();
+  });
+  const cancelPointer = event => {
+    if (chargePointer === null || event.pointerId !== chargePointer) return;
+    chargePointer = null; cancelCharge('Charge cancelled. Ready to try again.');
+    // A pointer release may still synthesize a click after capture is lost.
+    pressStarted = true;
+  };
+  action.addEventListener('pointercancel', cancelPointer);
+  action.addEventListener('lostpointercapture', cancelPointer);
   action.addEventListener('click', event => {
     if (event.detail && pressStarted) { pressStarted = false; return; }
     if (started !== null) finish(); else begin();
   });
+  action.addEventListener('keydown', event => { if (event.repeat && ['Enter', ' '].includes(event.key)) event.preventDefault(); });
   action.addEventListener('blur', () => cancelCharge('Charge cancelled when focus moved. No round lost.'));
   if (!window.PortfolioGames) document.querySelectorAll('[data-arcade-open]').forEach(button => button.addEventListener('click', () => open(button.dataset.arcadeOpen)));
-  document.getElementById('arcade-reset').addEventListener('click', reset);
+  document.getElementById('arcade-reset').addEventListener('click', () => { reset(); focusGame(); });
   document.getElementById('arcade-close').addEventListener('click', () => dialog.close());
   dialog.addEventListener('close', () => {
     if (dialog.open) return;
