@@ -7,6 +7,13 @@ async function command(page, name) {
   await page.locator('#command-input').press('Enter');
 }
 
+async function controlledClock(page) {
+  await page.clock.install();
+  // install() still advances with wall time. Freeze between trusted input and
+  // observation calls so a slower CI host cannot change release/catch timing.
+  await page.clock.pauseAt(new Date());
+}
+
 async function hitTarget(locator) {
   await locator.scrollIntoViewIfNeeded();
   expect(await locator.evaluate(element => {
@@ -25,7 +32,7 @@ for (const viewport of [{ width: 320, height: 568 }, { width: 844, height: 375 }
       await page.goto(test.info().project.use.baseURL || 'http://127.0.0.1:4178');
       await command(page, 'ki');
       const charge = page.locator('#ki-charge'); await charge.waitFor(); await hitTarget(charge);
-      await page.clock.install();
+      await controlledClock(page);
       const times = [1474, 500, 1672, 1232, 1738];
       for (let round = 0; round < times.length; round++) {
         await charge.press('Enter'); await page.clock.runFor(times[round]); await charge.press('Enter');
@@ -66,7 +73,7 @@ for (const viewport of [{ width: 320, height: 568 }, { width: 844, height: 375 }
 
 test('Ki capture loss cancels cleanly and keyboard repeat cannot spend extra rounds', async ({ page }) => {
   await page.goto('/'); await command(page, 'ki'); const charge = page.locator('#ki-charge');
-  await charge.waitFor(); await page.clock.install();
+  await charge.waitFor(); await controlledClock(page);
   const bounds = await charge.boundingBox();
   await page.mouse.move(bounds.x + bounds.width / 2, bounds.y + bounds.height / 2); await page.mouse.down();
   await page.clock.runFor(500);
@@ -103,38 +110,68 @@ test('Brick Breaker normal controls produce a perfect return, fair loss, and imm
     });
   });
   await page.goto('/'); await command(page, 'breaker');
-  const canvas = page.locator('#training-canvas'); await canvas.waitFor(); await page.clock.install();
+  const canvas = page.locator('#training-canvas'); await canvas.waitFor(); await controlledClock(page);
   const snapshot = () => page.evaluate(() => {
     const g = window.__observedBreaker;
     return { phase: g.phase, time: g.time, lives: g.lives, perfects: g.perfects, score: g.score,
       paddle: { ...g.paddle }, ball: { ...g.ball }, pulseReadyAt: g.pulseReadyAt };
   });
-  let box = await canvas.boundingBox();
+  const box = await canvas.boundingBox(), y = box.y + box.height * .75;
+  let dragging = false, cursorX = 0;
   const move = async (x, current) => {
-    const from = box.x + box.width / 2, y = box.y + box.height * .75;
-    await page.mouse.move(from, y); await page.mouse.down();
-    await page.mouse.move(from + (x - current) * box.width / 360, y); await page.mouse.up();
+    if (!dragging) {
+      cursorX = box.x + current * box.width / 360;
+      await page.mouse.move(cursorX, y); await page.mouse.down(); dragging = true;
+    }
+    cursorX += (x - current) * box.width / 360;
+    await page.mouse.move(cursorX, y);
+  };
+  const endDrag = async () => { if (dragging) { await page.mouse.up(); dragging = false; } };
+  const landing = g => {
+    const seconds = (g.paddle.y - g.ball.radius - g.ball.y) / g.ball.vy;
+    const span = 360 - 2 * g.ball.radius;
+    const travel = g.ball.x - g.ball.radius + g.ball.vx * seconds;
+    const folded = ((travel % (2 * span)) + 2 * span) % (2 * span);
+    return { seconds, x: g.ball.radius + (folded <= span ? folded : 2 * span - folded) };
   };
   await canvas.focus(); await page.keyboard.down('ArrowLeft'); await page.clock.runFor(100); await page.keyboard.up('ArrowLeft');
   expect((await snapshot()).paddle.x).toBeLessThan(150);
   await page.keyboard.press('Space');
-  for (let i = 0; i < 180 && !(await snapshot()).perfects; i++) {
-    const g = await snapshot();
-    await move(Math.max(34, Math.min(326, g.ball.x)), g.paddle.x);
-    const until = (g.paddle.y - g.ball.radius - g.ball.y) / g.ball.vy;
-    if (g.ball.vy > 0 && until > 0 && until < .13 && g.time >= g.pulseReadyAt) await page.keyboard.press('Space');
-    await page.clock.runFor(50);
+  let game = await snapshot();
+  for (let i = 0; i < 48 && !game.perfects; i++) {
+    expect(game.phase, 'the first flight must remain playable until its earned return').toBe('playing');
+    if (game.ball.vy > 0 && game.ball.y > 180) {
+      // Below the shield field, only wall banks can change the landing point.
+      // Guide the real pointer there, then earn the perfect with a real Space press.
+      const target = landing(game);
+      await move(Math.max(34, Math.min(326, target.x)), game.paddle.x);
+      if (target.seconds <= .15) {
+        expect(target.seconds).toBeGreaterThan(0);
+        expect(game.time).toBeGreaterThanOrEqual(game.pulseReadyAt);
+        await page.keyboard.press('Space');
+        await page.clock.runFor(Math.ceil((target.seconds + .04) * 1000));
+      } else await page.clock.runFor(Math.min(200, Math.floor((target.seconds - .1) * 1000)));
+    } else await page.clock.runFor(200);
+    game = await snapshot();
   }
-  expect((await snapshot()).perfects).toBeGreaterThan(0);
-  expect((await snapshot()).score).toBeGreaterThan(0);
+  await endDrag();
+  expect(game.perfects).toBeGreaterThan(0);
+  expect(game.score).toBeGreaterThan(0);
   await page.keyboard.press('p'); const paused = await snapshot(); await page.clock.runFor(1000);
   expect(await snapshot()).toEqual(paused); await page.keyboard.press('p');
-  // Deliberately miss each return to verify the complete loss path without changing lives or ball position.
-  for (let i = 0; i < 100 && (await snapshot()).phase !== 'lost'; i++) {
-    const g = await snapshot();
-    if (g.phase === 'ready') await page.keyboard.press('Space');
-    await move(g.ball.x > 180 ? 34 : 326, g.paddle.x); await page.clock.runFor(300);
+  // Deliberately miss each return through the same real pointer controls.
+  // Observing once per quarter-second is enough; the paused clock prevents
+  // time from leaking into the intervening browser protocol round trips.
+  game = await snapshot();
+  for (let i = 0; i < 96 && game.phase !== 'lost'; i++) {
+    if (game.phase === 'ready') {
+      await endDrag(); await page.keyboard.press('Space'); game = await snapshot();
+    }
+    const target = game.ball.vy > 0 && game.ball.y > 180 ? landing(game).x : game.ball.x;
+    await move(target > 180 ? 34 : 326, game.paddle.x);
+    await page.clock.runFor(250); game = await snapshot();
   }
+  await endDrag();
   expect((await snapshot()).phase).toBe('lost'); await expect(page.locator('#training-status')).toContainText('Run complete');
   await page.locator('#training-action').click();
   const retry = await snapshot(); expect(retry.phase).toBe('playing'); expect(retry.lives).toBe(3); expect(retry.score).toBe(0);
@@ -147,7 +184,7 @@ test('Brick Breaker touch launch, pause, and controls remain reachable on short 
     try {
       const page = await context.newPage(); await page.goto(baseURL); await command(page, 'breaker');
       const canvas = page.locator('#training-canvas'), pause = page.locator('#training-pause');
-      await canvas.waitFor(); await page.clock.install(); await hitTarget(canvas); await canvas.tap();
+      await canvas.waitFor(); await controlledClock(page); await hitTarget(canvas); await canvas.tap();
       await expect(page.locator('#training-action')).toHaveText('pulse · space');
       await page.clock.runFor(1800); expect(Number(await page.locator('#training-score').textContent())).toBeGreaterThan(0);
       await hitTarget(pause); await pause.tap(); await expect(page.locator('#training-status')).toHaveText('training paused');
