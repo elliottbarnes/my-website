@@ -38,7 +38,7 @@
   let palette;
   let previousHealth = new Map();
   let previousPhase = game.phase;
-  let lastCollected = 0;
+  let lastCollected = 0, previousRemaining = game.bricks.length;
   let lastAnnouncement = "";
   const recordKey = "portfolio:breaker:pulse-v1";
   let best = readRecord(), resultSaved = false, newBest = false, lastFeedback = -10;
@@ -134,10 +134,12 @@
     else if (game.phase === "ready") announce(`${game.lives < 3 ? "Ki lost. " : ""}${engine.arenas[game.wave - 1]} · arena ${game.wave} of ${game.totalWaves}. Launch, then pulse just before the ball lands: three powered hits and a multiplier.${best ? ` Best ${best.score}.` : ""}`);
     else if (game.feedbackAt !== lastFeedback && game.feedback === "perfect") announce(`Perfect return! Multiplier ×${1 + Math.min(4, game.chain)}. Three powered shield hits. Chain ${game.chain}.`);
     else if (game.feedbackAt !== lastFeedback && game.feedback === "early") announce("Pulse too early. Try just before the ball meets the paddle.");
+    else if (game.bricks.filter(brick => brick.active).length <= 3 && game.phase === "playing" && previousRemaining > 3) announce("Final shields. Move the paddle to aim the dashed return guide; bank off the walls.");
     else if (game.collected.length !== lastCollected) announce(`${game.collected.length} of seven dragon balls collected.`);
     else if (game.phase !== previousPhase || lastAnnouncement === "training paused") announce("Aim with the paddle. Tap pulse or Space as the ball enters the return zone.");
     previousPhase = game.phase;
     lastCollected = game.collected.length;
+    previousRemaining = game.bricks.filter(brick => brick.active).length;
     lastFeedback = game.feedbackAt;
   }
 
@@ -309,6 +311,31 @@
     context.restore();
   }
 
+  function drawReturnGuide() {
+    if (paused || game.bricks.filter(brick => brick.active).length > 3) return;
+    const aim = engine.returnGuide(game);
+    if (!aim) return;
+    const { radius } = game.ball;
+    // A quiet, short-lived aiming aid uses the actual return-angle rule. It
+    // never steers the ball, changes collisions, or promises a moving catch.
+    context.save();
+    context.strokeStyle = palette.blue; context.lineWidth = 1;
+    context.globalAlpha = .58; context.setLineDash([4, 6]);
+    context.beginPath(); context.moveTo(aim.x, aim.y);
+    let x = aim.x, y = aim.y, vx = aim.vx;
+    for (let bounce = 0; bounce < 3 && y > 54; bounce++) {
+      const untilTop = (54 - y) / aim.vy;
+      const wall = vx > 0 ? game.width - radius : radius;
+      const untilWall = (wall - x) / vx;
+      const seconds = Math.min(untilTop, untilWall);
+      x += vx * seconds; y += aim.vy * seconds;
+      context.lineTo(x, y);
+      if (untilTop <= untilWall) break;
+      vx = -vx;
+    }
+    context.stroke(); context.restore();
+  }
+
   function draw() {
     if (!dialog.open || !palette) return;
     const { width, height, paddle, ball } = game;
@@ -324,9 +351,11 @@
       context.restore();
       orb(star, x, 20, 20, collected ? 1 : .22);
     }
+    drawReturnGuide();
     for (const brick of game.bricks) if (brick.active) drawShield(brick);
     context.fillStyle = palette.muted; context.font = '10px "Plex Mono", monospace'; context.textAlign = "center";
-    context.fillText(`${engine.arenas[game.wave - 1].toUpperCase()} / ${game.wave} OF ${game.totalWaves}`, width / 2, 46);
+    const remaining = game.bricks.filter(brick => brick.active).length;
+    context.fillText(remaining > 0 && remaining <= 3 ? `${remaining} SHIELD${remaining === 1 ? "" : "S"} LEFT · AIM YOUR RETURN` : `${engine.arenas[game.wave - 1].toUpperCase()} / ${game.wave} OF ${game.totalWaves}`, width / 2, 46);
     drawEffects(ball);
 
     // The last 0.22s of descent is shown as a stable timing band, including
@@ -528,7 +557,7 @@
     best = mergeRecords(best, readRecord()); resultSaved = false; newBest = false; lastFeedback = -10;
     previousHealth = new Map(game.bricks.map((brick) => [brick.id, brick.health]));
     previousPhase = game.phase;
-    lastCollected = 0;
+    lastCollected = 0; previousRemaining = game.bricks.length;
     previousCollections = new Set();
     keys.clear(); clearEffects(); paused = false;
   }
@@ -544,7 +573,7 @@
       stop(); releasePointer(); keys.clear(); clearEffects();
       engine.nextArena(game);
       previousHealth = new Map(game.bricks.map(brick => [brick.id, brick.health]));
-      previousCollections = new Set(); lastCollected = 0;
+      previousCollections = new Set(); lastCollected = 0; previousRemaining = game.bricks.length;
       updateUI(); draw(); return;
     }
     if (terminal()) reset();

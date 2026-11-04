@@ -447,3 +447,34 @@ test("replaying the same paddle inputs keeps collision outcomes and progression 
   }
   assert.deepEqual(snapshot(states[0]), snapshot(states[1]));
 });
+
+test("the late-round aiming guide predicts centered and edge returns without modifying physics", () => {
+  for (const offset of [-24, 0, 24]) {
+    const state = engine.create(); engine.launch(state);
+    Object.assign(state.ball, { x: state.paddle.x + offset, y: state.paddle.y - 35, vx: 0, vy: state.ball.speed });
+    const before = snapshot(state), guide = engine.returnGuide(state);
+    assert.deepEqual(snapshot(state), before, "asking for a guide is read-only");
+    assert.ok(guide); close(guide.x, state.ball.x);
+    engine.step(state, .1); engine.step(state, .03);
+    close(state.ball.vx, guide.vx); close(state.ball.vy, guide.vy);
+  }
+});
+
+test("the return guide handles a bank before contact and hides misses or inactive phases", () => {
+  const state = engine.create(); engine.launch(state);
+  Object.assign(state.ball, { x: 15, y: 410, vx: -100, vy: 100, speed: Math.sqrt(20000) });
+  engine.movePaddle(state, 34);
+  const guide = engine.returnGuide(state); assert.ok(guide); close(guide.x, 22);
+  assert.ok(guide.vx < 0, "paddle offset remains the aiming decision after the wall bounce");
+  engine.movePaddle(state, 320); assert.equal(engine.returnGuide(state), null);
+  state.ball.vy = -100; assert.equal(engine.returnGuide(state), null);
+  state.phase = "ready"; assert.equal(engine.returnGuide(state), null);
+});
+
+test("the guide hides a center-angle boundary that a finite physics step can cross", () => {
+  const state = engine.create(); engine.launch(state); engine.movePaddle(state, 34);
+  Object.assign(state.ball, { x: 12, y: 410, vx: 150, vy: 240, speed: Math.hypot(150, 240) });
+  assert.equal(engine.returnGuide(state), null, "the continuous contact estimate points left but the actual next-step catch returns right");
+  while (state.ball.vy > 0 && state.phase === "playing") engine.step(state, 1 / 120);
+  assert.ok(state.ball.vx > 0 && state.ball.vy < 0, "existing return physics are preserved");
+});

@@ -14,7 +14,7 @@ function harness({ quiet = false } = {}) {
     getAttribute(k) { return this.attributes[k] ?? null; }
     append(el) { this.children.push(el); }
     replaceChildren(...els) { this.children = els; }
-    focus() { focused = this; }
+    focus() { focused = this; this.fire('focus'); }
     querySelectorAll() { return []; }
     setPointerCapture() {}
     showModal() { this.open = true; }
@@ -62,14 +62,14 @@ test('radar is keyboard navigable, completes seven discoveries and starts no ani
 });
 test('a held pointer release scores once and the following click does not start a new charge', () => {
   const h = harness(); h.window.PortfolioArcade.open('ki'); const action = h.get('ki-charge');
-  action.fire('pointerdown',{button:0,pointerId:1,isPrimary:true}); h.advance(1500); action.fire('pointerup'); action.fire('click',{detail:1});
+  action.fire('pointerdown',{button:0,pointerId:1,isPrimary:true}); h.advance(1500); action.fire('pointerup',{pointerId:1}); action.fire('click',{detail:1});
   assert.equal(action.textContent,'charge ki'); assert.match(h.get('arcade-score').textContent,/2 \/ 5 · 1 hits/);
 });
 test('five rounds reach a terminal result and restart resets score and meter', () => {
   const h = harness(); h.window.PortfolioArcade.open('ki'); const action = h.get('ki-charge');
   for(let i=0;i<5;i++){action.fire('click',{detail:0});h.advance(1500);action.fire('click',{detail:0});}
   assert.equal(action.textContent,'train again'); assert.match(h.get('arcade-status').textContent,/Training complete/);
-  action.fire('click',{detail:0}); assert.equal(h.get('ki-meter').value,0); assert.match(h.get('arcade-score').textContent,/1 \/ 5 · 0 hits/);assert.equal(h.frames.size,0);
+  action.fire('click',{detail:0}); assert.equal(action.textContent,'charge ki'); assert.equal(h.get('ki-meter').value,0); assert.match(h.get('arcade-score').textContent,/1 \/ 5 · 0 hits/);assert.equal(h.frames.size,0);
 });
 test('the game chooser starts no game and opens either small game through its card', () => {
   const h = harness(); h.window.PortfolioArcade.open('choose');
@@ -104,4 +104,100 @@ test('generation picker hands Piccolo and Goku to the lazy loader with the origi
     h.get(`game-pick-${game}`).fire('click');
     assert.deepEqual(received, { mode: game, opener: trigger });
   }
+});
+
+test('a Ki result keeps the band it was judged against until the next charge', () => {
+  const h = harness(); h.window.PortfolioArcade.open('ki'); const action = h.get('ki-charge');
+  action.fire('click', { detail: 0 }); h.advance(1474); action.fire('click', { detail: 0 });
+  assert.equal(h.get('ki-band').textContent, '56–78%');
+  assert.match(h.get('arcade-status').textContent, /67% against 56–78%/);
+  action.fire('click', { detail: 0 });
+  assert.equal(h.get('ki-band').textContent, '42–61%');
+  h.advance(500); action.fire('click', { detail: 0 });
+  assert.match(h.get('arcade-status').textContent, /Below the target. Hold a little longer/);
+  assert.equal(h.get('ki-band').textContent, '42–61%');
+});
+
+test('losing the charging pointer cancels without consuming a round or accepting the trailing click', () => {
+  for (const type of ['pointercancel', 'lostpointercapture']) {
+    const h = harness(); h.window.PortfolioArcade.open('ki'); const action = h.get('ki-charge');
+    action.fire('pointerdown', { button: 0, isPrimary: true, pointerId: 7 }); h.advance(500);
+    action.fire(type, { pointerId: 8 }); assert.equal(action.textContent, 'release ki');
+    action.fire(type, { pointerId: 7 });
+    assert.equal(action.textContent, 'charge ki'); assert.equal(h.get('ki-meter').value, 0);
+    action.fire('click', { detail: 1 }); h.advance(2500);
+    assert.equal(action.textContent, 'charge ki'); assert.match(h.get('arcade-score').textContent, /1 \/ 5 · 0 hits/);
+    action.fire('click', { detail: 0 }); h.advance(1474); action.fire('click', { detail: 0 });
+    assert.match(h.get('arcade-status').textContent, /Perfect control/);
+  }
+});
+
+test('short tap retains tap-twice charging after normal capture release', () => {
+  const h = harness(); h.window.PortfolioArcade.open('ki'); const action = h.get('ki-charge');
+  action.fire('pointerdown', { button: 0, isPrimary: true, pointerId: 1 }); h.advance(50);
+  action.fire('pointerup', { pointerId: 1 }); action.fire('lostpointercapture', { pointerId: 1 }); action.fire('click', { detail: 1 });
+  assert.equal(action.textContent, 'release ki');
+  h.advance(1424); action.fire('click', { detail: 0 }); assert.match(h.get('arcade-status').textContent, /Perfect control/);
+});
+
+test('unchanged radar readings do not charge an extra scan and keyboard geography stays in bounds', () => {
+  const h = harness(); h.window.PortfolioArcade.open('radar'); const cells = h.get('hunt-grid').children;
+  let empty;
+  for (const cell of cells) { cell.fire('click'); if (cell.dataset.signal !== 'found') { empty = cell; break; } }
+  const score = h.get('arcade-score').textContent; empty.fire('click');
+  assert.equal(h.get('arcade-score').textContent, score); assert.match(h.get('arcade-status').textContent, /no extra scan/);
+  cells[0].fire('keydown', { key: 'ArrowLeft' }); assert.equal(h.focus(), cells[0]);
+  cells[5].fire('keydown', { key: 'ArrowRight' }); assert.equal(h.focus(), cells[5]);
+  cells[5].fire('keydown', { key: 'ArrowDown' }); assert.equal(h.focus(), cells[11]);
+  cells[11].fire('keydown', { key: 'Home' }); assert.equal(h.focus(), cells[6]);
+  assert.equal(cells.filter(cell => cell.tabIndex === 0).length, 1);
+});
+
+test('starting fresh returns keyboard focus to the game control', () => {
+  const h = harness();
+  h.window.PortfolioArcade.open('radar'); h.get('hunt-grid').children[12].focus();
+  h.get('arcade-reset').fire('click'); assert.equal(h.focus(), h.get('hunt-grid').children[0]);
+  h.window.PortfolioArcade.open('ki'); h.get('arcade-reset').fire('click'); assert.equal(h.focus(), h.get('ki-charge'));
+});
+
+test('blur and hidden-tab interruption consume the held pointer trailing click without restarting', () => {
+  for (const interrupt of ['window-blur', 'focus-blur', 'hidden']) {
+    const h = harness(); h.window.PortfolioArcade.open('ki'); const action = h.get('ki-charge');
+    action.fire('pointerdown', { button: 0, isPrimary: true, pointerId: 7 }); h.advance(500);
+    if (interrupt === 'window-blur') h.window.fire('blur');
+    else if (interrupt === 'focus-blur') action.fire('blur');
+    else { h.document.hidden = true; h.document.fire('visibilitychange'); h.document.hidden = false; }
+    action.fire('pointerup', { pointerId: 7 }); action.fire('click', { detail: 1 }); h.advance(2500);
+    assert.equal(action.textContent, 'charge ki', interrupt);
+    assert.equal(h.get('ki-meter').value, 0); assert.match(h.get('arcade-score').textContent, /1 \/ 5 · 0 hits/);
+    assert.equal(h.frames.size, 0);
+    action.fire('pointerdown', { button: 0, isPrimary: true, pointerId: 8 }); h.advance(1474);
+    action.fire('pointerup', { pointerId: 8 }); action.fire('click', { detail: 1 });
+    assert.match(h.get('arcade-status').textContent, /Perfect control/, 'a fresh hold still works');
+  }
+});
+
+test('reset and game switching do not let an interrupted hold restart the new round', () => {
+  for (const interruption of ['reset', 'switch']) {
+    const h = harness(); h.window.PortfolioArcade.open('ki'); const action = h.get('ki-charge');
+    action.fire('pointerdown', { button: 0, isPrimary: true, pointerId: 7 }); h.advance(500);
+    assert.equal(h.focus(), action, 'pointer charge explicitly owns keyboard focus');
+    if (interruption === 'reset') h.get('arcade-reset').fire('click');
+    else { h.get('arcade-back').fire('click'); h.get('game-pick-ki').fire('click'); }
+    action.fire('pointerup', { pointerId: 7 }); action.fire('click', { detail: 1 }); h.advance(2500);
+    assert.equal(action.textContent, 'charge ki', interruption);
+    assert.match(h.get('arcade-score').textContent, /1 \/ 5 · 0 hits/); assert.equal(h.frames.size, 0);
+    action.fire('pointerdown', { button: 0, isPrimary: true, pointerId: 8 }); h.advance(1474);
+    action.fire('pointerup', { pointerId: 8 }); action.fire('click', { detail: 1 });
+    assert.match(h.get('arcade-status').textContent, /Perfect control/);
+  }
+});
+
+test('an old cancelled pointer cannot release a new keyboard-started charge', () => {
+  const h = harness(); h.window.PortfolioArcade.open('ki'); const action = h.get('ki-charge');
+  action.fire('pointerdown', { button: 0, isPrimary: true, pointerId: 7 }); h.advance(500);
+  h.get('arcade-reset').fire('click'); action.fire('click', { detail: 0 }); h.advance(500);
+  action.fire('pointerup', { pointerId: 7 }); action.fire('click', { detail: 1 });
+  assert.equal(action.textContent, 'release ki'); assert.match(h.get('arcade-score').textContent, /1 \/ 5 · 0 hits/);
+  h.advance(974); action.fire('click', { detail: 0 }); assert.match(h.get('arcade-status').textContent, /Perfect control/);
 });

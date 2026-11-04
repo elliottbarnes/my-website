@@ -28,7 +28,7 @@ function radar({saved = null, denied = false, hash = '', paused = false, reduced
   const root = {dataset: {view: 'workspace', motion: paused ? 'paused' : 'running'}};
   if (reduced) delete root.dataset.motion;
   const frames = new Map();
-  let id = 0, geometry = [], drawings = 0;
+  let id = 0, geometry = [], drawings = 0, canvasResets = 0, visibility;
   const context = new Proxy({
     clearRect() { geometry = []; drawings++; },
     arc(...args) { geometry.push(['arc', ...args, {alpha: context.globalAlpha}]); },
@@ -46,6 +46,10 @@ function radar({saved = null, denied = false, hash = '', paused = false, reduced
   const plot = {...element(), querySelectorAll: () => signals};
   const canvas = {getContext: () => context, closest: () => plot,
     getBoundingClientRect: () => ({width, height})};
+  for (const dimension of ['width', 'height']) {
+    let value;
+    Object.defineProperty(canvas, dimension, {get: () => value, set: next => { value = next; canvasResets++; }});
+  }
   const about = {hidden: false};
   const workspace = {...surface(), querySelector: () => null};
   const document = {...surface(), documentElement: root, hidden: false,
@@ -81,12 +85,15 @@ function radar({saved = null, denied = false, hash = '', paused = false, reduced
       setItem(key, value) { if (denied) throw new Error('denied'); assert.equal(key, 'elliott:radar-signals:v1'); stored.value = value; },
     }};
   vm.runInNewContext(source, {document, window, Image,
+    IntersectionObserver: class { constructor(callback) { visibility = callback; } observe() {} },
     getComputedStyle: () => ({getPropertyValue: () => ''}),
     requestAnimationFrame: callback => { frames.set(++id, callback); return id; },
     cancelAnimationFrame: id => frames.delete(id)});
   return {root, window, document, motion, frames, plot, signals, button, feedback, requests, images, stored, about,
     api: window.PortfolioRadar,
     get drawings() { return drawings; },
+    get canvasResets() { return canvasResets; },
+    visible(value) { visibility([{isIntersecting:value}]); },
     drawing: () => JSON.stringify(geometry),
     visit(panel) { about.hidden = panel !== 'about'; window.emit('portfolio:view', {detail: {view: panel ? 'workspace' : 'entrance', panel}}); },
     frame(now) { const pending = [...frames.values()]; frames.clear(); pending.forEach(callback => callback(now)); }};
@@ -313,4 +320,64 @@ test('the shared game lifecycle pauses radar even before a lazy game dialog exis
   assert.equal(page.frames.size, 0);
   delete page.root.dataset.training; page.window.emit('portfolio:training');
   assert.equal(page.frames.size, 1);
+});
+
+
+test('radar draws each display callback at 60, 120 and 144 Hz with equal elapsed motion', () => {
+  for (const hz of [60, 120, 144]) {
+    const page = radar();
+    const initial = page.drawings;
+    for (let frame = 0; frame <= hz; frame++) page.frame(frame * 1000 / hz);
+    assert.equal(page.drawings - initial, hz + 1, `${hz} Hz must not skip display frames`);
+    const line = JSON.parse(page.drawing()).filter(entry => entry[0] === 'line')[4];
+    const angle = Math.atan2(line[2] - 110, line[1] - 128);
+    assert.ok(Math.abs(angle - 1000 / 1700) < 1e-10, `${hz} Hz keeps the same sweep speed`);
+  }
+});
+
+test('unchanged resize notifications do not reset the radar backing canvas', () => {
+  const page = radar();
+  const initial = page.canvasResets;
+  assert.ok(initial > 0);
+  for (let frame = 0; frame < 20; frame++) {
+    page.frame(frame * 16.67);
+    page.window.emit('resize');
+  }
+  assert.equal(page.canvasResets, initial, 'unchanged dimensions do not reallocate or clear the backing canvas');
+});
+
+test('scrolling the radar out of view suspends it without a jump on return', () => {
+  const page = radar();
+  page.frame(0); page.frame(20);
+  const frozen = page.drawing();
+  page.visible(false);
+  assert.equal(page.frames.size, 0);
+  const drawings = page.drawings;
+  page.frame(5000);
+  assert.equal(page.drawings, drawings);
+  page.visible(true); page.frame(10000);
+  assert.equal(page.drawing(), frozen);
+  page.frame(10020);
+  assert.notEqual(page.drawing(), frozen);
+});
+
+test('a long frame advances the radar by at most 80ms', () => {
+  const page = radar();
+  page.frame(0); page.frame(5000);
+  const line = JSON.parse(page.drawing()).filter(entry => entry[0] === 'line')[4];
+    const angle = Math.atan2(line[2] - 110, line[1] - 128);
+  assert.ok(Math.abs(angle - 80 / 1700) < 1e-10);
+});
+
+test('finished summons stop redrawing and late art restarts only its reveal', () => {
+  const page = radar({saved: JSON.stringify(routes)});
+  page.api.summon();
+  for (let frame = 0; frame < 100; frame++) page.frame(frame * 20);
+  assert.equal(page.frames.size, 0, 'finished fallback is static while its image is loading');
+  page.images[0].load();
+  assert.equal(page.frames.size, 1, 'late artwork receives a bounded reveal');
+  for (let frame = 0; frame < 60; frame++) page.frame(5000 + frame * 20);
+  assert.equal(page.frames.size, 0, 'finished dragon consumes no animation frames');
+  page.button.emit('click');
+  assert.equal(page.frames.size, 1, 'return resumes the radar sweep');
 });

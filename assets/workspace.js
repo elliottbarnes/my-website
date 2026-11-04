@@ -141,11 +141,12 @@
   } catch { visited = new Set(); }
   const signalLabels = signals.map(signal => signal.getAttribute("aria-label"));
   const locations = [[0, -.70], [.64, -.37], [.64, .37], [0, .70], [-.64, .37], [-.64, -.37], [0, 0]];
-  let width = 0, height = 0, frame = 0, lastFrame = 0, elapsed = 0;
+  let width = 0, height = 0, frame = 0, lastFrame = null, elapsed = 0, inViewport = true;
+  let pixelRatio = 0;
   let ink = "#c9b798", muted = "#969082", accent = ink;
   let centerX = 0, centerY = 0, radius = 0, selected = -1, energyAnimation, pulseAt = -Infinity;
   let summoned = null, dragonImage = null, dragonPoints = [], dragonMask = null, maskAccent = "", completionAnnounced = false;
-  const active = () => workspaceVisible() && !about.hidden && root.dataset.training !== "open";
+  const active = () => workspaceVisible() && inViewport && !about.hidden && root.dataset.training !== "open";
   const tau = Math.PI * 2;
   const ease = value => { const t = Math.max(0, Math.min(1, value)); return t * t * (3 - 2 * t); };
   const summonProgress = () => summoned ? (summoned.static ? 1 : ease((elapsed - summoned.started) / 1200)) : 0;
@@ -223,7 +224,7 @@
       const count = Math.min(960, points.length);
       dragonPoints = Array.from({ length: count }, (_, index) => points[Math.floor(index * points.length / count)]);
       tintDragon();
-      if (summoned && active()) draw();
+      if (summoned && active()) { draw(); schedule(); }
     };
     // A blocked or unavailable image leaves the deterministic constellation intact.
     dragonImage.onerror = () => {};
@@ -235,7 +236,7 @@
     summoned = null;
     updateDiscovery();
     if (feedback) announce("returned to project signals.");
-    if (active()) draw();
+    if (active()) { draw(); schedule(); }
   }
 
   function summon() {
@@ -246,6 +247,7 @@
     announce("the eternal dragon answers. choose return or press escape to return to the signals.");
     loadDragon();
     draw();
+    schedule();
     return true;
   }
 
@@ -267,10 +269,11 @@
       const source = locations[index % locations.length];
       const segment = index / count * (chain.length - 1), at = Math.min(chain.length - 2, Math.floor(segment)), t = segment - at;
       const from = locations[chain[at]], to = locations[chain[at + 1]];
-      const constellation = { x: (from[0] + (to[0] - from[0]) * t) * .62, y: (from[1] + (to[1] - from[1]) * t) * .62 };
+      const constellationX = (from[0] + (to[0] - from[0]) * t) * .62;
+      const constellationY = (from[1] + (to[1] - from[1]) * t) * .62;
       const point = summoned.usingArt ? dragonPoints[index] : null;
-      const x = cx + (point ? constellation.x + (point.x / dragonContent - constellation.x) * artReveal : constellation.x) * size;
-      const y = cy + (point ? constellation.y + (point.y / dragonContent - constellation.y) * artReveal : constellation.y) * size;
+      const x = cx + (point ? constellationX + (point.x / dragonContent - constellationX) * artReveal : constellationX) * size;
+      const y = cy + (point ? constellationY + (point.y / dragonContent - constellationY) * artReveal : constellationY) * size;
       const progress = ease((reveal - (index % 7) * .02) / (1 - (index % 7) * .02));
       const sx = centerX + source[0] * radius, sy = centerY + source[1] * radius;
       context.globalAlpha = (.35 + (point?.brightness ?? .6) * .65) * (point?.alpha ?? 1) * reveal;
@@ -370,28 +373,43 @@
     centerY = height * .5;
     radius = Math.max(0, Math.min(height / 2 - 17, width * (compact ? .5 : .30) - 17));
     const ratio = Math.min(window.devicePixelRatio || 1, 2);
-    canvas.width = Math.round(width * ratio); canvas.height = Math.round(height * ratio);
-    context.setTransform(ratio, 0, 0, ratio, 0, 0);
+    const nextWidth = Math.round(width * ratio), nextHeight = Math.round(height * ratio);
+    if (canvas.width !== nextWidth || canvas.height !== nextHeight || ratio !== pixelRatio) {
+      canvas.width = nextWidth; canvas.height = nextHeight;
+      context.setTransform(ratio, 0, 0, ratio, 0, 0);
+      pixelRatio = ratio;
+    }
     signals.forEach((signal, index) => {
       signal.style.left = `${centerX + locations[index][0] * radius}px`;
       signal.style.top = `${centerY + locations[index][1] * radius}px`;
     });
     if (active()) draw();
   }
+  function moving() {
+    // A finished summon is a still image. Late art restarts only its own reveal.
+    return !summoned || (!summoned.static && (elapsed - summoned.started < 1200
+      || (summoned.usingArt && !summoned.artReady && elapsed - summoned.artAt < 900)));
+  }
+  function schedule() {
+    if (!frame && active() && !quiet() && moving()) frame = requestAnimationFrame(tick);
+  }
   function tick(now) {
     frame = 0;
-    if (!active() || quiet()) { lastFrame = 0; return; }
-    if (lastFrame && now - lastFrame < 40) { frame = requestAnimationFrame(tick); return; }
-    elapsed += lastFrame ? Math.min(now - lastFrame, 80) : 0;
+    if (!active() || quiet()) { lastFrame = null; return; }
+    // Every display callback gets a draw. The timestamp keeps speed identical
+    // on 60/120/144 Hz screens; the cap prevents a long stall from teleporting.
+    elapsed += lastFrame === null ? 0 : Math.max(0, Math.min(now - lastFrame, 80));
     lastFrame = now;
-    draw(); frame = requestAnimationFrame(tick);
+    draw();
+    if (moving()) schedule();
+    else lastFrame = null;
   }
   function refresh() {
     if (frame) cancelAnimationFrame(frame);
-    frame = 0; lastFrame = 0;
+    frame = 0; lastFrame = null;
     if (quiet() || !active()) energyAnimation?.cancel();
     colors(); resize();
-    if (active() && !quiet()) frame = requestAnimationFrame(tick);
+    schedule();
   }
   radar.addEventListener?.("click", event => {
     if (!active() || quiet() || event.target.closest?.("a,button")) return;
@@ -434,6 +452,12 @@
   window.addEventListener("resize", resize, { passive: true });
   motion.addEventListener("change", refresh);
   if (typeof ResizeObserver === "function") new ResizeObserver(resize).observe(canvas);
+  if (typeof IntersectionObserver === "function") {
+    new IntersectionObserver(entries => {
+      const visible = entries.some(entry => entry.isIntersecting);
+      if (visible !== inViewport) { inViewport = visible; refresh(); }
+    }).observe(canvas);
+  }
   window.PortfolioRadar = Object.freeze({ get unlocked() { return visited.size === projectRoutes.size; }, summon });
   remember(window.location?.hash?.slice(1));
   updateDiscovery();
