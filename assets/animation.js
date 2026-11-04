@@ -1181,6 +1181,11 @@ const snippets = [{"repo": "glassbox", "title": "source → WebAssembly", "path"
     openGraphic(row, "button", kind);
     codeSurface?.focus?.({ preventScroll: true });
   });
+  function updateECDSALabel(node, text) {
+    // A focus/blur redraw can run between pointerdown and click. Replacing an
+    // unchanged Text node can discard that click in WebKit.
+    if (node && node.textContent !== text) node.textContent = text;
+  }
   function syncECDSA() {
     const active = interaction?.kind === "ecdsa" && interaction.target && Boolean(interaction.ecdsa);
     if (ecdsaControls) {
@@ -1190,16 +1195,16 @@ const snippets = [{"repo": "glassbox", "title": "source → WebAssembly", "path"
     }
     if (!active) { ecdsaAnnouncement = ""; return; }
     const state = interaction.ecdsa, step = Math.floor(state.position / ecdsaStepLength);
-    if (ecdsaLabel) ecdsaLabel.textContent = `${step + 1} / 6`;
+    updateECDSALabel(ecdsaLabel, `${step + 1} / 6`);
     if (ecdsaButtons.back) ecdsaButtons.back.disabled = step === 0;
     if (ecdsaButtons.next) ecdsaButtons.next.disabled = step === 5;
     if (ecdsaButtons.play) {
       ecdsaButtons.play.disabled = still();
-      ecdsaButtons.play.textContent = still() ? "paused" : state.playing ? "pause" : step === 5 ? "replay" : "play";
+      updateECDSALabel(ecdsaButtons.play, still() ? "paused" : state.playing ? "pause" : step === 5 ? "replay" : "play");
       ecdsaButtons.play.setAttribute("aria-label", still() ? "Animation paused; use arrows to step" : state.playing ? "Pause ECDSA playback" : "Play ECDSA animation");
     }
     ecdsaButtons.tamper?.setAttribute("aria-pressed", String(state.tampered));
-    if (ecdsaButtons.tamper) ecdsaButtons.tamper.textContent = state.tampered ? "restore hash" : "tamper hash";
+    updateECDSALabel(ecdsaButtons.tamper, state.tampered ? "restore hash" : "tamper hash");
     const key = `${step}:${state.tampered}`;
     if (ecdsaAnnouncement !== key) {
       ecdsaAnnouncement = key;

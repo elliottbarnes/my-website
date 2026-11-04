@@ -256,6 +256,29 @@ test('leaving a pending source effect prevents a late opening', async ({ page })
   expect(await page.evaluate(() => window.PortfolioAnimation.state.effect)).toBeNull();
 });
 
+test('ECDSA pointer focus preserves the pressed label until the click completes', async ({ page }) => {
+  await loaded(page);
+  await runCommand(page, 'ecdsa');
+  const tamper = page.locator('[data-ecdsa-tamper]');
+  await expect(tamper).toBeVisible();
+  await page.locator('.scene-body').focus();
+  const label = await tamper.evaluateHandle(button => button.firstChild);
+  // Linux WebKit focuses buttons on mouse down; macOS may not. Exercise that
+  // focus/blur redraw explicitly so both platforms cover the same click path.
+  await tamper.evaluate(button => button.addEventListener('mousedown', () => button.focus(), { once: true }));
+  const box = await tamper.boundingBox();
+  await page.mouse.move(box.x + box.width / 2, box.y + box.height / 2);
+  await page.mouse.down();
+  try {
+    expect(await tamper.evaluate((button, original) => button.firstChild === original, label), 'unchanged label survives focus redraw').toBe(true);
+  } finally {
+    await page.mouse.up();
+    await label.dispose();
+  }
+  await expect(tamper).toHaveAttribute('aria-pressed', 'true');
+  await expect(tamper).toHaveText('restore hash');
+});
+
 test('all source discovery families render with reduced motion', async ({ page }) => {
   await loaded(page);
   await discoverAll(page);

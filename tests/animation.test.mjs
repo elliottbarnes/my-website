@@ -848,6 +848,31 @@ test("reduced motion keeps ECDSA manual, keyboard operable, and free of animatio
   assert.equal(controls.frames.size, 0);
 });
 
+test("ECDSA focus redraw preserves the pressed control's text node until activation", () => {
+  for (const paused of [true, false]) {
+    const controls = animation({ paused });
+    const labels = [controls.document.querySelector("[data-ecdsa-step]"), controls.ecdsaButtons.play, controls.ecdsaButtons.tamper];
+    // DOM textContent assignment replaces the child Text node, even if its text
+    // is identical. WebKit can then lose the pending click during focus/blur.
+    for (const label of labels) {
+      let child = { nodeValue: label.textContent };
+      Object.defineProperties(label, {
+        firstChild: { get: () => child },
+        textContent: { get: () => child.nodeValue, set: value => { child = { nodeValue: String(value) }; } },
+      });
+    }
+    controls.api.openECDSA();
+    const textNodes = labels.map(label => label.firstChild);
+    controls.ecdsaButtons.tamper.focus();
+    controls.field.parentElement.dispatch("blur");
+    labels.forEach((label, index) => assert.equal(label.firstChild, textNodes[index], "focus redraw must preserve an unchanged text node"));
+    controls.ecdsaButtons.tamper.dispatch("click");
+    assert.equal(controls.api.state.ecdsaTampered, true);
+    assert.equal(controls.ecdsaButtons.tamper.textContent, "restore hash");
+    assert.notEqual(controls.ecdsaButtons.tamper.firstChild, textNodes[2], "activation still updates a changed label");
+  }
+});
+
 test("global pause freezes ECDSA mid-step and resumes without consuming paused time", () => {
   const controls = animation();
   controls.api.openECDSA();
