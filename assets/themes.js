@@ -34,6 +34,54 @@
     return `#${[1, 3, 5].map((at) => Math.round(channel(foreground, at) * amount + channel(background, at) * (1 - amount)).toString(16).padStart(2, "0")).join("")}`;
   }
 
+  function luminance(hex) {
+    const channels = [1, 3, 5].map((at) => {
+      const value = parseInt(hex.slice(at, at + 2), 16) / 255;
+      return value <= .04045 ? value / 12.92 : ((value + .055) / 1.055) ** 2.4;
+    });
+    return channels[0] * .2126 + channels[1] * .7152 + channels[2] * .0722;
+  }
+
+  function contrast(a, b) {
+    const first = luminance(a), second = luminance(b);
+    return (Math.max(first, second) + .05) / (Math.min(first, second) + .05);
+  }
+
+  // Preserve the source palette for canvas art and swatches. Interface tokens
+  // separately meet text contrast on both surfaces, with a small rounding margin.
+  function readable(color, backgrounds, minimum = 4.6) {
+    const score = (candidate) => Math.min(...backgrounds.map((background) => contrast(candidate, background)));
+    if (score(color) >= minimum) return color;
+    const target = score("#000000") > score("#ffffff") ? "#000000" : "#ffffff";
+    let low = 0, high = 1;
+    for (let step = 0; step < 16; step += 1) {
+      const amount = (low + high) / 2;
+      if (score(mix(target, color, amount)) >= minimum) high = amount;
+      else low = amount;
+    }
+    return mix(target, color, high);
+  }
+
+  const interfaceTokens = new Map();
+  function uiTokens(palette) {
+    if (interfaceTokens.has(palette.name)) return interfaceTokens.get(palette.name);
+    const surfaces = [palette.bg, palette.cursorline];
+    const tokens = {
+      "ui-muted": readable(mix(palette.fg, palette.bg, .68), surfaces),
+      "ui-faint": readable(mix(palette.fg, palette.bg, .4), surfaces),
+      "ui-accent": readable(palette.accent, surfaces),
+      "ui-highlight": readable(palette.kinds.keyword, surfaces),
+      "ui-chrome": readable(mix(palette.fg, palette.bg, .72), surfaces),
+      "ui-border": readable(mix(palette.fg, palette.bg, .23), surfaces, 3.1),
+      "ui-selection-ink": readable(palette.selectionText || palette.fg, [palette.selection]),
+    };
+    for (const kind of ["keyword", "number", "function", "comment"]) {
+      tokens[`ui-syntax-${kind}`] = readable(palette.kinds[kind] || palette.fg, surfaces);
+    }
+    interfaceTokens.set(palette.name, tokens);
+    return tokens;
+  }
+
   function apply(name, { persist = true } = {}) {
     // Labels take priority over legacy aliases (parchment now names its own palette).
     const id = palettes.find((palette) => palette.label === name)?.name
@@ -51,6 +99,7 @@
       panel: palette.cursorline, highlight: palette.kinds.keyword,
       selection: palette.selection, "selection-ink": palette.selectionText || palette.fg,
       chrome: mix(palette.fg, palette.bg, .72),
+      ...uiTokens(palette),
     };
     Object.entries(palette.kinds).forEach(([kind, color]) => { variables[`syntax-${kind}`] = color; });
     // A few source palettes do not define every token family.
@@ -154,10 +203,13 @@
     draw();
   }
 
-  function open() {
+  function open(event) {
     if (dialog.open) return;
     original = current;
-    opener = document.activeElement;
+    // Safari does not always focus a button after a pointer click. Remember the
+    // actual trigger, while command-menu/API openings retain their focused caller.
+    opener = event?.currentTarget?.hasAttribute?.("data-theme-toggle")
+      ? event.currentTarget : document.activeElement;
     input.value = "";
     options = palettes;
     selected = Math.max(0, palettes.findIndex((palette) => palette.name === current));

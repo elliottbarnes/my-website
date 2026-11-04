@@ -9,6 +9,9 @@ dist.manifest.json
 .deployments/
 .aws-live/
 __pycache__/
+node_modules/
+playwright-report/
+test-results/
 
 # Local credentials and environment overrides
 .env

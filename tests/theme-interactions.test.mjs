@@ -27,8 +27,8 @@ function setup({ compact = false, saved = null, denyStorage = false } = {}) {
     get id() { return this.attributes.id; }
     get open() { return this.hasAttribute("open"); }
     get isConnected() { return this === root || Boolean(this.parentElement?.isConnected); }
-    get clientHeight() { return this.id === "theme-picker-options" ? (compact ? 256 : 104) : 0; }
-    get offsetHeight() { return compact ? 32 : 13; }
+    get clientHeight() { return this.id === "theme-picker-options" ? (compact ? 352 : 224) : 0; }
+    get offsetHeight() { return compact ? 44 : 28; }
     get offsetTop() { return Math.max(0, this.parentElement?.children.indexOf(this) ?? 0) * this.offsetHeight; }
     setAttribute(key, value) { this.attributes[key] = String(value); }
     getAttribute(key) { return this.attributes[key] ?? null; }
@@ -55,6 +55,7 @@ function setup({ compact = false, saved = null, denyStorage = false } = {}) {
     emit(type, properties = {}) {
       const event = {
         target: this,
+        currentTarget: this,
         preventDefault() { this.defaultPrevented = true; },
         stopPropagation() { this.propagationStopped = true; },
         ...properties,
@@ -207,4 +208,45 @@ test("storage denial does not break commit or native dialog cancellation", () =>
   assert.equal(page.root.dataset.theme, "harbor");
   assert.equal(page.events.at(-1).type, "portfolio:theme-picker");
   assert.equal(page.events.at(-1).detail.open, false);
+});
+
+// Independently evaluate the actual CSS tokens written by the theme controller.
+// This verifies contrast on the two interface surfaces, not canvas artwork.
+function contrastRatio(first, second) {
+  const luminance = color => {
+    const rgb = color.match(/[a-f\d]{2}/gi).map(channel => parseInt(channel, 16) / 255);
+    const linear = rgb.map(value => value <= 0.04045 ? value / 12.92 : ((value + 0.055) / 1.055) ** 2.4);
+    return linear.reduce((sum, value, index) => sum + value * [0.2126, 0.7152, 0.0722][index], 0);
+  };
+  const values = [luminance(first), luminance(second)].sort((a, b) => a - b);
+  return (values[1] + 0.05) / (values[0] + 0.05);
+}
+
+test("every theme keeps interface text, selection text and control boundaries readable", () => {
+  const page = setup();
+  const textTokens = ["ink", "ui-muted", "ui-faint", "ui-accent", "ui-highlight", "ui-chrome",
+    "ui-syntax-keyword", "ui-syntax-number", "ui-syntax-function", "ui-syntax-comment"];
+  for (const theme of page.api.names) {
+    page.api.apply(theme);
+    const style = page.root.style;
+    for (const surface of ["paper", "panel"]) {
+      for (const token of textTokens) {
+        const ratio = contrastRatio(style[`--${token}`], style[`--${surface}`]);
+        assert.ok(ratio >= 4.5, `${theme}: ${token} on ${surface} is ${ratio.toFixed(2)}:1`);
+      }
+      assert.ok(contrastRatio(style["--ui-border"], style[`--${surface}`]) >= 3, `${theme}: control boundary on ${surface}`);
+    }
+    assert.ok(contrastRatio(style["--ui-selection-ink"], style["--selection"]) >= 4.5, `${theme}: selection text`);
+    assert.equal(style["--accent"], page.api.palette.accent, "canvas artwork retains the source accent");
+    assert.equal(style["--syntax-comment"], page.api.palette.kinds.comment, "source swatches remain unchanged");
+  }
+});
+
+test("pointer opening restores the actual theme trigger even when the browser leaves focus elsewhere", () => {
+  const page = setup();
+  page.document.activeElement = page.root;
+  page.button.emit("click");
+  assert.equal(page.document.activeElement, page.input);
+  page.key("Escape");
+  assert.equal(page.document.activeElement, page.button);
 });

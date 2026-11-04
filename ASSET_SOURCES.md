@@ -16,6 +16,14 @@ The browser copy is `assets/fonts/IBMPlexMono-Regular.woff2`, converted from tha
 
 The terminal styling is inspired by the user-selected reference, [hancore.dev](https://hancore.dev). The animation and interface implementation is original to this repository. Its creator’s face, personal information, and branding are not used. The EB contour graphic is generated locally. The 28 palette values follow the reference’s public colorscheme catalog, with provenance described in `assets/themes.js`. Their display names are personalized for Elliott’s site; stable internal source IDs preserve saved preferences.
 
+Interface text colors are derived separately from those palettes to remain readable on the page and panel backgrounds. Canvas source colors and the picker’s palette swatches retain the original values.
+
+## Social preview
+
+`assets/social-card.svg` is an original 1200×630 typographic design for Elliott’s portfolio, created on 4 November 2026. It uses the site's existing navy, orange and green palette and local IBM Plex Mono font. The SVG embeds the unmodified WOFF2 font; its SIL OFL notice is retained at `assets/fonts/OFL.txt`. No third-party character artwork is included.
+
+`assets/social-card.png` is the raster sharing copy used by Open Graph and Twitter metadata. Render the standalone SVG at its intrinsic 1200×630 size after its font loads when updating the card. Its dimensions and metadata reference are checked by the presentation tests. The Dragon Ball favicon remains unchanged.
+
 ## Code animation references
 
 The code used to personalize the terminal animation comes from Elliott's public, MIT-licensed projects. Exact snippets, commit-pinned source URLs, line ranges, and complete license notices are recorded in `.design/code-references.json`. They were checked against public GitHub sources on 2026-10-11: Glassbox (`c7ae7bd3eb374580b0c28e0b554108b5504a1c00`), Pixel Language (`bf7abf01bd02a9a3f40216a81f6a6b8809009ea2`), Architecture Lab (`db570f2adea137f8a362ee171ca4230f5f7b76fc`), and Automata Lab (`5f6754580cfb0ffcf393d9e3d944ce1753cc1554`). Display-only excerpts do not execute or connect to external services. Any excerpts included in the published animation script retain their MIT license notice in that script.
@@ -32,7 +40,7 @@ The housing takes inspiration from classic game hardware with original branding.
 
 `assets/dragon-ball.png` is the unmodified 256×256 transparent **Dragon Ball** icon by **Musett.com**, downloaded from [IconArchive](https://www.iconarchive.com/show/dragon-ballz-icons-by-musett/Dragon-Ball-icon.html). [Original PNG](https://www.iconarchive.com/download/i45735/musett/dragon-ballz/Dragon-Ball.256.png).
 
-The source lists [CC BY-NC-ND 4.0](https://creativecommons.org/licenses/by-nc-nd/4.0/): attribution required, non-commercial use only, no distribution of modified artwork. The depicted products or characters are © their respective copyright owners. No affiliation or endorsement is implied. The homepage footer’s Icon credits disclosure publishes the author, source, and license links. The original PNG is used for browser, Apple touch, and web manifest icons and link previews without image edits; its transparent background contains no checkerboard. The legacy `assets/favicon.svg` and `assets/social-card.svg` paths embed the same unmodified PNG bytes so old references also receive the current icon. Do not reuse this asset for commercial purposes without appropriate permission.
+The source lists [CC BY-NC-ND 4.0](https://creativecommons.org/licenses/by-nc-nd/4.0/): attribution required, non-commercial use only, no distribution of modified artwork. The depicted products or characters are © their respective copyright owners. No affiliation or endorsement is implied. The homepage footer’s Icon credits disclosure publishes the author, source, and license links. The original PNG is used for browser, Apple touch, and web manifest icons without image edits; its transparent background contains no checkerboard. The legacy `assets/favicon.svg` path embeds the same unmodified PNG bytes. Do not reuse this asset for commercial purposes without appropriate permission.
 
 ## Toolkit icons
 
