@@ -313,7 +313,7 @@
   const timeLabel = ms => `${Math.floor(ms / 60000)}:${String(Math.floor(ms / 1000) % 60).padStart(2, '0')}`;
   const keys = new Set(), pointers = new Map(), pulses = new Map();
   const quiet = () => reduced.matches || root.dataset.motion === 'paused';
-  const held = control => [...keys].some(key => keyControl(key) === control) || [...pointers.values()].includes(control) || (pulses.get(control) || 0) > performance.now();
+  const held = control => [...keys].some(key => keyControl(key) === control) || [...pointers.values()].some(({ button }) => button.dataset.piccoloHold === control) || (pulses.get(control) || 0) > performance.now();
   const input = () => ({ x: Number(held('right')) - Number(held('left')), y: Number(held('down')) - Number(held('up')), action: held('action') || pendingAction || toggledAction });
   const terminal = () => game.phase === 'won' || game.phase === 'lost';
   const setText = (node, value) => { if (node.textContent !== value) node.textContent = value; };
@@ -496,12 +496,12 @@
   function clearInput() {
     pendingAction = false; toggledAction = false; keys.clear(); pulses.clear();
     cancelAction(game); game.player.walking = false;
-    dialog.querySelectorAll('[data-piccolo-hold]').forEach(button => {
-      for (const [id, control] of pointers) if (control === button.dataset.piccoloHold && button.hasPointerCapture?.(id)) button.releasePointerCapture(id);
-      button.removeAttribute('data-held');
-    });
+    const captured = [...pointers];
     pointers.clear();
-    cancelAction(game); // Capture-loss callbacks above must not block a fresh press.
+    for (const [id, { button }] of captured) {
+      if (button.hasPointerCapture(id)) button.releasePointerCapture(id);
+      button.removeAttribute('data-held');
+    }
   }
   function schedule() { if (!frame && dialog.open && !document.hidden && !paused && game.phase === 'playing') frame = requestAnimationFrame(tick); }
   function tick(now) {
@@ -530,23 +530,45 @@
   const releaseKey = event => { const key = event.key.length === 1 ? event.key.toLowerCase() : event.key; keys.delete(key); return key; };
   dialog.addEventListener('keyup', event => { const key = releaseKey(event); if (key === ' ' && event.target.closest('button, summary') && event.target.dataset.piccoloHold !== 'action') return; if (keyControl(key)) event.preventDefault(); });
   window.addEventListener('keyup', releaseKey);
-  function releasePointer(event, cancelled = false) {
-    const control = pointers.get(event.pointerId); pointers.delete(event.pointerId);
-    if (cancelled && control === 'action') { pendingAction = false; toggledAction = false; cancelAction(game); game.player.actionBlocked = true; }
-    dialog.querySelectorAll('[data-piccolo-hold]').forEach(button => {
-      if (![...pointers.values()].includes(button.dataset.piccoloHold)) button.removeAttribute('data-held');
-    });
+  function releasePointer(id, cancelled = false) {
+    const pointer = pointers.get(id);
+    if (!pointer) return;
+    pointers.delete(id);
+    const { button } = pointer;
+    if (cancelled && button.dataset.piccoloHold === 'action') { pendingAction = false; toggledAction = false; cancelAction(game); game.player.actionBlocked = true; }
+    if (![...pointers.values()].some(other => other.button === button)) button.removeAttribute('data-held');
   }
   // Capture usually routes the release to its button. Window fallbacks also
   // cover releases after capture is lost, layout changes, or the pointer leaves.
-  window.addEventListener('pointerup', event => releasePointer(event));
-  window.addEventListener('pointercancel', event => releasePointer(event, true));
+  window.addEventListener('pointerup', event => releasePointer(event.pointerId), true);
+  window.addEventListener('pointercancel', event => releasePointer(event.pointerId, true), true);
   window.addEventListener('pointermove', event => {
-    if (['mouse', 'pen'].includes(event.pointerType) && event.buttons === 0) releasePointer(event, true);
+    if (['mouse', 'pen'].includes(event.pointerType) && (event.buttons & 1) === 0) releasePointer(event.pointerId, true);
   });
+  function releaseEndedTouches(event) {
+    if (!pointers.size) return;
+    const touched = new Set(Array.from(event.touches, touch => touch.target.closest?.('[data-piccolo-hold]')));
+    // A touch may end without delivering pointerup or lostpointercapture to
+    // the game. Keep controls whose buttons still have a finger on them.
+    for (const [id, { button, type }] of pointers) {
+      if (type === 'touch' && !touched.has(button)) releasePointer(id, event.type === 'touchcancel');
+    }
+  }
+  window.addEventListener('touchend', releaseEndedTouches, { capture: true, passive: true });
+  window.addEventListener('touchcancel', releaseEndedTouches, { capture: true, passive: true });
   dialog.querySelectorAll('[data-piccolo-hold]').forEach(button => {
-    button.addEventListener('pointerdown', event => { if (event.button !== 0 || paused || game.phase !== 'playing') return; event.preventDefault(); pointers.set(event.pointerId, button.dataset.piccoloHold); if (button.dataset.piccoloHold === 'action') { pendingAction = true; game.player.actionBlocked = false; } button.setPointerCapture(event.pointerId); button.dataset.held = 'true'; });
-    button.addEventListener('pointerup', event => releasePointer(event)); button.addEventListener('pointercancel', event => releasePointer(event, true)); button.addEventListener('lostpointercapture', event => releasePointer(event, true));
+    button.addEventListener('pointerdown', event => {
+      if (event.button !== 0 || paused || game.phase !== 'playing') return;
+      event.preventDefault();
+      try { button.setPointerCapture(event.pointerId); }
+      catch (error) { if (error.name === 'NotFoundError') return; throw error; }
+      pointers.set(event.pointerId, { button, type: event.pointerType });
+      if (button.dataset.piccoloHold === 'action') { pendingAction = true; game.player.actionBlocked = false; }
+      button.dataset.held = 'true';
+    });
+    button.addEventListener('pointerup', event => releasePointer(event.pointerId));
+    button.addEventListener('pointercancel', event => releasePointer(event.pointerId, true));
+    button.addEventListener('lostpointercapture', event => releasePointer(event.pointerId, true));
     button.addEventListener('click', event => { if (event.detail === 0 && !paused && game.phase === 'playing') { if (button.dataset.piccoloHold === 'action') toggleAction(); else pulses.set(button.dataset.piccoloHold, performance.now() + 200); } });
   });
   startButton.addEventListener('click', begin); dialog.querySelector('#piccolo-new-run').addEventListener('click', () => begin({ fresh: true })); pauseButton.addEventListener('click', () => setPaused(!paused));

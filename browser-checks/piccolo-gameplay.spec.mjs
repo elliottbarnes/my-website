@@ -75,6 +75,15 @@ async function retryCheckpoint(page, driver) {
 
 for (const viewport of [{ width: 390, height: 844 }, { width: 320, height: 568 }, { width: 844, height: 375 }]) {
   test(`Piccolo: ${viewport.width}×${viewport.height} controls are reachable and a cancelled charge is safe`, async ({ page, browserName }, testInfo) => {
+    const testMissedUpRelease = viewport.width === 320 && browserName === 'chromium';
+    if (testMissedUpRelease) await page.addInitScript(() => {
+      // Model a missed pointer release while retaining the browser's native touchend.
+      const dropUpRelease = event => {
+        if (event.target.closest?.('[data-piccolo-hold="up"]')) event.stopImmediatePropagation();
+      };
+      window.addEventListener('pointerup', dropUpRelease, true);
+      window.addEventListener('lostpointercapture', dropUpRelease, true);
+    });
     await page.setViewportSize(viewport); await openPiccolo(page);
     const driver = piccoloDriver(page);
     await page.locator('.piccolo-help summary').click();
@@ -87,6 +96,24 @@ for (const viewport of [{ width: 390, height: 844 }, { width: 320, height: 568 }
     }
     await page.locator('#piccolo-new-run').click(); await runCallbacks(page, 32);
     expect((await driver.state()).attempts).toBe(1);
+    if (testMissedUpRelease) {
+      const up = page.locator('[data-piccolo-hold="up"]');
+      await up.scrollIntoViewIfNeeded();
+      const box = await up.boundingBox(), initial = (await driver.state()).player.y;
+      const session = await page.context().newCDPSession(page);
+      try {
+        await session.send('Input.dispatchTouchEvent', { type: 'touchStart', touchPoints: [{ id: 9, x: box.x + box.width / 2, y: box.y + box.height / 2 }] });
+        await runCallbacks(page, 160);
+        const held = (await driver.state()).player.y;
+        expect(held).toBeLessThan(initial);
+        await session.send('Input.dispatchTouchEvent', { type: 'touchEnd', touchPoints: [] });
+        await runCallbacks(page, 160);
+        expect((await driver.state()).player.y).toBe(held);
+        await expect(up).not.toHaveAttribute('data-held', 'true');
+      } finally { await session.detach(); }
+      await page.locator('#piccolo-start').click();
+      await runCallbacks(page, 32);
+    }
     const action = page.locator('[data-piccolo-hold="action"]');
     await action.scrollIntoViewIfNeeded();
     if (browserName !== 'chromium') {
