@@ -32,7 +32,7 @@
     enemies.forEach((enemy, index) => { enemy.id = `enemy-${index}`; });
     return { width: WIDTH, height: HEIGHT, phase: 'ready', time: 0, lives: 3, score: 0, chain: 0, chainScore: 0, bankedChain: null, longestChain: 0, scored: [],
       breakdown: { targets: 0, chain: 0, finish: 0 }, rushes: 0, connections: 0, checkpoint: 80, event: 'ready', eventId: 0, camera: 0, shots: [], hazards: [], bursts: [],
-      player: { x: 80, y: GROUND - 31, w: 20, h: 31, vx: 0, vy: 0, grounded: true, facing: 1, coyote: .1, buffer: 0, jumpHeld: false, attackHeld: false, dashReady: true, dash: null, airTargets: [], immune: 0, cooldown: 0, fired: -10, landed: -10 },
+      player: { rushBuffer: 0, connected: -10, x: 80, y: GROUND - 31, w: 20, h: 31, vx: 0, vy: 0, grounded: true, facing: 1, coyote: .1, buffer: 0, jumpHeld: false, attackHeld: false, dashReady: true, dash: null, airTargets: [], immune: 0, cooldown: 0, fired: -10, landed: -10 },
       orbs: orbLocations.map(([x, y], i) => ({ id: `ball-${i}`, x, y, w: 16, h: 16, collected: false, star: i + 1 })),
       rings: ringLocations.map(([x, y], i) => ({ id: `ring-${i}`, x, y, w: 14, h: 14 })), enemies,
     };
@@ -42,7 +42,7 @@
   function hurt(game) {
     if (game.player.immune > 0 || game.phase !== 'playing') return false;
     game.lives--; event(game, game.lives ? 'respawn' : 'lost');
-    game.shots = []; game.hazards = []; game.chain = 0; game.chainScore = 0; game.bankedChain = null; game.player.dash = null; game.player.airTargets = []; game.player.dashReady = true;
+    game.shots = []; game.hazards = []; game.chain = 0; game.chainScore = 0; game.bankedChain = null; game.player.dash = null; game.player.rushBuffer = 0; game.player.airTargets = []; game.player.dashReady = true;
     if (!game.lives) { game.phase = 'lost'; return true; }
     Object.assign(game.player, { x: game.checkpoint, y: GROUND - 31, vx: 0, vy: 0, grounded: true, coyote: .1, buffer: 0, immune: 1.5, cooldown: .2 });
     game.camera = Math.max(0, Math.min(WIDTH - 640, game.checkpoint - 240));
@@ -101,13 +101,13 @@
     const dx = target ? target.point.x - origin.x : p.facing, dy = target ? target.point.y - origin.y : 0;
     const length = Math.max(1, Math.hypot(dx, dy));
     p.dash = { target: target?.id || null, vx: dx / length * DASH_SPEED, vy: dy / length * DASH_SPEED, left: target ? .30 : .15 };
-    p.dashReady = false; p.vy = 0; p.buffer = 0; p.coyote = 0; game.rushes++;
+    p.dashReady = false; p.rushBuffer = 0; p.vy = 0; p.buffer = 0; p.coyote = 0; game.rushes++;
     event(game, target ? 'rush' : 'rush-miss'); return true;
   }
   function connectDash(game, target) {
     const p = game.player;
     p.airTargets.push(target.id); p.dash = null; p.dashReady = true; p.vy = -335; p.vx = p.facing * 205; p.immune = Math.max(p.immune, .24);
-    game.connections++;
+    game.connections++; p.connected = game.time;
     const points = award(game, target.id, target.kind === 'ball' ? 250 : target.actor.kind === 'guardian' ? 1000 : 100, true);
     if (target.kind === 'ball') target.actor.collected = true;
     if (target.kind === 'enemy') hitEnemy(game, target.actor, 'blast');
@@ -125,19 +125,19 @@
     // A rush never jumps across a wall, ceiling or the side of a platform.
     const slices = Math.max(1, Math.ceil(Math.hypot(dx, dy) / 3));
     for (let i = 0; i < slices; i++) {
-      if (!freeBody(game, p.x + dx / slices, p.y + dy / slices)) { p.dash = null; p.vx = 0; p.vy = 25; event(game, 'rush-blocked'); return; }
+      if (!freeBody(game, p.x + dx / slices, p.y + dy / slices)) { p.dash = null; p.rushBuffer = 0; p.vx = 0; p.vy = 25; event(game, 'rush-blocked'); return; }
       p.x += dx / slices; p.y += dy / slices;
     }
     if (target && distance <= DASH_SPEED * dt + .1) { connectDash(game, target); return; }
     dash.left -= dt;
-    if (dash.left <= 0) { p.dash = null; p.vx = p.facing * 220; p.vy = 30; }
+    if (dash.left <= 0) { p.dash = null; p.rushBuffer = 0; p.vx = p.facing * 220; p.vy = 30; }
   }
   function step(game, input = {}, dt = 1 / 120) {
     if (game.phase !== 'playing' || !Number.isFinite(dt) || dt <= 0) return game;
     dt = Math.min(dt, 1 / 30); game.time += dt;
     const p = game.player, direction = Math.max(-1, Math.min(1, Number(input.direction) || 0));
     const wasGrounded = p.grounded, attackPressed = Boolean(input.attackPressed) || Boolean(input.attack) && !p.attackHeld;
-    p.attackHeld = Boolean(input.attack); p.immune = Math.max(0, p.immune - dt);
+    p.attackHeld = Boolean(input.attack); p.rushBuffer = Math.max(0, p.rushBuffer - dt); p.immune = Math.max(0, p.immune - dt);
     p.cooldown = Math.max(0, p.cooldown - dt);
     p.coyote = p.grounded ? .11 : Math.max(0, p.coyote - dt);
     if (input.jump && !p.jumpHeld) p.buffer = .14; else p.buffer = Math.max(0, p.buffer - dt);
@@ -149,7 +149,13 @@
     if (attackPressed && wasGrounded && p.cooldown === 0) {
       p.cooldown = .24; p.fired = game.time;
       game.shots.push({ x: p.x + p.w / 2 + p.facing * 14 - 5, y: p.y + 10, w: 10, h: 8, vx: p.facing * 510, life: .85 });
-    } else if (attackPressed && !wasGrounded) launchDash(game);
+    } else if (attackPressed && !wasGrounded) {
+      // A fresh tap in the last 120 ms of a targeted rush may carry into the
+      // next clear target. Holding attack never repeats, and a buffered tap
+      // never spends ki on an untargeted rush or crosses a blocked path.
+      if (p.dash?.target) p.rushBuffer = .12;
+      else launchDash(game);
+    }
     const oldX = p.x, oldY = p.y;
     if (p.dash) advanceDash(game, dt);
     else {
@@ -171,9 +177,10 @@
           p.landed = game.time;
           if (game.chain > 1) { game.bankedChain = { count: game.chain, points: game.chainScore, at: game.time }; event(game, 'chain-land'); }
         }
-        p.dashReady = true; p.airTargets = []; game.chain = 0; game.chainScore = 0;
+        p.dashReady = true; p.rushBuffer = 0; p.airTargets = []; game.chain = 0; game.chainScore = 0;
       }
     }
+    if (p.rushBuffer > 0 && !p.dash && !p.grounded && p.dashReady && targetForDash(game)) launchDash(game);
     game.bursts = game.bursts.filter(burst => game.time - burst.at < .32);
     for (const enemy of game.enemies) {
       enemy.hit = Math.max(0, enemy.hit - dt);
@@ -286,21 +293,24 @@
   if (typeof module !== 'undefined') module.exports = engine;
   if (typeof document === 'undefined') return;
   const dialog = document.getElementById('platformer-dialog'); if (!dialog) return;
-  dialog.innerHTML = `<div class="console-heading"><div><span class="console-eyebrow">00s CONSOLE / CEL-SHADED ADVENTURE</span><h2 id="platformer-title">goku <span>KI RUSH</span></h2></div><button type="button" data-platform-close aria-label="Close Goku platformer">esc</button></div>
+  dialog.innerHTML = `<div class="console-heading"><div><span class="console-eyebrow">CLOUD TRAIL / KI RUSH ARCADE</span><h2 id="platformer-title">goku <span>KI RUSH</span></h2></div><button type="button" data-platform-close aria-label="esc · close goku platformer">esc</button></div>
     <div class="console-hud"><span>score <strong id="platform-score">0</strong></span><span>balls <strong id="platform-orbs">0 / 7</strong></span><span>lives <strong id="platform-lives">3</strong></span><span>stage <strong id="platform-region">1 / 4</strong></span></div>
     <div class="platform-mastery"><span id="platform-ki" data-ready="true">● KI READY</span><span>chain <strong id="platform-chain">0</strong> / best <strong id="platform-chain-best">0</strong></span><span id="platform-record">first run</span></div>
     <div class="platform-stage"><canvas id="platform-canvas" width="1280" height="720" tabindex="0" aria-label="Goku Ki Rush platform game" aria-describedby="platform-help platform-status">Run, jump, and collect seven Dragon Balls on the cloud trail. Use left and right arrows to move and Space to jump.</canvas></div>
     <p id="platform-status" role="status" aria-live="polite" aria-atomic="true">Jump with Space / touch A, then tap X / touch B toward a glowing target. Chain targets for points; collect seven balls and beat the guardian.</p>
     <section id="platform-results" class="platform-results" hidden aria-label="Run results"><strong id="platform-result-total"></strong><span id="platform-result-run"></span><span id="platform-result-points"></span><span id="platform-result-compare"></span><span id="platform-result-records"></span></section>
-    <div class="platform-touch" aria-label="Game controls"><div><button type="button" data-platform-hold="left" aria-label="Move left">◀</button><button type="button" data-platform-hold="right" aria-label="Move right">▶</button></div><div class="platform-buttons"><button type="button" data-platform-hold="attack" aria-label="B: ki shot on ground; rush in air">B <span>rush</span></button><button type="button" data-platform-hold="jump" aria-label="A: jump">A <span>jump</span></button></div></div>
+    <div class="platform-touch" aria-label="Game controls"><div><button type="button" data-platform-hold="left" aria-label="Move left">◀</button><button type="button" data-platform-hold="right" aria-label="Move right">▶</button></div><div class="platform-buttons"><button type="button" data-platform-hold="attack" aria-label="B rush: ki shot on ground; rush in air">B <span>rush</span></button><button type="button" data-platform-hold="jump" aria-label="A: jump">A <span>jump</span></button></div></div>
     <div class="console-actions"><button type="button" data-platform-back>← cartridges</button><button id="platform-action" type="button">start game ↵</button><button id="platform-pause" type="button" aria-pressed="false">pause</button></div>
-    <details class="console-help"><summary>how to play / controls</summary><p id="platform-help">Keyboard: ← → or A/D to run · Space, ↑ or W to jump · X: ground shot or air rush · P to pause. Touch: A jumps, B shoots or rushes. Tap X / B again after jumping; holding it never auto-rushes. A target ring marks a clear dash path. Each connection lifts you and restores ki; a miss needs a landing. Landing banks the chain; every point already earned stays yours, even after a hit. Hold jump for height; release early for a short hop. Each target scores once per run, ×1 up to ×8 in a chain. Hollow rings still refill ki. Collect seven balls, defeat the guardian, then enter the red gate. Three flags save progress. Completed score, chain and time records stay on this device. Escape returns to cartridges.</p></details>`;
+    <details class="console-help"><summary>how to play / controls</summary><p id="platform-help">Keyboard: ← → or A/D to run · Space, ↑ or W to jump · X: ground shot or air rush · P to pause. Touch: A jumps, B shoots or rushes. Tap X / B again after jumping; holding it never auto-rushes. A fresh tap just before a connection queues the next clear target for 120 ms. A target ring marks a clear dash path. Each connection lifts you and restores ki; a miss needs a landing. Landing banks the chain; every point already earned stays yours, even after a hit. Hold jump for height; release early for a short hop. Each target scores once per run, ×1 up to ×8 in a chain. Hollow rings still refill ki. Collect seven balls, defeat the guardian, then enter the red gate. Three flags save progress. Completed score, chain and time records stay on this device. Escape returns to cartridges.</p></details>`;
   const root = document.documentElement, canvas = dialog.querySelector('#platform-canvas'), context = canvas.getContext('2d');
   if (!context) return;
   const status = dialog.querySelector('#platform-status'), action = dialog.querySelector('#platform-action'), pause = dialog.querySelector('#platform-pause');
   const reduced = matchMedia('(prefers-reduced-motion: reduce)');
   const storage = () => { try { return window.localStorage; } catch { return null; } };
   let record = loadRecord(storage()), recordSaved = true, finish = null;
+  // A small, optional goal uses existing records; no new currency or score tier.
+  const nextChainGoal = () => Math.max(3, Math.min(8, (record?.longestChain || 0) + 1));
+  let chainGoal = nextChainGoal();
   let game = create(), opener, frame = 0, lastTime = null, accumulator = 0, paused = false, lastEvent = -1, previousPose = null;
   const keys = new Set(), pointers = new Map(), pendingActions = new Set(), pulses = new Set(), pulseTimers = new Map();
   const actionForKey = key => ({ ArrowLeft: 'left', a: 'left', ArrowRight: 'right', d: 'right', ArrowUp: 'jump', w: 'jump', ' ': 'jump', x: 'attack' }[key]);
@@ -311,7 +321,7 @@
   const latch = control => { if (control === 'jump' || control === 'attack') pendingActions.add(control); };
   function stop() { cancelAnimationFrame(frame); frame = 0; lastTime = null; accumulator = 0; previousPose = null; }
   function releaseControls() {
-    keys.clear(); pointers.clear(); pendingActions.clear(); pulses.clear();
+    keys.clear(); pointers.clear(); pendingActions.clear(); pulses.clear(); game.player.rushBuffer = 0;
     pulseTimers.forEach(timer => clearTimeout(timer)); pulseTimers.clear();
     dialog.querySelectorAll('[data-platform-hold]').forEach(button => button.removeAttribute('data-held'));
   }
@@ -324,14 +334,14 @@
     setText(dialog.querySelector('#platform-chain'), String(game.chain));
     setText(dialog.querySelector('#platform-chain-best'), String(game.longestChain));
     const ki = dialog.querySelector('#platform-ki'); ki.dataset.ready = String(game.player.dashReady);
-    setText(ki, game.player.dash ? '◆ RUSHING' : game.player.dashReady ? '● KI READY' : '○ LAND TO REFILL');
-    setText(dialog.querySelector('#platform-record'), record ? `record ${record.best.score}` : 'first run');
+    setText(ki, game.player.rushBuffer > 0 ? '◆ NEXT RUSH QUEUED' : game.player.dash ? '◆ RUSHING' : game.player.dashReady ? '● KI READY' : '○ LAND TO REFILL');
+    setText(dialog.querySelector('#platform-record'), `${game.longestChain >= chainGoal ? '✓' : '◇'} goal: chain ${chainGoal}`);
     const resultPanel = dialog.querySelector('#platform-results'); resultPanel.hidden = !terminal();
     if (terminal()) {
       setText(dialog.querySelector('#platform-result-total'), `${game.phase === 'won' ? 'CLEAR' : 'TRY AGAIN'} · ${game.score} POINTS`);
       setText(dialog.querySelector('#platform-result-run'), `chain ${game.longestChain} · ${formatTime(game.time * 1000)}`);
       setText(dialog.querySelector('#platform-result-points'), `${game.breakdown.targets} targets + ${game.breakdown.chain} chain + ${game.breakdown.finish} finish`);
-      setText(dialog.querySelector('#platform-result-compare'), finish?.previous ? `Previous ${finish.previous.score} (${game.score - finish.previous.score >= 0 ? '+' : ''}${game.score - finish.previous.score}) · best ${record.best.score}${game.score > (finish.previousBest?.score ?? -1) ? ' NEW' : ''}` : finish ? `First clear · best ${record.best.score}` : 'Finish the course to set a record.');
+      setText(dialog.querySelector('#platform-result-compare'), finish?.previous ? `Previous ${finish.previous.score} (${game.score - finish.previous.score >= 0 ? '+' : ''}${game.score - finish.previous.score}) · best ${record.best.score}${game.score > (finish.previousBest?.score ?? -1) ? ' NEW' : ''}` : finish ? `First clear · best ${record.best.score}` : `Chain goal ${chainGoal}${game.longestChain >= chainGoal ? ' reached!' : ' — try the high rings.'} Finish to save a record.`);
       setText(dialog.querySelector('#platform-result-records'), finish ? `Best chain ${record.longestChain} · fastest ${formatTime(record.fastestMs)} · ${finish.saved ? 'saved here' : 'session only'}` : record ? `Best clear ${record.best.score} · chain ${record.longestChain}` : 'Land safely, then build another chain.');
     }
     setText(dialog.querySelector('#platform-score'), String(game.score)); setText(dialog.querySelector('#platform-orbs'), `${count} / 7`); setText(dialog.querySelector('#platform-lives'), String(game.lives));
@@ -341,7 +351,7 @@
     if (paused) status.textContent = 'Paused. Resume when you are ready.';
     else if (game.eventId !== lastEvent) {
       lastEvent = game.eventId;
-      const messages = { ready: 'Jump with Space / touch A, then tap X / touch B toward a glowing target. Chain targets for points; collect seven balls and beat the guardian.', start: 'First lesson: jump toward the blue ring, then tap B / X. A connection lifts you and refills ki.', rush: 'Ki Rush! Release B, then tap again when the next target glows.', 'rush-miss': 'Free rush used. Land to refill ki.', 'rush-blocked': 'Ledge blocked the rush. Land to refill ki.', chain: `${game.chain}-target chain! Ki refilled. Tap B toward the next target.`, 'chain-land': `${game.bankedChain?.count}-target chain banked: ${game.bankedChain?.points} points. Jump to start the next chain.`, refill: 'Ki refilled. This target already scored; find a bright new one.', orb: `Dragon Ball ${count} of 7 collected.`, stomp: 'Bot bounced! Keep moving.', blast: 'Ki hit! Target cleared.', respawn: `${game.lives} ${game.lives === 1 ? 'life' : 'lives'} left. Back at your checkpoint; collected balls are safe.`, checkpoint: `Checkpoint ${checkpoints.indexOf(game.checkpoint) + 1} of 3 reached. Balls and defeated enemies stay saved.`, missing: `${7 - count} Dragon ${7 - count === 1 ? 'Ball remains' : 'Balls remain'}. Follow the trail back to find them.`, 'armor-hit': 'Armored bot hit. Keep firing or bounce again.', 'guardian-hit': `Sky Guardian hit. ${game.enemies.find(enemy => enemy.kind === 'guardian').hp} hits remain.`, 'guardian-down': 'Sky Guardian defeated! Reach the red gate to complete your journey.', guardian: 'The Sky Guardian still stands. Turn back and use ki or jump on its head.', won: `Wish granted! All seven Dragon Balls collected. ${game.score} points.`, lost: `Run ended. ${count} of seven Dragon Balls, ${game.score} points. Play again to try a new run.` };
+      const messages = { ready: 'Jump with Space / touch A, then tap X / touch B toward a glowing target. Chain targets for points; collect seven balls and beat the guardian.', start: 'First lesson: jump toward the blue ring, then tap B / X. A connection lifts you and refills ki.', rush: 'Ki Rush! Release X / B, then tap again at the next target. An early tap can queue it.', 'rush-miss': 'Free rush used. Land to refill ki.', 'rush-blocked': 'Ledge blocked the rush. Land to refill ki.', chain: `${game.chain === chainGoal ? 'Chain goal reached! ' : ''}${game.chain}-target chain. Ki refilled — tap X / B toward the next target.`, 'chain-land': `${game.bankedChain?.count}-target chain banked: ${game.bankedChain?.points} points. Jump to start the next chain.`, refill: 'Ki refilled. This target already scored; find a bright new one.', orb: `Dragon Ball ${count} of 7 collected.`, stomp: 'Bot bounced! Keep moving.', blast: 'Ki hit! Target cleared.', respawn: `${game.lives} ${game.lives === 1 ? 'life' : 'lives'} left. Back at your checkpoint; collected balls are safe.`, checkpoint: `Checkpoint ${checkpoints.indexOf(game.checkpoint) + 1} of 3 reached. Balls and defeated enemies stay saved.`, missing: `${7 - count} Dragon ${7 - count === 1 ? 'Ball remains' : 'Balls remain'}. Follow the trail back to find them.`, 'armor-hit': 'Armored bot hit. Keep firing or bounce again.', 'guardian-hit': `Sky Guardian hit. ${game.enemies.find(enemy => enemy.kind === 'guardian').hp} hits remain.`, 'guardian-down': 'Sky Guardian defeated! Reach the red gate to complete your journey.', guardian: 'The Sky Guardian still stands. Turn back and use ki or jump on its head.', won: `Wish granted! All seven Dragon Balls collected. ${game.score} points.`, lost: `Run ended. ${count} of seven Dragon Balls, ${game.score} points. Play again to try a new run.` };
       status.textContent = messages[game.event] || messages.start;
     }
   }
@@ -366,8 +376,8 @@
     context.save(); context.translate(x, y); context.scale(scale, scale);
     context.beginPath(); context.moveTo(-45, 14); context.bezierCurveTo(-60, -3, -29, -15, -18, -8);
     context.bezierCurveTo(-10, -32, 24, -28, 28, -8); context.bezierCurveTo(59, -15, 67, 13, 41, 18);
-    context.closePath(); context.fillStyle = '#edf5ed'; context.fill();
-    context.beginPath(); context.moveTo(-45, 14); context.bezierCurveTo(-12, 9, 23, 22, 47, 11); context.lineTo(41, 18); context.closePath(); context.fillStyle = '#b8d8de'; context.fill(); context.restore();
+    context.closePath(); context.fillStyle = '#fffef1'; context.fill();
+    context.beginPath(); context.moveTo(-45, 14); context.bezierCurveTo(-12, 9, 23, 22, 47, 11); context.lineTo(41, 18); context.closePath(); context.fillStyle = '#b2e6ed'; context.fill(); context.restore();
   }
   function mountain(x, base, width, height, color, lit) {
     const peak = x + width * .47;
@@ -375,46 +385,59 @@
     poly([[x, base], [peak, base - height], [x + width * .43, base - height * .37], [x + width * .67, base]], lit, null);
     poly([[peak, base - height], [x + width * .58, base - height * .75], [x + width * .43, base - height * .69]], '#d6e6db', null);
   }
+  // Four cached sky paints establish readable chapters without image requests
+  // or additional animation loops. Near geometry stays stronger than scenery.
+  const worldColors = [
+    ['#20b5ee','#9ceafa','#fff2b0','#529fc8','#a1d9dc','#237b9d','#5ab7a5'],
+    ['#4787ef','#b0eaff','#fffbe5','#7faddb','#d0e6f5','#557fb7','#8fbbcc'],
+    ['#ffa347','#ffe5ac','#fff8d6','#bd8e9f','#efd1b5','#a76666','#db9975'],
+    ['#8074e8','#cfccff','#fff0d2','#999acb','#d7d3e8','#6c7cac','#a2b4ca'],
+  ], skyPaints = [];
   function background(camera) {
-    const sky = context.createLinearGradient(0, 0, 0, 330);
-    sky.addColorStop(0, '#2787b9'); sky.addColorStop(.54, '#89cbd9'); sky.addColorStop(1, '#f7dfb3');
+    const region = Math.max(0, regions.filter(item => game.player.x >= item.x).length - 1);
+    const colors = worldColors[region];
+    if (!skyPaints[region]) {
+      const paint = context.createLinearGradient(0, 0, 0, 330);
+      paint.addColorStop(0, colors[0]); paint.addColorStop(.58, colors[1]); paint.addColorStop(1, colors[2]); skyPaints[region] = paint;
+    }
+    const sky = skyPaints[region];
     rect(0, 0, 640, 360, sky); oval(505 - camera * .018, 60, 28, 28, '#fff2c6');
     for (let i = -1; i < 8; i++) cloud(i * 185 - (camera * .09 % 185), 64 + ((i + 8) % 3) * 20, .6 + (i % 2) * .14);
-    for (let i = -1; i < 8; i++) mountain(i * 180 - (camera * .16 % 180), 305, 250, 112 + ((i + 9) % 3) * 38, '#769fb3', '#a1c1c8');
-    for (let i = -1; i < 7; i++) mountain(i * 205 - (camera * .32 % 205), 336, 242, 124 + ((i + 8) % 3) * 26, '#48798d', '#72a49f');
+    for (let i = -1; i < 8; i++) mountain(i * 180 - (camera * .16 % 180), 305, 250, 112 + ((i + 9) % 3) * 38, colors[3], colors[4]);
+    for (let i = -1; i < 7; i++) mountain(i * 205 - (camera * .32 % 205), 336, 242, 124 + ((i + 8) % 3) * 26, colors[5], colors[6]);
     // Tall faceted rock islands establish a near plane and a distant river.
     for (let i = -1; i < 7; i++) {
       const x = i * 157 - (camera * .48 % 157), y = 204 + ((i + 9) % 3) * 17;
-      poly([[x, 332], [x + 7, y], [x + 43, y - 13], [x + 77, y + 4], [x + 90, 332]], '#477b80', null);
-      poly([[x + 7, y], [x + 43, y - 13], [x + 35, 332], [x, 332]], '#73a091', null);
-      poly([[x + 7, y], [x + 43, y - 13], [x + 77, y + 4], [x + 42, y + 11]], '#aed0a1', null);
+      poly([[x, 332], [x + 7, y], [x + 43, y - 13], [x + 77, y + 4], [x + 90, 332]], colors[5], null);
+      poly([[x + 7, y], [x + 43, y - 13], [x + 35, 332], [x, 332]], colors[6], null);
+      poly([[x + 7, y], [x + 43, y - 13], [x + 77, y + 4], [x + 42, y + 11]], region === 2 ? '#ffd888' : '#b7ef93', null);
     }
-    rect(0, 315, 640, 45, '#41839b');
-    for (let i = 0; i < 14; i++) line([[i * 61 - (camera * .64 % 61), 325 + (i % 3) * 12], [i * 61 + 31 - (camera * .64 % 61), 325 + (i % 3) * 12]], '#9fc9cf', 1.5);
+    rect(0, 315, 640, 45, region === 2 ? '#d98e65' : '#29a9d4');
+    for (let i = 0; i < 14; i++) line([[i * 61 - (camera * .64 % 61), 325 + (i % 3) * 12], [i * 61 + 31 - (camera * .64 % 61), 325 + (i % 3) * 12]], '#d2f7ef', 1.5);
   }
   function terrain(tile, camera) {
     const x = tile.x - camera, y = tile.y, w = tile.w, h = tile.h, canyon = tile.x > 3300 && tile.x < 5140;
     if (x > 660 || x + w < -20) return;
-    const top = canyon ? '#e7cb8d' : '#a6db78', face = canyon ? '#bb8666' : '#8b9d77', shade = canyon ? '#8c5b58' : '#4e7566';
+    const top = canyon ? '#ffd66d' : '#b9ed55', face = canyon ? '#eb9d58' : '#58b783', shade = canyon ? '#a65f52' : '#277d69';
     // The front edge is exactly the collision plane; the top recedes into depth.
-    poly([[x, y], [x + w, y], [x + w, y + h], [x, y + h]], face, '#36585c', 1.5);
-    poly([[x, y], [x + 14, y - 12], [x + w + 14, y - 12], [x + w, y]], top, '#3b6562', 1.3);
-    poly([[x + w, y], [x + w + 14, y - 12], [x + w + 14, y + h - 12], [x + w, y + h]], shade, '#36585c', 1.3);
+    poly([[x, y], [x + w, y], [x + w, y + h], [x, y + h]], face, '#203d54', 2);
+    poly([[x, y], [x + 14, y - 12], [x + w + 14, y - 12], [x + w, y]], top, '#244d50', 1.5);
+    poly([[x + w, y], [x + w + 14, y - 12], [x + w + 14, y + h - 12], [x + w, y + h]], shade, '#244d50', 1.5);
     for (let dx = 0; dx < w; dx += 79) {
       const span = Math.min(79, w - dx);
       poly([[x + dx, y + h], [x + dx + span * .38, y + 7], [x + dx + span, y + h * .61], [x + dx + span, y + h]], shade, null);
-      if (h > 20) poly([[x + dx + span * .38, y + 7], [x + dx + span * .17, y + h * .55], [x + dx + span * .63, y + h * .4]], canyon ? '#d4a27b' : '#aec099', null);
+      if (h > 20) poly([[x + dx + span * .38, y + 7], [x + dx + span * .17, y + h * .55], [x + dx + span * .63, y + h * .4]], canyon ? '#ffc477' : '#8ed2a0', null);
     }
-    line([[x, y + 1], [x + w, y + 1]], canyon ? '#fff0bb' : '#daf0ad', 3);
+    line([[x, y + 1], [x + w, y + 1]], canyon ? '#fff4b5' : '#eaff9e', 3);
     line([[x, y + 5], [x + w, y + 5]], canyon ? '#a37652' : '#539553', 3);
   }
   function scenery(camera) {
     for (const bx of [45,128,575,920,1460,2100,2320,2720,3190]) {
       const x = bx - camera, h = 62 + bx % 3 * 14;
       if (x < -40 || x > 680) continue;
-      poly([[x, GROUND], [x + 2, GROUND - h], [x + 7, GROUND - h], [x + 8, GROUND]], '#477f58', '#30564c');
-      line([[x + 3, GROUND - h + 2], [x + 3, GROUND - 4]], '#9cc67d', 2);
-      for (let k = 0; k < 3; k++) { const y = GROUND - h + 14 + k * 18; poly([[x + 5, y], [x + 23, y - 10], [x + 31, y - 8], [x + 13, y + 2]], '#659769', null); poly([[x + 3, y + 4], [x - 18, y - 1], [x - 24, y + 3], [x - 8, y + 9]], '#457d61', null); }
+      poly([[x, GROUND], [x + 2, GROUND - h], [x + 7, GROUND - h], [x + 8, GROUND]], '#279866', '#174d4b');
+      line([[x + 3, GROUND - h + 2], [x + 3, GROUND - 4]], '#c4ef68', 2);
+      for (let k = 0; k < 3; k++) { const y = GROUND - h + 14 + k * 18; poly([[x + 5, y], [x + 23, y - 10], [x + 31, y - 8], [x + 13, y + 2]], '#53c776', null); poly([[x + 3, y + 4], [x - 18, y - 1], [x - 24, y + 3], [x - 8, y + 9]], '#238b69', null); }
     }
     for (const cp of checkpoints) {
       const x = cp - camera, active = game.checkpoint >= cp; if (x < -45 || x > 685) continue;
@@ -437,9 +460,9 @@
   function ball(orb, x, y, small = false) {
     const r = small ? 5.3 : 8, cx = x + (small ? 5 : 8), cy = y + (small ? 5 : 8);
     if (!small) oval(cx, cy, 12, 12, '#ffe0a025');
-    oval(cx, cy, r, r, '#ffb443', '#8a5638', small ? 1 : 1.4);
+    oval(cx, cy, r, r, '#ffbc29', '#623e2e', small ? 1 : 1.4);
     context.save(); context.beginPath(); context.ellipse(cx, cy, r - 1, r - 1, 0, 0, Math.PI * 2); context.clip();
-    oval(cx + 4, cy + 5, r, r, '#df8137'); oval(cx - 3, cy - 3, r * .48, r * .27, '#ffeaa3'); context.restore();
+    oval(cx + 4, cy + 5, r, r, '#f37822'); oval(cx - 3, cy - 3, r * .48, r * .27, '#fff2a1'); context.restore();
     if (!small) {
       const positions = [[0,0],[-3,-3],[3,3],[3,-3],[-3,3],[0,-4],[0,4]];
       positions.slice(0, orb.star).forEach(([dx,dy]) => poly([[cx+dx,cy+dy-1.5],[cx+dx+1.4,cy+dy],[cx+dx,cy+dy+1.5],[cx+dx-1.4,cy+dy]], '#ad4830', null));
@@ -453,13 +476,13 @@
     oval(p.x - camera + p.w / 2 + 3, feet + 2, 16, 3.8, '#173f4c45');
     context.save(); context.translate(p.x - camera + p.w / 2, feet); const landing = quiet() ? 0 : Math.max(0, 1 - (game.time - p.landed) / .12);
     context.scale(p.facing * (1 + landing * .08), 1 - landing * .08);
-    const ink = '#28334b', orange = '#fc8527', light = '#ffbf5c', shade = '#bb4f35', blue = '#294c86', skin = '#f3ba88';
+    const ink = '#182d49', orange = '#ff8a20', light = '#ffd66c', shade = '#d34f28', blue = '#2459aa', skin = '#ffc58d';
     function limb(points, color, width = 7, lit = null) { line(points, ink, width + 2.6); line(points, color, width); if (lit) line(points.map(([x,y])=>[x-1,y-1]), lit, Math.max(1.5,width*.3)); }
     // Far limbs, torso, then near limbs create a readable articulated silhouette.
     limb([[-4,-28],[-11,-21-stride*3],[-9,-15-stride*5]], '#bd795f', 5);
-    const backKnee = jump ? [-10,-12] : [-4-stride*7,-10], backFoot = jump ? [-17,-13] : [-4-stride*11,-3];
+    const backKnee = p.dash ? [-15,-15] : jump ? [-10,-12] : [-4-stride*7,-10], backFoot = p.dash ? [-29,-11] : jump ? [-17,-13] : [-4-stride*11,-3];
     limb([[-4,-18],backKnee,backFoot], shade, 8); limb([backFoot,[backFoot[0]+6,backFoot[1]]], blue, 5, '#6994bc');
-    const knee = jump ? [10,-13] : [5+stride*6,-10], foot = jump ? [16,-6] : [5+stride*11,-3];
+    const knee = p.dash ? [-10,-8] : jump ? [10,-13] : [5+stride*6,-10], foot = p.dash ? [-24,-2] : jump ? [16,-6] : [5+stride*11,-3];
     limb([[4,-18],knee,foot], orange, 8, light); limb([foot,[foot[0]+6,foot[1]]], blue, 5, '#7ab2cf');
     poly([[-8,-35],[6,-36],[11,-27],[7,-17],[-8,-17],[-12,-27]], orange, ink, 1.8);
     poly([[-8,-34],[-3,-35],[2,-22],[-6,-21],[-10,-28]], light, null);
@@ -480,11 +503,11 @@
   function enemySprite(enemy, camera) {
     const x = enemy.x - camera, y = enemy.y, boss = enemy.kind === 'guardian', w = enemy.w, h = enemy.h;
     if (x < -60 || x > 690) return;
-    const flash = enemy.hit > 0 && !quiet(), shell = flash ? '#fff2b4' : boss ? '#74588d' : enemy.kind === 'sentry' ? '#a76470' : '#7189a7';
+    const flash = enemy.hit > 0 && !quiet(), shell = flash ? '#fff2b4' : boss ? '#9d5ac7' : enemy.kind === 'sentry' ? '#e06185' : '#407cb3';
     oval(x + w / 2 + 3, enemy.kind === 'hover' ? GROUND + 1 : y + h + 2, w * .65, 4, '#24485845');
     poly([[x+2,y+7],[x+w*.25,y],[x+w*.78,y],[x+w,y+9],[x+w-2,y+h-4],[x+w*.6,y+h],[x+4,y+h-3]],shell,'#2b3650',1.8);
-    poly([[x+w*.25,y],[x+w*.78,y],[x+w,y+9],[x+w*.42,y+7]],boss?'#ba9cc7':'#b2cbd4',null);
-    poly([[x+w*.7,y+9],[x+w,y+9],[x+w-2,y+h-4],[x+w*.7,y+h-1]],boss?'#4d406d':'#455f7e',null);
+    poly([[x+w*.25,y],[x+w*.78,y],[x+w,y+9],[x+w*.42,y+7]],boss?'#e9b8f8':'#a2e9f7',null);
+    poly([[x+w*.7,y+9],[x+w,y+9],[x+w-2,y+h-4],[x+w*.7,y+h-1]],boss?'#573783':'#24527b',null);
     poly([[x+4,y+h*.31],[x+w-4,y+h*.31],[x+w-5,y+h*.53],[x+4,y+h*.53]],'#24364d',null);
     line([[x+7,y+h*.41],[x+w-8,y+h*.41]],boss?'#f4b173':'#95e4dc',boss?4:2.5);
     if (enemy.kind === 'hover') { poly([[x+6,y+h],[x+10,y+h+7],[x+15,y+h]],'#a3eddf',null); poly([[x+w-14,y+h],[x+w-10,y+h+7],[x+w-6,y+h]],'#a3eddf',null); }
@@ -503,9 +526,11 @@
     for (const ring of game.rings) {
       const x = ring.x - camera + 7, y = ring.y + 7; if (x < -20 || x > 660) continue;
       const claimed = game.scored.includes(ring.id), used = game.player.airTargets.includes(ring.id);
-      oval(x,y,11,11,claimed?'#70b8bf14':'#8de3e32a',used?'#648d9a':claimed?'#8cbac1':'#b6fbdf',used?1:2);
-      if(!claimed) poly([[x,y-6],[x+5,y],[x,y+6],[x-5,y]],'#b7ffe9','#3a879b',1);
-      else oval(x,y,3,3,'#96cbd0');
+      oval(x,y,12,12,claimed?'#70b8bf14':'#43dce880','#203e5b',2.5);
+      oval(x,y,9,9,claimed?'#b6e7e114':'#58eff3',used?'#65878e':claimed?'#d7f8ed':'#fff5a2',used?1:2);
+      if (used) line([[x-4,y],[x+4,y]],'#24475c',2);
+      else if(!claimed) poly([[x,y-6],[x+5,y],[x,y+6],[x-5,y]],'#fff8af','#25637a',1);
+      else oval(x,y,3,3,'#d7f8ed','#3c697b',1);
     }
     for (const orb of game.orbs) if (!orb.collected) ball(orb,orb.x-camera,orb.y+(quiet()?0:Math.sin(game.time*3+orb.star)*2));
     for (const enemy of game.enemies) if (enemy.alive) enemySprite(enemy,camera);
@@ -522,12 +547,17 @@
         const origin=center(player), length=Math.hypot(point.x-origin.x,point.y-origin.y);
         for(let t=14;t<length-17;t+=14) { const u=t/length, v=Math.min(1,(t+5)/length); line([[origin.x-camera+(point.x-origin.x)*u,origin.y+(point.y-origin.y)*u],[origin.x-camera+(point.x-origin.x)*v,origin.y+(point.y-origin.y)*v]],'#d9ffdb80',1); }
       }
-      for(const dx of [-1,1])for(const dy of [-1,1])line([[x+dx*17,y+dy*9],[x+dx*17,y+dy*17],[x+dx*9,y+dy*17]],'#f4ffc6',2);
-      text('B',x,y-23,12,'#f4ffc6');
+      for(const dx of [-1,1])for(const dy of [-1,1])line([[x+dx*17,y+dy*9],[x+dx*17,y+dy*17],[x+dx*9,y+dy*17]],'#fff4b1',3);
+      rect(x-17,y-36,34,17,'#172e50'); text('X / B',x,y-24,10,'#fff4b1');
     }
     if(game.player.dash&&!quiet()) {
-      const p=player, c=center(p); line([[c.x-camera-p.dash.vx*.05,c.y-p.dash.vy*.05],[c.x-camera,c.y]],'#b2f6ee60',13);
-      line([[c.x-camera-p.dash.vx*.04,c.y-p.dash.vy*.04],[c.x-camera,c.y]],'#eaffdaaa',3);
+      const p=player, c=center(p); line([[c.x-camera-p.dash.vx*.05,c.y-p.dash.vy*.05],[c.x-camera,c.y]],'#40e6f780',15);
+      line([[c.x-camera-p.dash.vx*.04,c.y-p.dash.vy*.04],[c.x-camera,c.y]],'#fff8b9',4);
+    }
+    // A single, short impact accent follows a connection, never a screen flash.
+    if (!quiet() && game.time - game.player.connected < .12) {
+      const x=player.x-camera+10, y=player.y+16, size=21*(1-(game.time-game.player.connected)/.18);
+      poly([[x,y-size],[x+4,y-5],[x+size,y],[x+4,y+5],[x,y+size],[x-4,y+5],[x-size,y],[x-4,y-5]],'#fff2a9','#cf6b20',1.5);
     }
     playerSprite(player,camera);
     if (!quiet()) for (const burst of game.bursts) {
@@ -546,11 +576,15 @@
     if(guardian.alive&&Math.abs(game.player.x-guardian.x)<450){
       rect(211,14,218,22,'#23394ddd');text('SKY GUARDIAN',320,29,11,'#f0d5ad');rect(219,39,202,5,'#253b53');rect(219,39,202*guardian.hp/guardian.maxHp,5,'#e9a66a');
     }
+    if (game.phase === 'playing' && !paused && game.chain > 0 && Math.abs(game.player.x-guardian.x)>=450) {
+      poly([[227,10],[427,10],[416,40],[216,40]],'#fff3a6','#26465c',2);
+      text(`${game.chain >= chainGoal ? '★' : '◆'} ${game.chain} CHAIN · ×${Math.min(8,game.chain)}`,320,30,14,'#203e59');
+    }
     const banked = game.bankedChain;
     if (game.phase === 'playing' && !paused && banked && game.time - banked.at < 1.4) {
-      rect(16,69,300,32,'#244559ed'); text(`${banked.count}-TARGET CHAIN BANKED · ${banked.points} PTS`,26,89,11,'#f4ffc6','left');
+      rect(16,66,255,44,'#173f5af2'); text(`${banked.count}-TARGET CHAIN BANKED`,27,85,14,'#fff1a6','left'); text(`${banked.points} points · jump to go again`,27,101,11,'#d8fff0','left');
     } else if(game.phase==='playing'&&!paused&&game.player.x<680&&game.connections<2){
-      rect(16,69,300,32,'#244559dd');text(game.connections?'Release B. Tap again at the next target.':'Jump → aim right → tap B at the blue ring.',26,89,11,'#e9ffcf','left');
+      rect(16,66,245,44,'#173f5aee');text(game.connections?'KI REFILLED — RUSH AGAIN':'SPACE / A → JUMP',27,85,14,'#fff1a6','left');text(game.connections?'Release X / B, then tap at the next ◆.':'X / B → RUSH TOWARD ◆',27,101,11,'#d8fff0','left');
     }
     if(game.phase==='ready'||terminal()||paused){
       rect(0,0,640,360,'#18344d55');
@@ -558,9 +592,9 @@
       poly([[107,97],[541,97],[537,118],[105,118]],'#5e6d9c','#a7b9d0',1);
       text(paused?'SYSTEM / PAUSE':terminal()?'MISSION / RESULTS':'ONE COURSE / BUILD YOUR BEST CHAIN',320,112,10,'#e7f0e5');
       text(paused?'TAKE A BREATHER':game.phase==='won'?'WISH GRANTED':game.phase==='lost'?'ONE MORE JOURNEY?':'GOKU / KI RUSH',320,158,25,'#ffdf9f');
-      text(paused?'The trail will be here when you return.':game.phase==='won'?`${game.score} POINTS · LONGEST CHAIN ${game.longestChain}`:game.phase==='lost'?'Your next journey starts with a fresh slate.':'Jump. Tap B at a target. Rise. Chain the next.',320,188,12,'#e0eae7');
+      text(paused?'The trail will be here when you return.':game.phase==='won'?`${game.score} POINTS · LONGEST CHAIN ${game.longestChain}`:game.phase==='lost'?'Your next journey starts with a fresh slate.':`Jump → X / B at ◆ → rise. Try a ${chainGoal}-target chain.`,320,188,12,'#e0eae7');
       oval(242,219,10,10,'#48bc94','#c5f3ca',1);text('A',242,223,12,'#163e42');
-      text(paused?'P / RESUME':terminal()?'ENTER / PLAY AGAIN':'START · A / JUMP · B / RUSH',338,224,11,'#dae5f0');
+      text(paused?'P / RESUME':terminal()?'ENTER / PLAY AGAIN':'SPACE / A JUMP · X / B RUSH',338,224,11,'#dae5f0');
     }
   }
   function schedule() { if (!frame && dialog.open && !document.hidden && !paused && game.phase === 'playing') frame = requestAnimationFrame(tick); }
@@ -573,7 +607,7 @@
     announce(); draw(accumulator * 120); schedule();
   }
   function begin() {
-    stop(); releaseControls(); if (game.phase !== 'ready') game = create(); finish = null; paused = false; lastEvent = -1;
+    stop(); releaseControls(); if (game.phase !== 'ready') game = create(); finish = null; chainGoal = nextChainGoal(); paused = false; lastEvent = -1;
     start(game); announce(); draw(); schedule(); canvas.focus({ preventScroll: true });
   }
   function setPaused(next) {
@@ -603,7 +637,7 @@
     button.addEventListener('pointerup', release);
     const cancel = event => {
       const control = pointers.get(event.pointerId); release(event);
-      if (control && !held(control)) pendingActions.delete(control);
+      if (control && !held(control)) { pendingActions.delete(control); if (control === 'attack') game.player.rushBuffer = 0; }
     };
     button.addEventListener('pointercancel', cancel); button.addEventListener('lostpointercapture', cancel);
     // Native button activation remains useful to switch users: a brief move/jump.
@@ -624,7 +658,7 @@
   const releasePointer = (event, cancelled) => {
     const control = pointers.get(event.pointerId); pointers.delete(event.pointerId);
     if (!control) return;
-    if (cancelled && !held(control)) pendingActions.delete(control);
+    if (cancelled && !held(control)) { pendingActions.delete(control); if (control === 'attack') game.player.rushBuffer = 0; }
     if (![...pointers.values()].includes(control)) dialog.querySelectorAll('[data-platform-hold]').forEach(button => {
       if (button.dataset.platformHold === control) button.removeAttribute('data-held');
     });

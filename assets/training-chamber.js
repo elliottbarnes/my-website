@@ -98,8 +98,10 @@
     // The arena keeps its own dark art direction in every outer-site theme.
     // Essential targets stay legible even when the scenery cannot be loaded.
     palette = {
-      paper: "#070f20", ink: "#edf8ff", muted: "#9cb5ce", line: "#274766",
-      panel: "#102d45", blue: "#6ddcff", orange: "#ffad48", white: "#fff6da",
+      paper: "#102148", ink: "#f7fbff", muted: "#b9d4ee", line: "#4367a0",
+      panel: "#183965", blue: "#67edff", orange: "#ffc54b", white: "#fff7d9",
+      gems: ["#ff7184", "#ffad55", "#ffe36b", "#74ecc1", "#6dcfff", "#b59bff", "#f393eb"],
+      skies: [["#123a64", "#136779", "#75d6ff"], ["#412d72", "#9a426f", "#ffa678"], ["#174e64", "#287e77", "#c4e77f"]],
     };
   }
 
@@ -132,9 +134,9 @@
     else if (game.phase === "clear") announce(`${engine.arenas[game.wave - 1]} cleared. Seven Dragon Balls collected. Continue to ${engine.arenas[game.wave]}; recover one life, up to three.`);
     else if (["won", "lost"].includes(game.phase)) announce(`${game.phase === "won" ? "All three arenas cleared!" : "Run complete."} ${game.score * 15} power · ${game.perfects} perfect returns · best chain ${game.bestChain}. ${newBest ? "New personal best!" : best ? `Best ${best.score}.` : "Time your pulse just before the return."}`);
     else if (game.phase === "ready") announce(`${game.lives < 3 ? "Ki lost. " : ""}${engine.arenas[game.wave - 1]} · arena ${game.wave} of ${game.totalWaves}. Launch, then pulse just before the ball lands: three powered hits and a multiplier.${best ? ` Best ${best.score}.` : ""}`);
-    else if (game.feedbackAt !== lastFeedback && game.feedback === "perfect") announce(`Perfect return! Multiplier ×${1 + Math.min(4, game.chain)}. Three powered shield hits. Chain ${game.chain}.`);
+    else if (game.feedbackAt !== lastFeedback && game.feedback === "perfect") announce(`Perfect return! Multiplier ×${1 + Math.min(4, game.chain)}. ${game.bricks.filter(brick => brick.active).length <= 3 ? "Final targets expanded!" : "Three powered shield hits."} Chain ${game.chain}.`);
     else if (game.feedbackAt !== lastFeedback && game.feedback === "early") announce("Pulse too early. Try just before the ball meets the paddle.");
-    else if (game.bricks.filter(brick => brick.active).length <= 3 && game.phase === "playing" && previousRemaining > 3) announce("Final shields. Move the paddle to aim the dashed return guide; bank off the walls.");
+    else if (game.bricks.filter(brick => brick.active).length <= 3 && game.phase === "playing" && previousRemaining > 3) announce("Final shields! Perfect returns expand the gold targets. Aim with the dashed return guide.");
     else if (game.collected.length !== lastCollected) announce(`${game.collected.length} of seven dragon balls collected.`);
     else if (game.phase !== previousPhase || lastAnnouncement === "training paused") announce("Aim with the paddle. Tap pulse or Space as the ball enters the return zone.");
     previousPhase = game.phase;
@@ -176,50 +178,72 @@
   }
 
   function drawArena(width, height) {
-    context.fillStyle = palette.paper; context.fillRect(0, 0, width, height);
+    const sky = palette.skies[game.wave - 1];
+    const backdrop = context.createLinearGradient(0, 0, 0, height);
+    backdrop.addColorStop(0, "#111d40"); backdrop.addColorStop(.5, sky[0]); backdrop.addColorStop(1, sky[1]);
+    context.fillStyle = backdrop; context.fillRect(0, 0, width, height);
     if (arena?.complete && arena.naturalWidth && arena.naturalHeight) {
       const scale = Math.max(width / arena.naturalWidth, height / arena.naturalHeight);
       const imageWidth = arena.naturalWidth * scale, imageHeight = arena.naturalHeight * scale;
+      context.save(); context.globalAlpha = .28;
       context.drawImage(arena, (width - imageWidth) / 2, (height - imageHeight) / 2, imageWidth, imageHeight);
+      context.restore();
     }
-    // The illustrated middle stays open; quiet backing protects the targets,
-    // collection rail and paddle from competing detail in the artwork.
-    const shade = context.createLinearGradient(0, 0, 0, height);
-    shade.addColorStop(0, "rgba(4, 12, 27, .94)");
-    shade.addColorStop(.29, "rgba(4, 12, 27, .68)");
-    shade.addColorStop(.45, "rgba(4, 12, 27, .18)");
-    shade.addColorStop(.75, "rgba(4, 12, 27, .26)");
-    shade.addColorStop(1, "rgba(4, 12, 27, .84)");
-    context.fillStyle = shade; context.fillRect(0, 0, width, height);
+    // Static celestial scenery gives each arena a place without moving behind
+    // the ball. It remains quiet enough to see a five-pixel shot on a phone.
+    context.save(); context.globalAlpha = .25;
+    context.fillStyle = sky[2];
+    context.beginPath(); context.arc(278, 258, 42, 0, Math.PI * 2); context.fill();
+    context.strokeStyle = palette.white; context.lineWidth = 2;
+    context.beginPath(); context.ellipse(278, 258, 62, 13, -.32, 0, Math.PI * 2); context.stroke();
+    context.globalAlpha = .38; context.fillStyle = palette.white;
+    for (let index = 0; index < 14; index++) {
+      const x = 26 + index * 67 % 308, y = 210 + index * 43 % 160;
+      context.fillRect(x - 2, y, 5, 1); context.fillRect(x, y - 2, 1, 5);
+    }
+    context.restore();
+    context.fillStyle = "rgba(9, 20, 46, .7)"; context.fillRect(0, 0, width, 196);
+    context.fillStyle = "rgba(9, 20, 46, .42)"; context.fillRect(0, 397, width, height - 397);
     context.save();
-    context.strokeStyle = palette.blue; context.fillStyle = palette.blue; context.lineWidth = 1; context.globalAlpha = .2;
+    context.strokeStyle = palette.blue; context.lineWidth = 2; context.globalAlpha = .5;
     context.beginPath();
-    context.moveTo(12.5, 49); context.lineTo(12.5, height - 33); context.lineTo(25, height - 21);
-    context.moveTo(width - 12.5, 49); context.lineTo(width - 12.5, height - 33); context.lineTo(width - 25, height - 21);
-    context.moveTo(28, 39.5); context.lineTo(width - 28, 39.5);
+    context.moveTo(10, 49); context.lineTo(10, height - 33); context.lineTo(25, height - 21);
+    context.moveTo(width - 10, 49); context.lineTo(width - 10, height - 33); context.lineTo(width - 25, height - 21);
     context.stroke();
-    for (let y = 164; y < height - 48; y += 24) {
-      context.fillRect(12, y, 3, 1); context.fillRect(width - 15, y, 3, 1);
+    context.fillStyle = palette.orange; context.globalAlpha = .8;
+    for (let y = 222; y < height - 48; y += 48) {
+      context.fillRect(8, y, 5, 12); context.fillRect(width - 13, y, 5, 12);
     }
     context.restore();
   }
 
   function drawShield(brick) {
     const { x, y, width, height } = brick;
-    const armored = brick.maxHealth > 1;
     const damaged = brick.health < brick.maxHealth;
-    const edge = damaged ? "#ffc27a" : armored ? "#acbaff" : "#72e9ff";
+    const edge = palette.gems[brick.star - 1];
+    const target = engine.shieldBounds(game, brick);
+    if (target !== brick) {
+      context.save(); context.fillStyle = "#ffd75e"; context.strokeStyle = "#fff6c3"; context.lineWidth = 1.5;
+      // Gold wings are a real rectangular target. Keep every visible corner
+      // on the shared collision bounds; the jewel inside may stay beveled.
+      context.fillRect(target.x, target.y, target.width, target.height);
+      context.strokeRect(target.x + .75, target.y + .75, target.width - 1.5, target.height - 1.5);
+      context.fillStyle = "#825414";
+      context.fillRect(target.x + 3, target.y + 7, 3, target.height - 14);
+      context.fillRect(target.x + target.width - 6, target.y + 7, 3, target.height - 14);
+      context.restore();
+    }
     context.save();
     // A beveled housing surrounds the orb. Armour is visible as solid end caps,
     // not just a colour difference; broken caps remain split after a hit.
     const metal = context.createLinearGradient(0, y, 0, y + height);
-    metal.addColorStop(0, damaged ? "#82502d" : armored ? "#596aab" : "#347d92");
-    metal.addColorStop(.3, damaged ? "#402c29" : armored ? "#26395f" : "#163b50");
-    metal.addColorStop(.65, "#0b172c");
-    metal.addColorStop(1, "#1e3047");
+    metal.addColorStop(0, "#fff7df");
+    metal.addColorStop(.2, edge);
+    metal.addColorStop(.65, edge);
+    metal.addColorStop(1, "#29486b");
     context.fillStyle = metal;
     shieldPath(x, y, width, height, 4); context.fill();
-    context.strokeStyle = edge; context.lineWidth = 1;
+    context.strokeStyle = "#07172e"; context.lineWidth = 2;
     context.stroke();
     context.strokeStyle = "rgba(235, 247, 255, .65)";
     context.beginPath(); context.moveTo(x + 4, y + 1.5); context.lineTo(x + width - 4, y + 1.5); context.stroke();
@@ -228,7 +252,7 @@
 
     for (const side of [-1, 1]) {
       const end = side < 0 ? x + 3 : x + width - 9;
-      context.fillStyle = armored ? (damaged ? "#694735" : "#6379ab") : "#287186";
+      context.fillStyle = damaged ? "#355272" : "#203858";
       shieldPath(end, y + 3, 6, height - 6, 2); context.fill();
       context.fillStyle = edge;
       context.fillRect(end + (side < 0 ? 1 : 4), y + 5, 1, height - 10);
@@ -249,8 +273,8 @@
     const segmentWidth = 8, gap = 3, total = brick.maxHealth * segmentWidth + (brick.maxHealth - 1) * gap;
     for (let segment = 0; segment < brick.maxHealth; segment++) {
       const left = x + (width - total) / 2 + segment * (segmentWidth + gap);
-      context.fillStyle = edge; context.strokeStyle = edge;
-      context.globalAlpha = segment < brick.health ? 1 : .5;
+      context.fillStyle = "#fff8dc"; context.strokeStyle = "#152444";
+      context.globalAlpha = segment < brick.health ? 1 : .6;
       if (segment < brick.health) context.fillRect(left, y + height - 4, segmentWidth, 2);
       else context.strokeRect(left, y + height - 4, segmentWidth, 2);
     }
@@ -274,7 +298,7 @@
       }
     }
     context.restore();
-    orb(brick.star, coreX, coreY, 11);
+    orb(brick.star, coreX, coreY, 12);
   }
 
   function drawEffects(ball) {
@@ -285,7 +309,7 @@
       const point = trail[index], previous = trail[index - 1];
       const strength = index / trail.length;
       context.globalAlpha = Math.min(1, point.life / .14) * strength * .65;
-      context.strokeStyle = palette.orange; context.lineWidth = ball.radius * (1.8 * strength + .2);
+      context.strokeStyle = game.powerHits > 0 ? palette.blue : palette.orange; context.lineWidth = ball.radius * (1.8 * strength + .2);
       context.beginPath(); context.moveTo(previous.x, previous.y); context.lineTo(point.x, point.y); context.stroke();
       context.globalAlpha *= .8; context.strokeStyle = palette.white; context.lineWidth = Math.max(.7, strength * 2.5);
       context.stroke();
@@ -341,7 +365,6 @@
     const { width, height, paddle, ball } = game;
     context.clearRect(0, 0, width, height);
     drawArena(width, height);
-    const orbPaths = ["/assets/dragon-ball-1.webp", "/assets/dragon-ball-2.webp", "/assets/dragon-ball-3.webp", "/assets/dragon-ball-4.webp", "/assets/dragon-ball-5.webp", "/assets/dragon-ball-6.webp", "/assets/dragon-ball-7.webp"];
     for (let star = 1; star <= 7; star++) {
       const x = width / 2 + (star - 4) * 28, collected = game.collected.includes(star);
       context.save();
@@ -355,11 +378,11 @@
     for (const brick of game.bricks) if (brick.active) drawShield(brick);
     context.fillStyle = palette.muted; context.font = '10px "Plex Mono", monospace'; context.textAlign = "center";
     const remaining = game.bricks.filter(brick => brick.active).length;
-    context.fillText(remaining > 0 && remaining <= 3 ? `${remaining} SHIELD${remaining === 1 ? "" : "S"} LEFT · AIM YOUR RETURN` : `${engine.arenas[game.wave - 1].toUpperCase()} / ${game.wave} OF ${game.totalWaves}`, width / 2, 46);
+    context.fillText(remaining > 0 && remaining <= 3 ? game.powerHits > 0 ? "GOLD TARGETS · FINISH THE ARENA!" : `${remaining} LEFT · PERFECT = WIDE TARGETS` : `${engine.arenas[game.wave - 1].toUpperCase()} / ${game.wave} OF ${game.totalWaves}`, width / 2, 46);
     drawEffects(ball);
 
     // The last 0.22s of descent is shown as a stable timing band, including
-    // reduced motion. The pulse never changes collision geometry or ball speed.
+    // reduced motion. The pulse never changes paddle geometry or ball speed.
     if (game.phase === "playing") {
       const band = Math.max(20, Math.min(90, Math.max(0, ball.vy) * .22));
       const incoming = ball.vy > 0 && ball.y >= paddle.y - ball.radius - band && ball.y < paddle.y;
@@ -370,7 +393,19 @@
       context.font = '10px "Plex Mono", monospace'; context.textAlign = "center";
       const hint = game.feedback === "perfect" && game.time - game.feedbackAt < 1 ? `PERFECT · ×${1 + Math.min(4, game.chain)}`
         : game.pulseUntil > game.time ? "PULSE ARMED" : incoming && game.time >= game.pulseReadyAt ? "PULSE NOW" : game.powerHits > 0 ? `${game.powerHits} POWERED HITS` : "PULSE ON THE RETURN";
+      context.fillStyle = game.feedback === "perfect" && game.time - game.feedbackAt < 1 ? palette.orange : "#163050";
+      roundRect(74, 359, 212, 25, 7); context.fill();
+      context.fillStyle = game.feedback === "perfect" && game.time - game.feedbackAt < 1 ? "#152444" : palette.ink;
+      context.font = 'bold 11px "Plex Mono", monospace';
       context.fillText(hint, width / 2, 375);
+      // Countable charges make the perfect-return reward visible even without
+      // particles, motion, or distinguishing the ball's colour.
+      if (game.powerHits > 0) for (let charge = 0; charge < 3; charge++) {
+        const x = width / 2 - 15 + charge * 11;
+        context.strokeStyle = palette.orange; context.lineWidth = 1;
+        context.fillStyle = charge < game.powerHits ? palette.orange : "#163050";
+        context.fillRect(x, 388, 8, 4); context.strokeRect(x, 388, 8, 4);
+      }
       context.restore();
     }
 
@@ -380,7 +415,7 @@
     // same aiming silhouette, bright front edge, and clear collision surface.
     context.fillStyle = "rgba(109, 220, 255, .09)";
     roundRect(left - 6, paddle.y - 4, paddle.width + 12, paddle.height + 10, 8); context.fill();
-    context.fillStyle = palette.panel; context.strokeStyle = palette.blue; context.lineWidth = 1;
+    context.fillStyle = palette.blue; context.strokeStyle = "#07172e"; context.lineWidth = 2;
     shieldPath(left, paddle.y, paddle.width, paddle.height, 4); context.fill(); context.stroke();
     context.fillStyle = game.pulseUntil > game.time ? palette.orange : palette.blue; context.fillRect(left + 5, paddle.y, paddle.width - 10, 2);
     context.fillStyle = palette.ink; context.fillRect(left + 11, paddle.y + 1, paddle.width - 22, 1);
@@ -388,10 +423,19 @@
     context.fillRect(left + 5, paddle.y + 5, 7, 1); context.fillRect(left + paddle.width - 12, paddle.y + 5, 7, 1);
     if (decorative() && catchLight > 0) {
       const progress = 1 - catchLight / .3;
-      context.globalAlpha = (1 - progress) * .65; context.strokeStyle = palette.blue;
+      const perfectCatch = game.feedback === "perfect" && game.time - game.feedbackAt < .3;
+      context.globalAlpha = (1 - progress) * .65; context.strokeStyle = perfectCatch ? palette.orange : palette.blue;
       context.lineWidth = 2 - progress;
       roundRect(left - 3 - progress * 11, paddle.y - 3 - progress * 5, paddle.width + 6 + progress * 22, paddle.height + 6 + progress * 10, 8);
       context.stroke();
+      if (perfectCatch) {
+        context.lineWidth = 2;
+        for (const side of [-1, 1]) {
+          const x = paddle.x + side * (paddle.width / 2 + 7 + progress * 12);
+          context.beginPath(); context.moveTo(x, paddle.y + 4);
+          context.lineTo(x + side * 7, paddle.y - 5 - progress * 7); context.stroke();
+        }
+      }
     }
     context.restore();
 
@@ -421,14 +465,14 @@
     context.fillText("drag anywhere to guide", width / 2, height - 12);
     if (paused || game.phase !== "playing") {
       const title = paused ? "time stands still" : game.phase === "clear" ? "arena cleared" : game.phase === "won" ? "wish granted" : game.phase === "lost" ? "another round?" : game.lives < 3 ? "ki scattered" : "master the return";
-      const subtitle = paused ? "resume when you’re ready" : game.phase === "clear" ? "next arena / +1 life, up to 3" : game.phase === "won" ? "three arenas. one little secret." : game.phase === "lost" ? "even saiyans need practice" : game.lives < 3 ? `${game.lives} ${game.lives === 1 ? "life" : "lives"} left · tap / space to release` : "launch / pulse just before contact";
+      const subtitle = paused ? "resume when you’re ready" : game.phase === "clear" ? `${engine.arenas[game.wave - 1]} mastered · next / +1 life` : game.phase === "won" ? `${game.perfects} perfect returns · ${game.score * 15} power` : game.phase === "lost" ? "even saiyans need practice" : game.lives < 3 ? `${game.lives} ${game.lives === 1 ? "life" : "lives"} left · tap / space to release` : "launch / pulse just before contact";
       context.save();
-      context.fillStyle = "rgba(7, 15, 32, .9)"; context.strokeStyle = palette.line;
+      context.fillStyle = "#fff4d5"; context.strokeStyle = palette.orange; context.lineWidth = 3;
       shieldPath(34, height * .49 - 33, width - 68, 72, 9); context.fill(); context.stroke();
       context.fillStyle = palette.orange; context.fillRect(width / 2 - 14, height * .49 - 20, 28, 2);
-      context.fillStyle = palette.white; context.font = '16px "Plex Mono", monospace';
+      context.fillStyle = "#19294b"; context.font = 'bold 16px "Plex Mono", monospace';
       context.fillText(title, width / 2, height * .49 + 1);
-      context.fillStyle = palette.muted; context.font = '10px "Plex Mono", monospace';
+      context.fillStyle = "#355274"; context.font = '10px "Plex Mono", monospace';
       context.fillText(subtitle, width / 2, height * .49 + 23);
       context.restore();
     }

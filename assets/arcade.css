@@ -1,76 +1,66 @@
-/* Three generations on the shelf inside the existing Dragon Ball. */
-#arcade-dialog, .console-dialog, #training-dialog { color-scheme: dark; --arcade-ink:#f6eddb; --arcade-dim:#b2bcc8; --arcade-bg:#202b3c; color:var(--arcade-ink); background:#202b3c; border:2px solid #6e7d8d; border-radius:19px; box-shadow:0 24px 100px #050a18b3, inset 0 0 0 5px #29374b; }
-#arcade-dialog::backdrop, .console-dialog::backdrop, #training-dialog::backdrop { background:#080f22b8; backdrop-filter:blur(7px); }
-#arcade-dialog { width:min(660px,calc(100vw - 28px)); max-height:calc(100dvh - 28px); padding:26px; }
-#arcade-dialog button, .console-dialog button, #training-dialog button { color:var(--arcade-ink); border:1px solid #718092; background:#344257; border-radius:7px; min-height:42px; cursor:pointer; font:inherit; }
-#arcade-dialog button:hover, .console-dialog button:hover, #training-dialog button:hover { background:#465771; border-color:#cad7dd; }
-#arcade-dialog button:focus-visible, .console-dialog :focus-visible, #training-dialog button:focus-visible { outline:3px solid #ffce6b; outline-offset:4px; }
-#arcade-dialog .arcade-eyebrow, .console-eyebrow { color:#b7c3d3; font-size:10px; letter-spacing:.13em; }
-#arcade-dialog #arcade-title { color:#fff1cd; margin:9px 0 4px; font-size:30px; letter-spacing:-1px; }
-#arcade-dialog .arcade-picker-intro { color:#b9c7d5; margin:4px 0 23px; font-size:12px; }
-#arcade-dialog .arcade-heading { display:flex; align-items:center; justify-content:space-between; }
-#arcade-dialog #arcade-close { padding:4px 11px; }
-#arcade-dialog .game-choice { display:grid; grid-template-columns:104px minmax(0,1fr) 20px; width:100%; gap:18px; align-items:center; margin:0 0 13px; padding:12px; text-align:left; background:#29374a; border:1px solid #596b82; border-radius:8px; box-shadow:0 3px 0 #131e30; }
-#arcade-dialog .game-choice:hover { transform:translateY(-1px); background:#40536a; }
-#arcade-dialog .game-choice strong { display:block; color:#fff1ce; font-size:17px; margin-bottom:5px; }
-#arcade-dialog .game-choice small { color:#c1cbd4; display:block; font-size:11px; line-height:1.6; }
-.cartridge-art { position:relative; display:block; width:100px; height:76px; border:3px solid #8f998f; border-radius:8px; overflow:hidden; background:#8cced7; box-shadow:inset 0 0 0 4px #273c52; image-rendering:pixelated; }
-.cartridge-breaker { background:#1c2e4d; }
-.cartridge-breaker::before { content:""; position:absolute; top:14px; left:13px; width:19px; height:7px; background:#fba65d; box-shadow:23px 0 #ffd77f,46px 0 #fba65d,0 11px #77c9dc,23px 11px #9bc5ed,46px 11px #77c9dc,23px 43px #e5f4e9; }
-.cartridge-breaker::after { content:""; position:absolute; width:6px; height:6px; border-radius:50%; top:40px; left:57px; background:#fff0b2; }
-.console-dialog { box-sizing:border-box; width:min(720px,calc(100vw - 24px)); max-height:calc(100dvh - 24px); padding:22px; overflow:auto; font-family:"Plex Mono",monospace; }
-.console-dialog[open] { display:block; }
-.console-heading { display:flex; align-items:flex-start; justify-content:space-between; gap:16px; margin-bottom:18px; }
-.console-heading h2 { font-size:29px; line-height:1.05; letter-spacing:-1px; margin:8px 0 0; color:#fff1cd; }
-.console-heading h2 span { display:block; font-size:10px; line-height:1.6; margin-top:7px; letter-spacing:.25em; color:#f6ba63; }
-.console-heading>button { min-width:45px; padding:5px 10px; }
-.console-hud { display:flex; justify-content:space-between; align-items:center; gap:12px; font-size:10px; color:#b9c7d5; margin:0 0 12px; }
-.console-hud strong { display:block; color:#fff1ce; font-size:18px; margin-top:5px; }
-.console-actions { display:flex; gap:9px; align-items:center; flex-wrap:wrap; margin-top:17px; }
-.console-actions button { padding:7px 13px; font-size:11px; }
-.console-actions button:first-child { margin-right:auto; }
-.console-dialog button:disabled { opacity:.45; cursor:default; }
-.console-help { font-size:10px; line-height:1.8; color:#aebdcc; margin:16px 0 0; }
-.console-result { position:absolute; inset:0; background:#152235ef; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:19px; text-align:center; }
-.console-result[hidden] { display:none; }
-.console-result strong { font-size:33px; color:#ffd484; }
-.console-result span { font-size:13px; }
-.console-result button { padding:9px 20px; }
-.arcade-loading { border-radius:13px; max-width:360px; padding:25px; }
-.arcade-loading h2 { font-size:18px; }.arcade-loading p { font-size:12px; line-height:1.6; }.arcade-loading button { padding:9px; }
-#training-dialog .training-heading h2 { color:#fff1ce; }#training-dialog .training-hud,#training-dialog #training-instructions { color:#c1cbd4; }
-#training-dialog .training-hud { gap:4px; }
-#training-dialog .training-hud>span { gap:4px; white-space:nowrap; }
-@media (max-width:520px) {
-  #arcade-dialog { padding:18px; }
-  #arcade-dialog .game-choice { grid-template-columns:75px 1fr 12px; gap:12px; padding:10px; }
-  .cartridge-art { width:75px; height:72px; }
-  #arcade-dialog .game-choice strong { font-size:14px; }
-  #arcade-dialog .game-choice small { font-size:10px; }
-  .console-dialog { padding:15px; }
-  .console-heading h2 { font-size:26px; }
-  .console-heading { margin-bottom:14px; }
-  .console-hud strong { font-size:16px; }
-  .console-actions button { padding:7px 9px; font-size:10px; }
-}
-
-/* The training-dialog rules above are intentionally preserved verbatim. */
-#arcade-dialog .cartridge-generation { display:block; margin:0 0 7px; color:#a9bbce; font-size:9px; line-height:1.4; letter-spacing:.06em; text-transform:uppercase; }
-#arcade-dialog [data-game="piccolo"] { border-left:4px solid #98a96d; }
-#arcade-dialog [data-game="piccolo"] .cartridge-generation { color:#bccc94; }
-#arcade-dialog [data-game="platformer"] { border-left:4px solid #a68bd0; }
-#arcade-dialog [data-game="platformer"] .cartridge-generation { color:#c5afea; }
-#arcade-dialog [data-game="breaker"] { border-left:4px solid #79cfdf; }
-#arcade-dialog [data-game="breaker"] .cartridge-generation { color:#9fddea; }
-.cartridge-art svg { display:block; width:100%; height:100%; }
-.cartridge-piccolo { width:100px; height:88px; border:5px solid #a6ab99; border-radius:6px 6px 16px 6px; background:#879b55; box-shadow:0 2px 0 #111d2f,inset 0 0 0 2px #34452c; }
-.cartridge-platformer { width:100px; height:88px; border:2px solid #8d88bd; border-radius:9px; background:#292551; box-shadow:0 3px 0 #171b35; image-rendering:auto; }
-#arcade-dialog .cartridge-arrow { color:#b1c2d4; font-size:16px; }
-@media (max-width:520px) {
-  #arcade-dialog .game-choice { grid-template-columns:76px minmax(0,1fr) 12px; gap:11px; }
-  .cartridge-piccolo { width:73px; height:74px; }
-  .cartridge-platformer { width:73px; height:74px; }
-  #arcade-dialog .cartridge-generation { font-size:8px; letter-spacing:.02em; margin-bottom:5px; }
-}
-@media (prefers-reduced-motion:reduce) { #arcade-dialog .game-choice:hover { transform:none; } }
-html[data-motion="paused"] #arcade-dialog .game-choice:hover { transform:none; }
+/* Shared arcade chrome and artwork are loaded only after a game is requested. */
+#arcade-dialog,.console-dialog,#training-dialog{color-scheme:dark;--arcade-ink:#fff4d8;--arcade-dim:#c0dcea;--arcade-bg:#142c47;color:var(--arcade-ink);background:#142c47;border:2px solid #58cfc5;border-radius:20px;box-shadow:0 24px 100px #050a18b3,inset 0 0 0 5px #203f5b}
+#arcade-dialog::backdrop,.console-dialog::backdrop,#training-dialog::backdrop{background:#07172dc9;backdrop-filter:blur(7px)}
+#arcade-dialog{box-sizing:border-box;width:min(580px,calc(100vw - 24px));max-height:calc(100dvh - 24px);padding:22px;overflow:auto;overscroll-behavior:contain}
+#arcade-dialog[data-mode=choose]{width:min(760px,calc(100vw - 24px))}
+#arcade-dialog button,.console-dialog button,#training-dialog button{color:#fff4d8;border:1px solid #75b8ca;background:#234964;border-radius:9px;min-height:44px;cursor:pointer;font:inherit}
+#arcade-dialog button:hover,.console-dialog button:hover,#training-dialog button:hover{background:#32617d;border-color:#b4fff1}
+#arcade-dialog button:focus-visible,.console-dialog :focus-visible,#training-dialog button:focus-visible{outline:3px solid #ffdc75;outline-offset:3px}
+#arcade-dialog .arcade-heading{display:flex;align-items:center;justify-content:space-between;background:#142c47;padding:2px 0 7px}
+#arcade-dialog .arcade-eyebrow,.console-eyebrow{color:#a5e9dc;font-size:10px;letter-spacing:.12em}
+#arcade-dialog #arcade-title{color:#ffe7a4;margin:9px 0 15px;font-size:30px;letter-spacing:-1px}
+#arcade-dialog #arcade-close{padding:4px 11px;min-width:44px}
+.arcade-panorama{height:150px;border:2px solid #a7eee4;border-radius:12px;background:#39bfe8 url('/assets/arcade-lookout.webp') center 48%/cover no-repeat;box-shadow:0 4px 0 #0b1b31;margin-bottom:15px}
+#arcade-dialog .arcade-picker-intro{color:#c4e2e6;margin:10px 0 17px;font-size:12px}
+.arcade-choice-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}
+#arcade-dialog .game-choice{display:grid;grid-template-columns:65px minmax(0,1fr) 12px;gap:10px;align-items:center;width:100%;margin:0;padding:10px;text-align:left;background:#eff9ec;border:2px solid #a9e0ce;border-radius:12px;box-shadow:0 4px 0 #091d35;transition:background-color .12s,border-color .12s}
+#arcade-dialog .game-choice:hover{background:#fff9db;border-color:#ffcf63}
+#arcade-dialog .game-choice strong{display:block;color:#172e48;font-size:15px;font-weight:700;line-height:1.25;margin-bottom:4px}
+#arcade-dialog .game-choice small{color:#315368;display:block;font-size:10px;line-height:1.5;margin:0}
+#arcade-dialog .cartridge-generation{display:block;color:#286252;font-size:9px;line-height:1.4;margin-bottom:5px;letter-spacing:.04em;text-transform:uppercase}
+#arcade-dialog .cartridge-arrow{color:#244861;font-size:17px}
+.cartridge-art{display:block;width:64px;height:64px;flex:none;border:2px solid #16324f;border-radius:12px;overflow:hidden;box-shadow:0 3px 0 #142d4533;background-image:url('/assets/arcade-icons.svg');background-size:100% 500%;background-repeat:no-repeat}
+.cartridge-piccolo{background-position:center 0}.cartridge-platformer{background-position:center 25%}.cartridge-breaker{background-position:center 50%}.cartridge-ki{background-position:center 75%}.cartridge-radar{background-position:center 100%}
+#arcade-dialog #arcade-back{padding:5px 10px;color:#b7ffee;border:1px solid #4d8b97;background:#193c53}
+#arcade-score{color:#ffe5a0!important;font-size:12px!important;padding:12px 0 0;font-variant-numeric:tabular-nums}
+#arcade-dialog .arcade-record{color:#badbdc;margin:0 0 12px;font-size:10px;min-height:17px}
+#ki-canvas{display:block;width:100%;height:auto;max-height:none;border:2px solid #70d6d7;border-radius:12px;background:#82def0;box-shadow:0 4px 0 #0b1b31}
+.ki-readout{color:#c5e2e5;margin-top:16px}.ki-readout strong{color:#fff1bf;font-weight:700}
+.ki-gauge{height:24px;border:2px solid #79bfce;background:#0d2038;border-radius:6px}
+#ki-meter::-webkit-progress-value{background:#55d8dc;border-radius:3px}#ki-meter::-moz-progress-bar{background:#55d8dc;border-radius:3px}
+#ki-target{border-color:#ffdf72;background:#ffdf7220;border-radius:3px}
+#ki-target::after{content:"";position:absolute;left:50%;top:-3px;bottom:-3px;border-left:2px dashed #fff5cf}
+#arcade-dialog #ki-charge{background:#ffcb62;color:#162b42;border:2px solid #fff0b0;box-shadow:0 4px 0 #b66b31;min-height:48px;font-weight:700}
+#arcade-dialog #ki-charge[aria-pressed=true]{background:#79eee2;border-color:#ccfff0;box-shadow:0 4px 0 #277f89}
+#arcade-dialog #ki-help{color:#c7e1e7}
+#arcade-dialog #arcade-status{color:#a8f6e1!important;min-height:48px;padding:14px 0;font-size:11px;line-height:1.7}
+.hunt-screen{padding:12px;border:3px solid #ffd377;border-radius:17px;background:linear-gradient(145deg,#206660,#153e4d);box-shadow:0 4px 0 #091d35}
+#hunt-grid{gap:5px}
+#arcade-dialog #hunt-grid button{position:relative;min-height:44px;border:1px solid #64a7a0;border-radius:7px;background:#164b4e;color:#d7fff1;font-size:20px;font-weight:700}
+#arcade-dialog #hunt-grid button::before{content:attr(data-cell);position:absolute;top:2px;left:3px;font-size:7px;font-weight:400;opacity:.8}
+#arcade-dialog #hunt-grid button:hover{border-color:#fff2b6;background:#266c67}
+#arcade-dialog #hunt-grid button[data-signal=cold]{background:#8ed4e0;color:#15374b;border-color:#beeef2}
+#arcade-dialog #hunt-grid button[data-signal=warm]{background:#ffe496;color:#493c25;border-color:#fff1bc}
+#arcade-dialog #hunt-grid button[data-signal=hot]{background:#ffb75b;color:#4c2b22;border-color:#ffdc92}
+#arcade-dialog #hunt-grid button[data-signal=found]{background:#fff3c9;color:#19394b;border-color:#ffe07d}
+#hunt-dragon{border-radius:12px;background:#073a40ed}
+#arcade-dialog .hunt-legend{color:#d5f4e8;font-size:10px}
+.console-dialog{box-sizing:border-box;width:min(720px,calc(100vw - 24px));max-height:calc(100dvh - 24px);padding:22px;overflow:auto;font-family:"Plex Mono",monospace}
+.console-dialog[open]{display:block}
+.console-heading{display:flex;align-items:flex-start;justify-content:space-between;gap:16px;margin-bottom:18px}
+.console-heading h2{font-size:29px;line-height:1.05;letter-spacing:-1px;margin:8px 0 0;color:#ffe5a0}
+.console-heading h2 span{display:block;font-size:10px;line-height:1.6;margin-top:7px;letter-spacing:.2em;color:#a6eedc}
+.console-heading>button{min-width:45px;padding:5px 10px}
+.console-hud{display:flex;justify-content:space-between;align-items:center;gap:12px;font-size:10px;color:#c6e4e4;margin:0 0 12px}
+.console-hud strong{display:block;color:#ffdc85;font-size:18px;margin-top:5px}
+.console-actions{display:flex;gap:9px;align-items:center;flex-wrap:wrap;margin-top:17px}.console-actions button{padding:7px 13px;font-size:11px}.console-actions button:first-child{margin-right:auto}
+.console-dialog button:disabled{opacity:.5;cursor:default}
+.console-help{font-size:10px;line-height:1.8;color:#c0dae2;margin:16px 0 0}
+.console-result{position:absolute;inset:0;background:#fff2d9f5;color:#18334c;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:19px;text-align:center}.console-result[hidden]{display:none}.console-result strong{font-size:33px;color:#70408d}.console-result span{font-size:13px}.console-result button{padding:9px 20px}
+.arcade-loading{border-radius:13px;max-width:360px;padding:25px}.arcade-loading h2{font-size:18px}.arcade-loading p{font-size:12px;line-height:1.6}.arcade-loading button{padding:9px}
+#training-dialog .training-heading h2{color:#ffe5a0}#training-dialog .training-hud,#training-dialog #training-instructions{color:#c6e4e4}#training-dialog .training-hud{gap:4px}#training-dialog .training-hud>span{gap:4px;white-space:nowrap}
+@media(max-width:620px){.arcade-choice-grid{grid-template-columns:minmax(0,1fr)}.arcade-panorama{height:118px}#arcade-dialog .game-choice{grid-template-columns:62px minmax(0,1fr) 14px;padding:9px;gap:11px}.cartridge-art{width:60px;height:60px}#arcade-dialog .game-choice strong{font-size:15px}}
+@media(max-width:520px){#arcade-dialog{padding:16px}.console-dialog{padding:15px}.console-heading h2{font-size:26px}.console-heading{margin-bottom:14px}.console-hud strong{font-size:16px}.console-actions button{padding:7px 9px;font-size:10px}}
+@media(max-width:360px){#arcade-dialog{width:calc(100vw - 16px);padding:12px}#arcade-dialog[data-mode=choose]{width:calc(100vw - 16px)}.arcade-panorama{height:96px}#arcade-dialog .game-choice strong{font-size:14px}.hunt-screen{padding:5px}#hunt-grid{gap:3px}#arcade-dialog #hunt-grid button{min-height:42px}.cartridge-art{width:58px;height:58px}}
+@media(max-height:500px) and (min-width:480px){.arcade-panorama{height:100px}#ki-canvas{max-height:160px;object-fit:contain}#hunt-grid{max-width:310px;margin:auto}}
+@media(prefers-reduced-motion:reduce){#arcade-dialog .game-choice{transition:none}}

@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import vm from 'node:vm';
 import { readFile } from 'node:fs/promises';
 const source = await readFile(new URL('../assets/hidden-games.js', import.meta.url), 'utf8');
-function harness({ quiet = false } = {}) {
+function harness({ quiet = false, storage } = {}) {
   let now = 0, id = 0, focused;
   const frames = new Map(), nodes = new Map();
   class Element {
@@ -23,8 +23,8 @@ function harness({ quiet = false } = {}) {
   }
   const get = key => { if (!nodes.has(key)) nodes.set(key, new Element()); return nodes.get(key); };
   const document = Object.assign(new Element(), { documentElement: new Element(), hidden: false, getElementById: get, querySelectorAll: () => [], createElement: () => new Element() });
-  const window = Object.assign(new Element(), { dispatchEvent() {} });
-  vm.runInNewContext(source, {document, window, performance:{now:()=>now}, matchMedia:()=>({matches:quiet,addEventListener(){}}), MutationObserver:class {observe(){}}, CustomEvent:class{}, requestAnimationFrame: fn=>{frames.set(++id,fn);return id;}, cancelAnimationFrame: n=>frames.delete(n)});
+  const window = Object.assign(new Element(), { dispatchEvent() {}, localStorage: storage });
+  vm.runInNewContext(source, {document, window, Math: Object.assign(Object.create(Math), {random: () => .5}), performance:{now:()=>now}, matchMedia:()=>({matches:quiet,addEventListener(){}}), MutationObserver:class {observe(){}}, CustomEvent:class{}, requestAnimationFrame: fn=>{frames.set(++id,fn);return id;}, cancelAnimationFrame: n=>frames.delete(n)});
   function advance(ms) { now += ms; const pending = [...frames.values()]; frames.clear(); pending.forEach(fn=>fn(now)); }
   return {get, window, document, advance, frames, focus:()=>focused};
 }
@@ -158,6 +158,58 @@ test('starting fresh returns keyboard focus to the game control', () => {
   h.window.PortfolioArcade.open('radar'); h.get('hunt-grid').children[12].focus();
   h.get('arcade-reset').fire('click'); assert.equal(h.focus(), h.get('hunt-grid').children[0]);
   h.window.PortfolioArcade.open('ki'); h.get('arcade-reset').fire('click'); assert.equal(h.focus(), h.get('ki-charge'));
+});
+
+test('only a completed Ki run writes a best; retry and reload preserve it', () => {
+  const saved = new Map(), storage = {getItem:key=>saved.get(key) ?? null, setItem:(key,value)=>saved.set(key,value)};
+  const h = harness({storage}); h.window.PortfolioArcade.open('ki');
+  const action = h.get('ki-charge');
+  for (const elapsed of [1474,1133,1672,1232]) { action.fire('click',{detail:0}); h.advance(elapsed); action.fire('click',{detail:0}); }
+  assert.equal(saved.size,0,'unfinished attempts do not become records');
+  action.fire('click',{detail:0}); h.advance(1738); action.fire('click',{detail:0});
+  assert.match(h.get('arcade-score').textContent,/5 hits · 5 perfect/);
+  assert.match(h.get('arcade-status').textContent,/New personal best/);
+  assert.match(h.get('arcade-record').textContent,/best 5\/5 hits · 5 perfect · this device/);
+  action.fire('click',{detail:0}); assert.match(h.get('arcade-record').textContent,/best 5\/5/);
+  const reloaded = harness({storage}); reloaded.window.PortfolioArcade.open('ki');
+  assert.match(reloaded.get('arcade-record').textContent,/best 5\/5 hits · 5 perfect/);
+  for(let i=0;i<5;i++){action.fire('click',{detail:0});h.advance(300);action.fire('click',{detail:0});}
+  assert.match(h.get('arcade-record').textContent,/best 5\/5 hits · 5 perfect/,'a worse replay cannot replace the best');
+});
+
+test('unavailable storage keeps a session best and never blocks retry', () => {
+  const storage = {getItem(){throw Error('blocked');},setItem(){throw Error('full');}};
+  const h = harness({storage}); h.window.PortfolioArcade.open('ki');
+  for(let i=0;i<5;i++){h.get('ki-charge').fire('click',{detail:0});h.advance(1500);h.get('ki-charge').fire('click',{detail:0});}
+  assert.match(h.get('arcade-record').textContent,/this session/);
+  h.get('arcade-reset').fire('click'); assert.match(h.get('arcade-score').textContent,/0 hits/);
+  h.window.PortfolioArcade.open('radar'); h.get('hunt-grid').children.forEach(cell=>cell.fire('click'));
+  assert.match(h.get('arcade-record').textContent,/best \d+ scans · this session/);
+});
+
+test('saving a completed run merges better records written by another tab', () => {
+  const key='portfolio-arcade-records-v1', saved=new Map();
+  const storage={getItem:key=>saved.get(key) ?? null,setItem:(key,value)=>saved.set(key,value)};
+  const h=harness({storage}); h.window.PortfolioArcade.open('ki');
+  // A second tab finishes after this dialog was opened.
+  storage.setItem(key,JSON.stringify({ki:{hits:5,perfects:5},radar:{scans:12}}));
+  for(let i=0;i<5;i++){h.get('ki-charge').fire('click',{detail:0});h.advance(1500);h.get('ki-charge').fire('click',{detail:0});}
+  assert.deepEqual(JSON.parse(saved.get(key)),{ki:{hits:5,perfects:5},radar:{scans:12}});
+  assert.doesNotMatch(h.get('arcade-status').textContent,/New personal best/);
+  h.window.PortfolioArcade.open('radar'); assert.match(h.get('arcade-record').textContent,/best 12 scans/);
+});
+
+test('a discovery invalidates distance readings but preserves known empty squares', () => {
+  const h = harness(); h.window.PortfolioArcade.open('radar'); const cells = h.get('hunt-grid').children;
+  let empty;
+  for (const cell of cells) {
+    cell.fire('click');
+    if(cell.dataset.signal !== 'found') { empty = cell; assert.match(cell.getAttribute('aria-label'), /\d+ steps? to the nearest ball/); }
+    else if(empty) break;
+  }
+  assert.ok(empty); assert.equal(empty.dataset.signal,'visited'); assert.equal(empty.textContent,'○');
+  assert.match(empty.getAttribute('aria-label'),/empty, scan for an updated distance/);
+  empty.fire('click'); assert.match(empty.textContent,/^\d+$/,'explicit rescan supplies a new numeric clue');
 });
 
 test('blur and hidden-tab interruption consume the held pointer trailing click without restarting', () => {
