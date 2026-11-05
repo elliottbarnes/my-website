@@ -308,7 +308,7 @@ function harness(options = {}) {
     constructor() { this.listeners = {}; this.dataset = {}; this.attributes = {}; this.isConnected = true; this.open = false; this.textContent = ''; }
     addEventListener(type, fn) { (this.listeners[type] ||= []).push(fn); }
     fire(type, event = {}) { const data = { target: this, button: 0, pointerId: 1, preventDefault() { this.prevented = true; }, stopPropagation() {}, ...event }; this.listeners[type]?.forEach(fn => fn(data)); return data; }
-    setAttribute(key, value) { this.attributes[key] = value; } getAttribute(key) { return this.attributes[key] ?? null; } removeAttribute(key) { delete this.attributes[key]; }
+    setAttribute(key, value) { this.attributes[key] = value; } getAttribute(key) { return (key === 'data-held' ? this.dataset.held : this.attributes[key]) ?? null; } removeAttribute(key) { if (key === 'data-held') delete this.dataset.held; else delete this.attributes[key]; }
     querySelector(selector) { return get(selector.slice(1)); } querySelectorAll(selector) { return selector === '[data-piccolo-hold]' ? holds : []; }
     focus() { focus = this; } showModal() { this.open = true; } close() { this.open = false; this.fire('close'); }
     closest() { return this.button ? this : null; }
@@ -387,6 +387,35 @@ test('upward movement stops when release is delivered to the window instead of t
     h.advance(200); assert.equal(h.shadow()[1], y, `${type} release must stop upward movement`);
   }
 });
+test('a touch ending without a pointer release stops Up while another control stays held', () => {
+  const h = harness(); h.window.PortfolioPiccolo.open(h.footer); h.get('piccolo-start').fire('click');
+  const up = h.get('hold-up'), right = h.get('hold-right');
+  up.fire('pointerdown', { pointerId: 11, pointerType: 'touch' });
+  right.fire('pointerdown', { pointerId: 12, pointerType: 'touch' });
+  h.advance(120);
+  const [x, y] = h.shadow();
+  h.window.fire('touchend', { touches: [{ target: right }] });
+  h.advance(120);
+  assert.equal(up.getAttribute('data-held'), null);
+  assert.equal(h.shadow()[1], y, 'released Up must stop');
+  assert.ok(h.shadow()[0] > x, 'the other finger still moves right');
+  h.window.fire('touchend', { touches: [] });
+  const stopped = h.shadow()[0];
+  h.advance(120); assert.equal(h.shadow()[0], stopped);
+});
+
+test('releasing the primary mouse button stops Up even when a second button remains held', () => {
+  const h = harness(); h.window.PortfolioPiccolo.open(h.footer); h.get('piccolo-start').fire('click');
+  const up = h.get('hold-up');
+  up.fire('pointerdown', { pointerId: 7, pointerType: 'mouse', buttons: 1 });
+  h.advance(120);
+  const y = h.shadow()[1];
+  h.window.fire('pointermove', { pointerId: 7, pointerType: 'mouse', buttons: 2 });
+  h.advance(120);
+  assert.equal(up.getAttribute('data-held'), null);
+  assert.equal(h.shadow()[1], y);
+});
+
 test('restart discards held upward input and does not let stale key repeats reactivate it', () => {
   const h = harness(); h.window.PortfolioPiccolo.open(h.footer); h.get('piccolo-start').fire('click');
   h.dialog.fire('keydown', { key: 'ArrowUp', target: h.get('piccolo-canvas') }); h.advance(160);
