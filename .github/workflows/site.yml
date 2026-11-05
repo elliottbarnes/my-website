@@ -40,7 +40,20 @@ jobs:
           node scripts/verify-site.mjs dist --source .
           node scripts/check-performance.mjs dist
       - name: Install isolated test browsers
-        run: npm run browser:install -- --with-deps
+        timeout-minutes: 5
+        run: |
+          # Azure's mirror can trickle downloads without triggering APT failover.
+          # https://github.com/actions/runner-images/issues/14823
+          test -f /etc/apt/apt-mirrors.txt
+          grep -Fq 'mirror+file:/etc/apt/apt-mirrors.txt' \
+            /etc/apt/sources.list.d/ubuntu.sources
+          # APT requires a literal tab between each URI and its metadata.
+          printf '%s\t%s\n' \
+            'https://archive.ubuntu.com/ubuntu/' 'priority:1' \
+            'https://security.ubuntu.com/ubuntu/' 'priority:2' \
+            'http://azure.archive.ubuntu.com/ubuntu/' 'priority:3' \
+            | sudo tee /etc/apt/apt-mirrors.txt >/dev/null
+          npm run browser:install -- --with-deps
       - name: Browser behavior, accessibility and candidate security headers
         run: npm run test:browser
       - name: Retain browser evidence
