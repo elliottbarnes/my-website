@@ -47,11 +47,12 @@ jobs:
           test -f /etc/apt/apt-mirrors.txt
           grep -Fq 'mirror+file:/etc/apt/apt-mirrors.txt' \
             /etc/apt/sources.list.d/ubuntu.sources
-          sudo tee /etc/apt/apt-mirrors.txt >/dev/null <<'MIRRORS'
-          https://archive.ubuntu.com/ubuntu/ priority:1
-          https://security.ubuntu.com/ubuntu/ priority:2
-          http://azure.archive.ubuntu.com/ubuntu/ priority:3
-          MIRRORS
+          # APT requires a literal tab between each URI and its metadata.
+          printf '%s\t%s\n' \
+            'https://archive.ubuntu.com/ubuntu/' 'priority:1' \
+            'https://security.ubuntu.com/ubuntu/' 'priority:2' \
+            'http://azure.archive.ubuntu.com/ubuntu/' 'priority:3' \
+            | sudo tee /etc/apt/apt-mirrors.txt >/dev/null
           npm run browser:install -- --with-deps
       - name: Browser behavior, accessibility and candidate security headers
         run: npm run test:browser
