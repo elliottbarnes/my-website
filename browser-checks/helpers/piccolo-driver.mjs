@@ -1,5 +1,6 @@
 import assert from 'node:assert/strict';
 import { createRequire } from 'node:module';
+import { runCallbacks } from './clock.mjs';
 const require = createRequire(import.meta.url);
 const engine = require('../../assets/piccolo-lookout.js');
 
@@ -21,7 +22,7 @@ export async function openPiccolo(page) {
   await page.clock.install();
   await page.clock.pauseAt(new Date());
   await page.locator('#piccolo-start').click();
-  await page.clock.runFor(32);
+  await runCallbacks(page, 32);
 }
 
 export function piccoloDriver(page) {
@@ -36,7 +37,7 @@ export function piccoloDriver(page) {
     for (const key of held) if (!wanted.has(key)) await page.keyboard.up(key);
     for (const key of wanted) if (!held.has(key)) await page.keyboard.down(key);
     held = wanted;
-    await page.clock.runFor(ms);
+    await runCallbacks(page, ms);
     return state();
   }
   async function walkTo(tx, ty) {
@@ -66,33 +67,35 @@ export function piccoloDriver(page) {
       }
       assert.ok(tries < 150, `not stuck at ${game.player.x},${game.player.y} walking to ${x},${y}`);
     }
-    await input();
+    return input();
   }
   const charge = async () => { await input({ action: true }, 848); return input({}, 32); };
   const quick = async () => { await input({ action: true }, 32); return input({}, 400); };
-  const next = async room => { await walkTo(304, 96); const game = await input({ x: 1 }, 240); assert.equal(game.room, room); await input(); };
+  const next = async room => { await walkTo(304, 96); const game = await input({ x: 1 }, 240); assert.equal(game.room, room); return input(); };
   async function complete(onRoom = async () => {}) {
-    await charge(); await onRoom(await state()); await next(1);
+    let game = await charge(); await onRoom(game); await next(1);
     await walkTo(152, 168); await input({ y: -1 }); await charge();
-    await walkTo(248, 168); await input({ y: -1 }); await charge(); await onRoom(await state()); await next(2);
+    await walkTo(248, 168); await input({ y: -1 }); game = await charge(); await onRoom(game); await next(2);
     await walkTo(32, 48); await input({ x: 1 }); await charge();
-    await walkTo(104, 144); await input({ x: 1 }); await charge(); await onRoom(await state()); await next(3);
+    await walkTo(104, 144); await input({ x: 1 }); game = await charge(); await onRoom(game); await next(3);
     await walkTo(72, 96); await input({ y: -1 }); await charge();
-    await walkTo(248, 128); await input({ y: 1 }); await quick(); await onRoom(await state()); await next(4);
+    await walkTo(248, 128); await input({ y: 1 }); game = await quick(); await onRoom(game); await next(4);
     await walkTo(152, 88); await input({ y: -1 }); await charge();
-    await walkTo(248, 168); await input({ y: -1 }); await charge(); await onRoom(await state()); await next(5);
+    await walkTo(248, 168); await input({ y: -1 }); game = await charge(); await onRoom(game); await next(5);
     await walkTo(32, 48); await input({ x: 1 }); await charge();
-    await walkTo(160, 168); await input({ y: -1 });
+    await walkTo(160, 168); game = await input({ y: -1 });
     for (let i = 0; i < 750; i++) {
-      const game = await state(), keeper = game.rooms[5].guards[0], offset = keeper.x - game.player.x;
+      const keeper = game.rooms[5].guards[0], offset = keeper.x - game.player.x;
       if (keeper.hp <= 0) break;
       assert.equal(game.phase, 'playing', 'normal-input keeper fight survives');
-      if (game.player.charge + 1e-9 >= engine.CHARGE_TIME && keeper.exposed > .1 && Math.abs(offset) < 8) await input({}, 32);
-      else await input({ action: true, x: Math.abs(offset) > 3 ? Math.sign(offset) : 0 }, 48);
+      // input() already returns a fresh copied snapshot. Re-reading it at
+      // the next iteration doubles browser IPC without advancing the clock.
+      if (game.player.charge + 1e-9 >= engine.CHARGE_TIME && keeper.exposed > .1 && Math.abs(offset) < 8) game = await input({}, 32);
+      else game = await input({ action: true, x: Math.abs(offset) > 3 ? Math.sign(offset) : 0 }, 48);
     }
-    assert.ok(engine.unlocked(await state())); await onRoom(await state());
-    await walkTo(160, 56); await quick();
-    const game = await state(); assert.equal(game.phase, 'won'); return game;
+    assert.ok(engine.unlocked(game)); await onRoom(game);
+    await walkTo(160, 56); game = await quick();
+    assert.equal(game.phase, 'won'); return game;
   }
   return { state, input, walkTo, charge, quick, next, complete };
 }

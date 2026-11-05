@@ -1,4 +1,5 @@
 import { test, expect } from '@playwright/test';
+import { runCallbacks } from './helpers/clock.mjs';
 
 // This observer returns a serialized copy. Navigation uses real browser key or
 // touch events; it never alters a life, actor, collectible, or game phase.
@@ -35,15 +36,30 @@ for (const controls of ['keyboard', 'touch']) test(`Goku: normal ${controls} pla
   // The separate real-time play evidence verifies the unmodified live clock.
   await page.clock.install(); await page.clock.pauseAt(new Date());
   await page.locator('#platform-action').click(); await page.clock.runFor(32);
-  const held = new Set(), events = [], bankedChains = new Map(); let lastEvent = -1;
+  const held = new Set(), events = [], bankedChains = new Map(); let lastEvent = -1, decisionBatches = 0, touchGeometry;
   const cdp = controls === 'touch' ? await page.context().newCDPSession(page) : null, contacts = new Map();
   const touchControls = { ArrowRight: ['right', 1], ArrowLeft: ['left', 2], Space: ['jump', 3], x: ['attack', 4] };
+  const observe = () => page.evaluate(touch => {
+    const state = window.__gokuSnapshot;
+    if (touch && state.game.phase === 'playing') {
+      // Read current geometry with the existing observation, rather than making
+      // a separate protocol call for every press. Status wrapping/scrolling can
+      // still move a button: its center and actual hit target are refreshed.
+      state.touchGeometry = Object.fromEntries([...document.querySelectorAll('[data-platform-hold]')].map(button => {
+        const r = button.getBoundingClientRect(), x = r.x + r.width / 2, y = r.y + r.height / 2;
+        const hit = document.elementFromPoint(x, y);
+        return [button.dataset.platformHold, { x, y, receivesTouch: hit === button || button.contains(hit) }];
+      }));
+    }
+    return state;
+  }, Boolean(cdp));
   const key = async (name, on) => {
     if (on === held.has(name)) return;
     if (cdp) {
       if (on) {
-        const [control, id] = touchControls[name], r = await page.locator(`[data-platform-hold="${control}"]`).boundingBox();
-        contacts.set(name, { id, x: r.x + r.width / 2, y: r.y + r.height / 2, radiusX: 2, radiusY: 2 }); held.add(name);
+        const [control, id] = touchControls[name], point = touchGeometry[control];
+        expect(point.receivesTouch, `${control} must receive the real touch`).toBe(true);
+        contacts.set(name, { id, x: point.x, y: point.y, radiusX: 2, radiusY: 2 }); held.add(name);
       } else held.delete(name);
       // CDP touchEnd identifies the ended contacts, not those still held.
       await cdp.send('Input.dispatchTouchEvent', { type: on ? 'touchStart' : 'touchEnd', touchPoints: on ? [...held].map(key => contacts.get(key)) : [contacts.get(name)] });
@@ -52,7 +68,8 @@ for (const controls of ['keyboard', 'touch']) test(`Goku: normal ${controls} pla
   };
   const start = Date.now();
   while (Date.now() - start < 75_000) {
-    const { game, lock, solids, paused } = await snapshot(page), p = game.player;
+    const observed = await observe(), { game, lock, solids, paused } = observed, p = game.player;
+    touchGeometry = observed.touchGeometry;
     if (game.eventId !== lastEvent) { lastEvent = game.eventId; events.push({ event: game.event, time: game.time, lives: game.lives, chain: game.chain }); }
     // Banking persists after its short-lived event/announcement; a slow runner
     // need not observe the exact landing frame to verify the earned result.
@@ -77,11 +94,11 @@ for (const controls of ['keyboard', 'touch']) test(`Goku: normal ${controls} pla
     await key('ArrowRight', direction > 0); await key('ArrowLeft', direction < 0);
     await key('Space', p.grounded ? !p.jumpHeld && jump : p.jumpHeld);
     await key('x', !p.attackHeld && (p.grounded ? p.cooldown === 0 : Boolean(rush)));
-    await page.clock.runFor(32);
+    await page.clock.runFor(32); decisionBatches++;
   }
   for (const name of [...held]) await key(name, false);
   const { game } = await snapshot(page);
-  await testInfo.attach('normal-input-run', { body: JSON.stringify({ events, bankedChains: [...bankedChains.values()], phase: game.phase, score: game.score, longestChain: game.longestChain, time: game.time }), contentType: 'application/json' });
+  await testInfo.attach('normal-input-run', { body: JSON.stringify({ events, bankedChains: [...bankedChains.values()], phase: game.phase, score: game.score, longestChain: game.longestChain, time: game.time, decisionBatches }), contentType: 'application/json' });
   expect(game.phase).toBe('won'); expect(game.orbs.filter(orb => orb.collected)).toHaveLength(7);
   expect(game.enemies.find(enemy => enemy.kind === 'guardian').alive).toBe(false);
   expect(game.longestChain).toBeGreaterThanOrEqual(3); expect(game.checkpoint).toBe(5170);
@@ -180,7 +197,7 @@ async function approachFirstConnection(page) {
 
 test('Goku: an early second rush connects once and a held key never chains itself', async ({ page }, testInfo) => {
   await approachFirstConnection(page);
-  await page.keyboard.down('x'); await page.clock.runFor(240);
+  await page.keyboard.down('x'); await runCallbacks(page, 240);
   const { game } = await snapshot(page);
   expect(game.connections).toBe(2); expect(game.rushes).toBe(2);
   expect(game.player.rushBuffer).toBe(0); expect(game.orbs[0].collected).toBe(true);
@@ -196,7 +213,7 @@ test('Goku: pausing a queued rush cancels it before resuming', async ({ page }) 
   await page.keyboard.press('p');
   expect((await snapshot(page)).game.player.rushBuffer).toBe(0);
   await page.keyboard.up('ArrowRight'); await page.keyboard.up('Space');
-  await page.clock.runFor(150); await page.keyboard.press('p'); await page.clock.runFor(240);
+  await runCallbacks(page, 150); await page.keyboard.press('p'); await runCallbacks(page, 240);
   const { game } = await snapshot(page);
   expect(game.connections).toBe(1); expect(game.rushes).toBe(1);
 });
