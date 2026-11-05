@@ -1,4 +1,4 @@
-/* Piccolo's Lookout: an original, local four-shade handheld adventure. */
+/* Piccolo's Lookout: an original, local colour-handheld adventure. */
 (() => {
   'use strict';
   const TILE = 16, WIDTH = 320, HEIGHT = 192, CHARGE_TIME = .8;
@@ -33,11 +33,11 @@
   ];
   const distance = (a, b) => Math.hypot(a.x - b.x, a.y - b.y);
   const freshRoom = room => ({ crystals: room.crystals.map(crystal => ({ ...crystal, lit: false })),
-    guards: room.guards.map((guard, i) => ({ kind: 'warden', ...guard, direction: i % 2 ? -1 : 1, timer: 1.6 + i * .7, hurt: 0, exposed: 0 })), cleared: false });
+    guards: room.guards.map((guard, i) => ({ kind: 'warden', ...guard, direction: i % 2 ? -1 : 1, timer: 1.6 + i * .7, hurt: 0, exposed: 0, aim: null })), cleared: false });
   const freshPlayer = () => ({ x: 40, y: 144, facing: 'up', immune: 0, cooldown: 0, walking: false, actionHeld: false, actionBuffer: 0, charge: 0, chargeFacing: 'up', actionBlocked: false });
   function create() {
     return { phase: 'ready', time: 0, room: 0, checkpoint: 0, attempts: 1, hearts: 4, hits: 0, shots: 0, deflections: 0, event: 'intro', eventId: 0,
-      beamsFired: 0, alignment: 0, maxChain: 0, rewardedTargets: [], player: freshPlayer(), beam: null, projectiles: [], sparks: [], rooms: ROOMS.map(freshRoom) };
+      beamsFired: 0, alignment: 0, maxChain: 0, rewardedTargets: [], player: freshPlayer(), beam: null, beamReward: null, projectiles: [], sparks: [], rooms: ROOMS.map(freshRoom) };
   }
   function say(game, message) { if (game.event !== message) { game.event = message; game.eventId++; } }
   function start(game) { if (game.phase === 'ready') { game.phase = 'playing'; say(game, ROOMS[0].intro); } }
@@ -128,7 +128,11 @@
     game.projectiles = game.projectiles.filter(shot => !shot.enemy || !aim.touches(shot));
     const fresh = targets.map(id => `${game.room}:${id}`).filter(id => !game.rewardedTargets.includes(id));
     game.rewardedTargets.push(...fresh); game.maxChain = Math.max(game.maxChain, targets.length);
-    if (fresh.length > 1) { const bonus = (fresh.length - 1) * 80; game.alignment += bonus; say(game, `${fresh.length} targets. One beam. +${bonus} alignment!`); }
+    if (fresh.length > 1) {
+      const bonus = (fresh.length - 1) * 80; game.alignment += bonus;
+      game.beamReward = { targets: fresh.length, bonus, life: 1.6 };
+      say(game, `${fresh.length} targets. One beam. +${bonus} alignment!`);
+    }
     else if (!targets.length) say(game, `Beam missed. ${aimHint(game, aim)}.`);
   }
   function cancelAction(game, blockHeld = false) {
@@ -175,7 +179,7 @@
     else say(game, `${game.hearts} hearts remain. Move aside or deflect the next shot with ki.`);
   }
   function enter(game, room, fromRight = false) {
-    cancelAction(game, true); game.beam = null;
+    cancelAction(game, true); game.beam = null; game.beamReward = null;
     game.room = room; game.checkpoint = Math.max(game.checkpoint, room);
     Object.assign(game.player, { x: fromRight ? 291 : 28, y: 96, immune: .8, facing: fromRight ? 'left' : 'right', walking: false });
     game.projectiles = []; game.sparks = [];
@@ -191,12 +195,14 @@
     return game;
   }
   function shootGuard(game, guard) {
-    const angle = Math.atan2(game.player.y - guard.y, game.player.x - guard.x);
+    const target = guard.aim || game.player;
+    const angle = Math.atan2(target.y - guard.y, target.x - guard.x);
     const fan = ['sentry', 'keeper'].includes(guard.kind) ? [-.32, 0, .32] : [0];
     const speed = guard.kind === 'scout' ? 64 : guard.kind === 'keeper' ? 56 : 50;
     for (const offset of fan) game.projectiles.push({ x: guard.x, y: guard.y, vx: Math.cos(angle + offset) * speed, vy: Math.sin(angle + offset) * speed, life: 3, enemy: true });
     guard.timer = guard.kind === 'scout' ? 2 : guard.kind === 'keeper' ? 3.2 : 2.8;
     if (guard.kind === 'keeper') guard.exposed = 1.35;
+    guard.aim = null;
   }
   function step(game, input = {}, dt = 1 / 120) {
     if (game.phase !== 'playing' || !Number.isFinite(dt) || dt <= 0) return game;
@@ -228,6 +234,9 @@
     for (const guard of state.guards) {
       if (guard.hp <= 0) continue;
       guard.hurt = Math.max(0, guard.hurt - dt); guard.exposed = Math.max(0, guard.exposed - dt); guard.timer -= dt;
+      // Commit to the visible windup direction. A player who reads the warning
+      // and steps aside earns a dodge instead of being retargeted on release.
+      if (guard.timer <= .65 && !guard.aim) guard.aim = { x: p.x, y: p.y };
       if (guard.timer > .65 && guard.exposed <= 0 && guard.kind !== 'sentry') {
         const before = guard[guard.axis], speed = guard.kind === 'scout' ? 32 : 20;
         move(game, guard, guard.axis === 'x' ? guard.direction * speed * dt : 0, guard.axis === 'y' ? guard.direction * speed * dt : 0);
@@ -264,11 +273,13 @@
     }
     game.projectiles = game.projectiles.filter(shot => shot.life > 0);
     if (game.beam && (game.beam.life -= dt) <= 0) game.beam = null;
+    if (game.beamReward && (game.beamReward.life -= dt) <= 0) game.beamReward = null;
     game.sparks = game.sparks.filter(spark => { spark.life -= dt; return spark.life > 0; });
     if (unlocked(game) && !state.cleared) {
       state.cleared = true; game.hearts = Math.min(4, game.hearts + 1);
       game.projectiles = game.projectiles.filter(shot => !shot.enemy);
-      say(game, ROOMS[game.room].bell ? 'The bell is ready. Approach it at the top and press A.' : 'Room restored. One heart returns; the eastern gate is open.');
+      const reward = game.beamReward ? `${game.beamReward.targets} linked! +${game.beamReward.bonus} alignment. ` : '';
+      say(game, reward + (ROOMS[game.room].bell ? 'The bell is ready. Approach it at the top and press A.' : 'Room restored. One heart returns; the eastern gate is open.'));
     }
     if (p.x > 308 && game.room < ROOMS.length - 1 && unlocked(game)) enter(game, game.room + 1);
     else if (p.x < 12 && game.room > 0) enter(game, game.room - 1, true);
@@ -287,12 +298,12 @@
   if (typeof module !== 'undefined') module.exports = engine;
   if (typeof document === 'undefined') return;
   const dialog = document.getElementById('piccolo-dialog'); if (!dialog) return;
-  dialog.innerHTML = `<header class="piccolo-heading"><div><span class="piccolo-edition">90s HANDHELD · 8-BIT</span><h2 id="piccolo-title">Piccolo’s Lookout</h2></div><button type="button" data-piccolo-close aria-label="Close Piccolo’s Lookout">esc</button></header>
-    <div class="piccolo-screen-bezel"><div class="piccolo-screen-label"><span><i aria-hidden="true"></i> POWER</span><span>FOUR SHADES / ONE SMALL WORLD</span></div><canvas id="piccolo-canvas" width="320" height="224" tabindex="0" aria-label="Piccolo's Lookout, a top-down six-room adventure" aria-describedby="piccolo-objective piccolo-help piccolo-status">Arrows or WASD move and aim. Tap Space or Z for ki; hold until READY, then release a Special Beam Cannon. Link rings and restore the bell.</canvas><div class="piccolo-screen-brand"><span id="piccolo-room">ROOM 1 / 6</span><span id="piccolo-hearts">4 HEARTS</span><span>CAPSULE POCKET</span></div></div>
+  dialog.innerHTML = `<header class="piccolo-heading"><div><span class="piccolo-edition">CAPSULE COLOUR · SKY TEMPLE</span><h2 id="piccolo-title">Piccolo’s Lookout</h2></div><button type="button" data-piccolo-close aria-label="esc · close piccolo’s lookout">esc</button></header>
+    <div class="piccolo-screen-bezel"><div class="piccolo-screen-label"><span><i aria-hidden="true"></i> POWER</span><span>SIX COURTS / ONE SKY</span></div><canvas id="piccolo-canvas" width="320" height="224" tabindex="0" aria-label="Piccolo's Lookout, a top-down six-room adventure" aria-describedby="piccolo-objective piccolo-help piccolo-status">Arrows or WASD move and aim. Tap Space or Z for ki; hold until READY, then release a Special Beam Cannon. Link rings and restore the bell.</canvas><div class="piccolo-screen-brand"><span id="piccolo-room">ROOM 1 / 6</span><span id="piccolo-hearts">4 HEARTS</span><span>CAPSULE POCKET</span></div></div>
     <ol class="piccolo-route" aria-label="Adventure progress">${ROOMS.map((room, index) => `<li data-piccolo-room="${index}" title="${room.name}">${index + 1}</li>`).join('')}</ol><p id="piccolo-objective">Hold Z / touch A → READY → release ↑</p><p id="piccolo-status" role="status" aria-live="polite" aria-atomic="true">You face both rings. Hold Space or Z on the keyboard, or A on screen. Release when READY.</p>
     <div class="piccolo-controller"><div class="piccolo-dpad" role="group" aria-label="Movement controls"><button type="button" data-piccolo-hold="up" aria-label="Move up">▲</button><button type="button" data-piccolo-hold="left" aria-label="Move left">◀</button><span aria-hidden="true"></span><button type="button" data-piccolo-hold="right" aria-label="Move right">▶</button><button type="button" data-piccolo-hold="down" aria-label="Move down">▼</button></div><div class="piccolo-ab"><button type="button" data-piccolo-hold="action" aria-label="A: tap for ki; hold and release for beam. Enter toggles charge and release." aria-pressed="false">A</button><span id="piccolo-charge">HOLD → BEAM</span><span id="piccolo-score">SCORE 0</span></div><div class="piccolo-speaker" aria-hidden="true">▰▰▰<br>▰▰▰<br>▰▰▰</div></div>
     <div class="piccolo-actions"><button type="button" data-piccolo-back>← cartridges</button><button type="button" id="piccolo-start">start ↵</button><button type="button" id="piccolo-pause" aria-pressed="false">pause</button></div>
-    <details class="piccolo-help"><summary>controls / score / personal best</summary><p id="piccolo-help">Keyboard: arrows or WASD move and aim; Space or Z controls ki. On screen: use A for ki. Tap for quick ki and nearby interactions; hold for 0.8 seconds, then release a Special Beam Cannon. Charging locks your aim and slows movement. The dotted sight stops at walls; corner marks show targets in its path. Move sideways to line up both rings. With the on-screen A button focused, Enter or assistive activation toggles charge and release without holding. Link paired rings with one beam. The keeper opens after its fan. P pauses; Escape returns to cartridges. Pausing cancels your charge. Continue at the current room after defeat, or restart a new run.</p><p>Score: 100 per restored room; +80 per extra new target in one beam; up to 400 at completion for avoiding damage (−50 per hit); −100 per checkpoint retry. Each target earns alignment credit once per run. Higher score wins; faster time breaks ties. Personal best is saved only on this device.</p><p id="piccolo-record">Complete a run to set your first personal best.</p></details>`;
+    <details class="piccolo-help"><summary>controls / score / personal best</summary><p id="piccolo-help">Keyboard: arrows or WASD move and aim; Space or Z controls ki. On screen: use A for ki. Tap for quick ki and nearby interactions; hold for 0.8 seconds, then release a Special Beam Cannon. Charging locks your aim and slows movement. The dotted sight stops at walls; corner marks show targets in its path. Move sideways to line up both rings. With the on-screen A button focused, Enter or assistive activation toggles charge and release without holding. Link paired rings with one beam. Wardens commit to their warning line: step aside, then counter. The keeper opens after its fan. P pauses; Escape returns to cartridges. Pausing cancels your charge. Continue at the current room after defeat, or restart a new run.</p><p>Score: 100 per restored room; +80 per extra new target in one beam; up to 400 at completion for avoiding damage (−50 per hit); −100 per checkpoint retry. Each target earns alignment credit once per run. Higher score wins; faster time breaks ties. Personal best is saved only on this device.</p><p id="piccolo-record">Complete a run to set your first personal best.</p></details>`;
   const root = document.documentElement, canvas = dialog.querySelector('#piccolo-canvas'), ctx = canvas.getContext('2d'); if (!ctx) return;
   const status = dialog.querySelector('#piccolo-status'), objectiveNode = dialog.querySelector('#piccolo-objective'), startButton = dialog.querySelector('#piccolo-start'), pauseButton = dialog.querySelector('#piccolo-pause');
   const reduced = matchMedia('(prefers-reduced-motion: reduce)');
@@ -328,100 +339,157 @@
     if (paused) setText(status, 'Paused. Your adventure will wait for you.');
     else if (eventId !== game.eventId) { eventId = game.eventId; setText(status, game.phase === 'won' ? `${resultNote} ${game.hits} hits · ${game.maxChain} targets in your best beam. Score breakdown below.` : game.event === 'intro' ? 'You face both rings. Hold Space or Z on the keyboard, or A on screen. Release when READY.' : game.event); }
   }
-  const colors = ['#d8e6a0', '#a9b96c', '#647541', '#263b2b'];
-  function rect(x, y, w, h, shade) { ctx.fillStyle = colors[shade]; ctx.fillRect(Math.round(x), Math.round(y), w, h); }
-  function label(text, x, y, size = 7, shade = 3, align = 'center') { ctx.fillStyle = colors[shade]; ctx.font = `bold ${size}px monospace`; ctx.textAlign = align; ctx.fillText(text, Math.round(x), Math.round(y)); }
+  const colors = ['#fff4cf', '#75d8ce', '#257d8b', '#192a47'];
+  const ink = '#192a47', gold = '#ffca45', cream = '#fff4cf', violet = '#8d50d9';
+  const roomFloors = ['#fff1c8', '#f4e7f6', '#e9f2cf', '#dff4e8', '#e5eff7', '#fff0d6'];
+  function rect(x, y, w, h, shade) { ctx.fillStyle = typeof shade === 'string' ? shade : colors[shade]; ctx.fillRect(Math.round(x), Math.round(y), w, h); }
+  function label(text, x, y, size = 7, shade = 3, align = 'center') { ctx.fillStyle = typeof shade === 'string' ? shade : colors[shade]; ctx.font = `bold ${size}px monospace`; ctx.textAlign = align; ctx.fillText(text, Math.round(x), Math.round(y)); }
+  // Small original pixel assets: closed silhouettes, a real white cape, green
+  // skin, purple gi and separate red/gold wardens. No image download is needed.
+  const spriteColors = { k: ink, w: '#fff9e5', g: '#56c77b', d: '#25855e', p: '#8247bd', v: '#b477e3', r: '#f27369', c: '#a9425d', y: gold, b: '#64d9df' };
   const sprites = {
-    piccolo: ['000033300000','000322230000','003222223000','032233222300','322222222230','032333323300','003222230000','033000003330','300000000003','300033300003','300322230003','030322230030','003322233300','000330033000','003330033300'],
-    warden: ['0033333300','0322222230','3222222223','3200330023','3222222223','0323333230','0032222300','0322222230','3322222233','0033003300'],
+    piccolo: [
+      '00000kkkk00000','000kwwwwwk0000','00kwwwwwwwk000','00kgggggggk000',
+      '0kdgkwgkwgdk00','kkgggggggggkk0','0kdggkggggdk00','00kkgggggkk000',
+      '0kwwkkkkkwwk00','kwwwwpppwwwwk0','kwwwwpppwwwwk0','0kwwkpppkwwk00',
+      '00kkpppppkk000','000kpyyypk0000','000kpppppk0000','000kpkkkpk0000',
+      '00kppk0kppk000','00kkkk0kkkk000'
+    ],
+    warden: ['00kkkkkk00','0kyyyyyyk0','kcrrrrrrck','krkwrrwkrk','krrrrrrrrk','0kcrrrrck0','00kcccck00','0kppvvppk0','kpppvvpppk','kkkpvvpkkk','00kpkpkp00','00kk00kk00']
   };
-  function sprite(pattern, x, y, flip = false, scale = 1) { pattern.forEach((row, yy) => [...row].forEach((pixel, xx) => { if (pixel !== '0') rect(x + (flip ? row.length - xx - 1 : xx) * scale, y + yy * scale, scale, scale, Number(pixel)); })); }
+  // Compile horizontal pixel runs once. Drawing sprites does not allocate an
+  // array per row on every frame, and a run needs only one canvas operation.
+  for (const [name, pattern] of Object.entries(sprites)) {
+    const runs = [];
+    pattern.forEach((row, y) => {
+      for (let x = 0; x < row.length;) {
+        const start = x, color = row[x]; while (row[++x] === color) { /* Same ink. */ }
+        if (color !== '0') runs.push({ x: start, y, width: x - start, color: spriteColors[color] });
+      }
+    });
+    sprites[name] = { width: pattern[0].length, runs };
+  }
+  function sprite(pattern, x, y, flip = false, scale = 1) {
+    for (const run of pattern.runs) rect(x + (flip ? pattern.width - run.x - run.width : run.x) * scale, y + run.y * scale, run.width * scale, scale, run.color);
+  }
+  function warning(guard) {
+    if (!guard.aim || guard.timer > .65) return;
+    const angle = Math.atan2(guard.aim.y - guard.y, guard.aim.x - guard.x);
+    const offsets = ['sentry', 'keeper'].includes(guard.kind) ? [-.32, 0, .32] : [0];
+    for (const offset of offsets) {
+      const dx = Math.cos(angle + offset), dy = Math.sin(angle + offset);
+      for (let along = 18; along < 96; along += 7) {
+        const x = guard.x + dx * along, y = guard.y + dy * along;
+        if (solid(game, x, y)) break;
+        rect(x - 1, y + 23, 3, 3, ink); rect(x, y + 24, 1, 1, '#ff8c70');
+      }
+    }
+    const x = Math.round(guard.x), y = Math.round(guard.y) + 24;
+    rect(x - 8, y - 28, 16, 9, ink); label('!', x, y - 21, 8, cream);
+    rect(x - 7, y - 18, Math.max(1, Math.round(14 * (1 - guard.timer / .65))), 2, '#e65565');
+  }
   function draw() {
     ctx.imageSmoothingEnabled = false; rect(0, 0, 320, 224, 0);
-    // A real tile room, with four fixed shades and no downloaded sprite assets.
     const room = ROOMS[game.room];
     for (let y = 0; y < 12; y++) for (let x = 0; x < 20; x++) {
       const px = x * 16, py = y * 16 + 24, tile = tileAt(game, x, y);
-      if (tile === '#') { rect(px, py, 16, 16, 3); rect(px + 1, py + 1, 14, 12, 2); rect(px + 2, py + 2, 12, 2, 1); rect(px + 7, py + 5, 1, 8, 3); rect(px + 1, py + 8, 6, 1, 3); }
-      else if (tile === '=') { rect(px, py, 16, 16, 1); rect(px, py, 16, 2, 3); rect(px, py + 14, 16, 2, 3); for (let plank = 3; plank < 16; plank += 4) rect(px + plank, py + 2, 1, 12, 2); }
-      else if (tile === '~') { rect(px, py, 16, 16, 2); rect(px + 2, py + 4, 5, 1, 1); rect(px + 9, py + 10, 5, 1, 1); }
-      else { rect(px, py, 16, 16, 0); if ((x + y) % 3 === 0) { rect(px + 3, py + 11, 2, 1, 1); rect(px + 11, py + 5, 1, 1, 1); } }
+      if (tile === '#') {
+        rect(px, py, 16, 16, ink); rect(px + 1, py + 1, 14, 11, '#cfab77');
+        rect(px + 1, py + 1, 14, 4, '#fff9e5'); rect(px + 2, py + 5, 12, 1, gold);
+        rect(px + 7, py + 6, 1, 6, '#9c8067'); rect(px + 1, py + 12, 14, 2, '#618c91');
+        if (!(x % 4) && y === 0) { rect(px + 4, py + 5, 8, 6, '#257d8b'); rect(px + 7, py + 6, 2, 3, cream); }
+      } else if (tile === '=') {
+        rect(px, py, 16, 16, '#ae703f'); rect(px, py, 16, 2, ink); rect(px, py + 14, 16, 2, ink);
+        rect(px + 1, py + 3, 14, 2, '#ffc56b'); for (let plank = 3; plank < 16; plank += 4) rect(px + plank, py + 2, 1, 12, '#724738');
+      } else if (tile === '~') {
+        rect(px, py, 16, 16, '#258da6'); rect(px, py, 16, 2, '#175476');
+        rect(px + 2, py + 5, 6, 2, '#8ce9df'); rect(px + 10, py + 11, 5, 1, '#bbf4e8');
+      } else {
+        rect(px, py, 16, 16, roomFloors[game.room]);
+        rect(px, py + 15, 16, 1, '#d8d8ba'); rect(px + 15, py, 1, 15, '#d8d8ba');
+        if ((x + y * 3) % 11 === 0) { rect(px + 5, py + 7, 6, 1, '#e1bd7b'); rect(px + 7, py + 5, 2, 5, '#e1bd7b'); }
+      }
     }
-    // Doorways visibly change from bars to an invitation.
     if (game.room < ROOMS.length - 1) {
-      if (!unlocked(game)) { rect(304, 104, 15, 32, 2); for (let x = 306; x < 320; x += 4) rect(x, 104, 2, 32, 3); rect(306, 117, 12, 5, 3); }
-      else { label('→', 310, 124, 15); rect(306, 105, 8, 1, 1); rect(306, 135, 8, 1, 1); }
-    } else { rect(304, 104, 16, 32, 3); rect(305, 105, 14, 30, 2); }
-    if (!game.room) { rect(0, 104, 16, 32, 3); rect(1, 105, 14, 30, 2); }
+      if (!unlocked(game)) {
+        rect(304, 104, 15, 32, '#324c69'); for (let x = 306; x < 320; x += 4) rect(x, 104, 2, 32, gold);
+        rect(306, 117, 12, 5, ink); label('×', 312, 122, 7, cream);
+      } else { rect(304, 104, 16, 32, '#1b746d'); label('→', 311, 125, 15, cream); rect(306, 105, 8, 1, gold); rect(306, 135, 8, 1, gold); }
+    } else { rect(304, 104, 16, 32, ink); rect(305, 105, 14, 30, '#cfab77'); }
+    if (!game.room) { rect(0, 104, 16, 32, ink); rect(1, 105, 14, 30, '#cfab77'); }
     if (room.bell) {
-      const ready = unlocked(game); rect(147, 52, 26, 25, 2); rect(151, 46, 18, 17, 3); rect(154, 48, 12, 13, ready ? 0 : 1); rect(149, 61, 22, 4, 3); rect(159, 65, 3, 3, 3); label(ready ? 'A' : 'BELL', 160, 84, 7);
+      const ready = unlocked(game); rect(147, 52, 26, 25, '#778b91'); rect(151, 46, 18, 17, ink);
+      rect(154, 48, 12, 13, ready ? gold : '#ccaa63'); rect(155, 49, 3, 10, cream); rect(149, 61, 22, 4, ink); rect(159, 65, 3, 3, gold);
+      label(ready ? 'A' : 'BELL', 160, 84, 7);
     }
-    const state = game.rooms[game.room];
-    const aim = game.player.actionHeld ? beamAim(game) : null;
-    // A still, wall-clipped sight line explains locked aim without moving the
-    // camera or changing the shot. It stays equally readable in reduced motion.
+    const state = game.rooms[game.room], aim = game.player.actionHeld ? beamAim(game) : null;
+    for (const guard of state.guards) if (guard.hp > 0) warning(guard);
     if (aim) {
-      const shade = game.player.charge >= CHARGE_TIME ? 3 : 2;
-      for (let along = 18; along < aim.length; along += 6) rect(aim.x + aim.dx * along, aim.y + 24 + aim.dy * along, 1, 2, shade);
+      const color = game.player.charge >= CHARGE_TIME ? '#6c2bb0' : '#257d8b';
+      for (let along = 18; along < aim.length; along += 6) rect(aim.x + aim.dx * along, aim.y + 24 + aim.dy * along, 2, 2, color);
       const x = aim.x + aim.dx * aim.length, y = aim.y + 24 + aim.dy * aim.length;
-      rect(x - (aim.dy ? 3 : 0), y - (aim.dx ? 3 : 0), aim.dy ? 7 : 1, aim.dx ? 7 : 1, shade);
-    } else if (!game.room && !unlocked(game)) for (let y = 64; y < 144; y += 5) rect(39, y + 24, 2, 2, 1);
+      rect(x - (aim.dy ? 3 : 0), y - (aim.dx ? 3 : 0), aim.dy ? 7 : 1, aim.dx ? 7 : 1, color);
+    } else if (!game.room && !unlocked(game)) for (let y = 64; y < 144; y += 5) rect(39, y + 24, 2, 2, '#438d8d');
     state.crystals.forEach(crystal => {
-      const x = crystal.x, y = crystal.y + 24;
-      rect(x - 9, y + 7, 18, 6, 2);
-      if (crystal.pair) { rect(x - 5, y - 10, 10, 3, 3); rect(x - 5, y + 7, 10, 3, 3); rect(x - 9, y - 6, 3, 12, 3); rect(x + 6, y - 6, 3, 12, 3); rect(x - 6, y - 7, 12, 14, crystal.lit ? 1 : 0); if (crystal.lit) rect(x - 2, y - 5, 4, 10, 3); }
-      else { rect(x - 6, y - 7, 12, 14, 3); rect(x - 3, y - 10, 6, 20, 3); rect(x - 4, y - 5, 8, 11, crystal.lit ? 0 : 1); rect(x - 1, y - 8, 2, 16, crystal.lit ? 1 : 2); }
-      if (crystal.lit) { rect(x - 12, y - 2, 2, 2, 2); rect(x + 10, y - 2, 2, 2, 2); }
-      label(crystal.label, x, y + 23, 7);
+      const x = crystal.x, y = crystal.y + 24, color = crystal.lit ? '#36a781' : gold;
+      rect(x - 9, y + 7, 18, 6, '#7c9695'); rect(x - 8, y + 8, 16, 3, '#b0c6b9');
+      if (crystal.pair) {
+        rect(x - 6, y - 10, 12, 3, ink); rect(x - 6, y + 7, 12, 3, ink); rect(x - 10, y - 7, 3, 14, ink); rect(x + 7, y - 7, 3, 14, ink);
+        rect(x - 5, y - 8, 10, 2, color); rect(x - 5, y + 5, 10, 2, color); rect(x - 8, y - 5, 2, 10, color); rect(x + 6, y - 5, 2, 10, color);
+        if (crystal.lit) { rect(x - 3, y, 3, 3, ink); rect(x, y - 3, 3, 3, ink); rect(x + 3, y - 6, 3, 3, ink); }
+      } else {
+        rect(x - 6, y - 7, 12, 14, ink); rect(x - 3, y - 10, 6, 20, ink); rect(x - 4, y - 5, 8, 11, crystal.lit ? '#5fd6aa' : violet); rect(x - 1, y - 8, 2, 16, cream);
+      }
+      const labelWidth = crystal.label.length * 4 + 6; rect(x - labelWidth / 2, y + 16, labelWidth, 9, ink); label(crystal.label, x, y + 23, 6, cream);
     });
     for (const guard of state.guards) if (guard.hp > 0) {
       const x = Math.round(guard.x), y = Math.round(guard.y) + 24;
-      sprite(sprites.warden, x - 10, y - 14, guard.direction < 0, 2);
-      if (guard.timer < .65) { rect(x - 14, y - 12, 4, 12, 3); rect(x + 10, y - 12, 4, 12, 3); label('!', x, y - 19, 9); }
-      if (guard.kind === 'sentry') { rect(x - 12, y - 17, 3, 9, 3); rect(x + 9, y - 17, 3, 9, 3); rect(x - 3, y - 8, 6, 3, 0); }
-      if (guard.kind === 'scout') { rect(x - 13, y - 7, 5, 2, 2); rect(x + 8, y - 7, 5, 2, 2); rect(x - 2, y - 12, 4, 3, 0); }
-      if (guard.kind === 'keeper') { rect(x - 15, y - 5, 5, 13, 2); rect(x + 10, y - 5, 5, 13, 2); rect(x - 10, y - 17, 20, 3, 3); rect(x - 5, y - 20, 3, 6, 3); rect(x + 2, y - 20, 3, 6, 3);
-        if (shielded(game, guard)) { rect(x - 17, y - 16, 2, 24, 2); rect(x + 15, y - 16, 2, 24, 2); rect(x - 14, y - 19, 28, 2, 1); rect(x - 14, y + 9, 28, 2, 1); label('SEALS', x, y - 24, 6, 3); }
-        else if (guard.exposed > 0) { rect(x - 15, y - 28, 30, 8, 3); label('OPEN', x, y - 21, 7, 0); } }
-      for (let hp = 0; hp < guard.hp; hp++) rect(x - guard.hp * 2 + hp * 4, y + 7, 3, 2, 3);
-      if (guard.hurt > 0 && !quiet()) { rect(x - 8, y - 10, 2, 2, 3); rect(x + 8, y, 2, 2, 3); }
+      rect(x - 12, y + 7, 24, 3, '#a2b1ac'); sprite(sprites.warden, x - 10, y - 16, guard.direction < 0, 2);
+      if (guard.kind === 'sentry') { rect(x - 12, y - 19, 3, 9, ink); rect(x + 9, y - 19, 3, 9, ink); rect(x - 3, y - 9, 6, 3, gold); }
+      if (guard.kind === 'scout') { rect(x - 14, y - 8, 6, 2, '#d32f64'); rect(x + 8, y - 8, 6, 2, '#d32f64'); rect(x - 2, y - 14, 4, 3, cream); }
+      if (guard.kind === 'keeper') {
+        rect(x - 15, y - 5, 5, 13, ink); rect(x + 10, y - 5, 5, 13, ink); rect(x - 14, y - 4, 3, 9, gold); rect(x + 11, y - 4, 3, 9, gold);
+        rect(x - 10, y - 19, 20, 3, ink); rect(x - 5, y - 22, 3, 6, gold); rect(x + 2, y - 22, 3, 6, gold);
+        if (shielded(game, guard)) { rect(x - 17, y - 16, 2, 24, '#3772bb'); rect(x + 15, y - 16, 2, 24, '#3772bb'); rect(x - 14, y - 19, 28, 2, '#3772bb'); rect(x - 14, y + 9, 28, 2, '#3772bb'); label('SEALS', x, y - 27, 6, ink); }
+        else if (guard.exposed > 0) { rect(x - 15, y - 30, 30, 9, '#236c56'); label('OPEN', x, y - 23, 7, cream); }
+      }
+      for (let hp = 0; hp < guard.hp; hp++) { rect(x - guard.hp * 2 + hp * 4, y + 10, 3, 3, ink); rect(x - guard.hp * 2 + hp * 4, y + 10, 2, 2, '#e45967'); }
+      if (guard.hurt > 0) { rect(x - 13, y - 8, 3, 2, cream); rect(x + 10, y, 3, 2, cream); }
     }
     if (aim) for (const target of [...aim.crystals.map(({ crystal }) => crystal), ...aim.guards.map(({ guard }) => guard)]) {
-      for (const dx of [-1, 1]) for (const dy of [-1, 1]) {
-        const x = target.x + dx * 12, y = target.y + 24 + dy * 12;
-        rect(x - (dx > 0 ? 3 : 0), y, 4, 1, 3); rect(x, y - (dy > 0 ? 3 : 0), 1, 4, 3);
-      }
+      for (const dx of [-1, 1]) for (const dy of [-1, 1]) { const x = target.x + dx * 12, y = target.y + 24 + dy * 12; rect(x - (dx > 0 ? 3 : 0), y, 4, 1, '#6c2bb0'); rect(x, y - (dy > 0 ? 3 : 0), 1, 4, '#6c2bb0'); }
     }
-    for (const shot of game.projectiles) { const x = shot.x, y = shot.y + 24; rect(x - 2, y - 2, 5, 5, 3); rect(x - 1, y - 1, 3, 3, shot.enemy ? 2 : 0); if (!shot.enemy) rect(x - Math.sign(shot.vx) * 5, y - Math.sign(shot.vy) * 5, 2, 2, 2); }
+    for (const shot of game.projectiles) { const x = shot.x, y = shot.y + 24; rect(x - 2, y - 2, 5, 5, ink); rect(x - 1, y - 1, 3, 3, shot.enemy ? '#ef605c' : gold); if (!shot.enemy) rect(x - Math.sign(shot.vx) * 5, y - Math.sign(shot.vy) * 5, 2, 2, '#ee8134'); }
     if (game.beam) {
       const beam = game.beam, x = Math.min(beam.x, beam.x + beam.dx * beam.length), y = Math.min(beam.y, beam.y + beam.dy * beam.length) + 24;
-      rect(x - (beam.dy ? 4 : 0), y - (beam.dx ? 4 : 0), beam.dx ? beam.length : 9, beam.dy ? beam.length : 9, 3);
-      rect(x - (beam.dy ? 1 : 0), y - (beam.dx ? 1 : 0), beam.dx ? beam.length : 3, beam.dy ? beam.length : 3, 0);
-      // Fixed high-contrast line in reduced motion; the normal beam has a
-      // restrained pixel spiral, never a full-screen flash or camera shake.
-      if (!quiet()) for (let along = 0; along < beam.length; along += 9) { const offset = (Math.floor(along / 9 + game.time * 12) % 2 ? 3 : -3); rect(beam.x + beam.dx * along + beam.dy * offset - 1, beam.y + 24 + beam.dy * along + beam.dx * offset - 1, 3, 3, 1); }
+      rect(x - (beam.dy ? 4 : 0), y - (beam.dx ? 4 : 0), beam.dx ? beam.length : 9, beam.dy ? beam.length : 9, '#5c2799');
+      rect(x - (beam.dy ? 2 : 0), y - (beam.dx ? 2 : 0), beam.dx ? beam.length : 5, beam.dy ? beam.length : 5, gold);
+      rect(x - (beam.dy ? 1 : 0), y - (beam.dx ? 1 : 0), beam.dx ? beam.length : 3, beam.dy ? beam.length : 3, '#fffbea');
+      if (!quiet()) for (let along = 0; along < beam.length; along += 9) { const offset = (Math.floor(along / 9 + game.time * 12) % 2 ? 4 : -4); rect(beam.x + beam.dx * along + beam.dy * offset - 1, beam.y + 24 + beam.dy * along + beam.dx * offset - 1, 3, 3, '#cc80ec'); }
     }
     const p = game.player;
     if (p.immune <= 0 || quiet() || Math.floor(game.time * 8) % 2 === 0) {
       const x = Math.round(p.x), y = Math.round(p.y) + 24, stride = p.walking && !quiet() ? Math.floor(game.time * 9) % 2 : 0;
-      rect(x - 9, y + 4, 18, 3, 1); sprite(sprites.piccolo, x - 12, y - 24, p.facing === 'left', 2);
-      // Turban, pointed ears and the pale shoulder cape remain distinct at 1x.
-      rect(x - 8, y - 22, 16, 4, 0); rect(x - 13, y - 16, 4, 6, 2); rect(x + 10, y - 16, 4, 6, 2); rect(x - 14, y - 6, 28, 6, 0);
-      if (stride) { rect(x - 8, y + 4, 6, 2, 3); rect(x + 4, y + 3, 6, 2, 3); }
-      const [fx, fy] = { up: [0, -1], down: [0, 1], left: [-1, 0], right: [1, 0] }[p.facing]; rect(x + fx * 17 - 1, y + fy * 10 - 1, 2, 2, 2);
-      if (p.actionHeld) { rect(x - 12, y - 30, 24, 4, 3); rect(x - 11, y - 29, Math.round(22 * p.charge / CHARGE_TIME), 2, 0); rect(x + fx * 16 - 2, y + fy * 10 - 2, 4, 4, p.charge >= CHARGE_TIME ? 0 : 1); }
+      rect(x - 9, y + 4, 18, 3, '#9bae9b'); sprite(sprites.piccolo, x - 14, y - 30, p.facing === 'left', 2);
+      if (stride) { rect(x - 8, y + 5, 6, 2, ink); rect(x + 4, y + 4, 6, 2, ink); }
+      const [fx, fy] = DIRECTIONS[p.facing]; rect(x + fx * 17 - 1, y + fy * 10 - 1, 2, 2, '#25855e');
+      if (p.actionHeld) {
+        rect(x - 13, y - 37, 26, 5, ink); rect(x - 12, y - 36, Math.round(24 * p.charge / CHARGE_TIME), 3, p.charge >= CHARGE_TIME ? gold : '#bd76e4');
+        rect(x + fx * 16 - 3, y + fy * 10 - 3, 7, 7, '#6c2bb0'); rect(x + fx * 16 - 2, y + fy * 10 - 2, 4, 4, gold);
+      }
     }
-    if (!quiet()) for (const spark of game.sparks) { const radius = Math.round((.4 - spark.life) * 24) + 5; for (const [dx, dy] of [[1, 0], [-1, 0], [0, 1], [0, -1]]) rect(spark.x + dx * radius, spark.y + 24 + dy * radius, 2, 2, 3); }
-    rect(0, 0, 320, 24, 3); label(ROOMS[game.room].name, 9, 10, 7, 0, 'left'); label(`ROOM ${game.room + 1}/${ROOMS.length}`, 9, 19, 6, 1, 'left');
-    for (let i = 0; i < 4; i++) { const x = 265 + i * 12; label(i < game.hearts ? '♥' : '♡', x, 16, 11, i < game.hearts ? 0 : 2); }
-    label(room.inscription, 160, 208, 6, 0);
-    rect(0, 216, 320, 8, 3); label(p.actionHeld ? p.charge >= CHARGE_TIME ? 'READY · RELEASE A TO PIERCE' : 'FOCUSING · AIM LOCKED · MOVE TO LINE UP' : 'TAP: KI   HOLD: FOCUS   RELEASE: BEAM', 160, 222, 6, 1);
+    if (!quiet()) for (const spark of game.sparks) { const radius = Math.round((.4 - spark.life) * 24) + 5; for (const [dx, dy] of [[1, 0], [-1, 0], [0, 1], [0, -1]]) rect(spark.x + dx * radius, spark.y + 24 + dy * radius, 2, 2, '#b05fce'); }
+    rect(0, 0, 320, 24, ink); rect(0, 23, 320, 1, gold); label(room.name, 9, 10, 7, cream, 'left'); label(`ROOM ${game.room + 1}/${ROOMS.length}`, 9, 19, 6, '#9de3d6', 'left');
+    if (game.beamReward) { label(`${game.beamReward.targets} LINKED!`, 212, 10, 7, gold); label(`+${game.beamReward.bonus} ALIGNMENT`, 212, 19, 6, cream); }
+    for (let i = 0; i < 4; i++) { const x = 265 + i * 12; label(i < game.hearts ? '♥' : '♡', x, 16, 11, i < game.hearts ? '#ff9a8c' : '#93a5b5'); }
+    rect(24, 201, 272, 12, ink); label(room.inscription, 160, 209, 6, cream);
+    rect(0, 216, 320, 8, ink); label(p.actionHeld ? p.charge >= CHARGE_TIME ? 'READY · RELEASE A TO PIERCE' : 'FOCUSING · AIM LOCKED · MOVE TO LINE UP' : 'TAP: KI   HOLD: FOCUS   RELEASE: BEAM', 160, 222, 6, gold);
     if (game.phase === 'ready' || terminal() || paused) {
-      rect(29, 65, 262, 112, 3); rect(32, 68, 256, 106, 0); rect(36, 72, 248, 98, 3); rect(38, 74, 244, 94, 0);
+      rect(29, 65, 262, 112, ink); rect(32, 68, 256, 106, gold); rect(36, 72, 248, 98, ink); rect(38, 74, 244, 94, cream);
       label(paused ? 'TAKE A BREATHER' : game.phase === 'won' ? 'THE SKY SINGS AGAIN' : game.phase === 'lost' ? 'REST, THEN RISE' : "PICCOLO'S LOOKOUT", 160, 94, 12);
       label(paused ? 'Your adventure is safe.' : game.phase === 'won' ? `${scoreBreakdown(game).score} POINTS · ${timeLabel(game.time * 1000)}` : game.phase === 'lost' ? `Room ${game.checkpoint + 1} is your checkpoint.` : 'Hold A until READY. Release to pierce.', 160, 115, 8);
       label(paused ? 'P / RESUME' : game.phase === 'lost' ? 'ENTER / CONTINUE · RETRY −100' : game.phase === 'won' ? `${game.hits} HITS · ${game.maxChain} IN ONE BEAM` : 'Link both rings with one beam.', 160, 132, 8);
-      label(paused || game.phase === 'lost' ? '' : game.phase === 'won' ? 'ENTER / BEAT YOUR BEST' : 'ENTER / START', 160, 154, 9);
+      label(paused || game.phase === 'lost' ? '' : game.phase === 'won' ? 'ENTER / BEAT YOUR BEST' : 'ENTER / START', 160, 154, 9, '#652d98');
     }
   }
   function stop() { cancelAnimationFrame(frame); frame = 0; last = null; debt = 0; }

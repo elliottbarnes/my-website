@@ -23,14 +23,16 @@ async function hitTarget(locator) {
   })).toBe(true);
 }
 
-for (const viewport of [{ width: 320, height: 568 }, { width: 844, height: 375 }]) {
+for (const viewport of [{ width: 1280, height: 800 }, { width: 320, height: 568 }, { width: 844, height: 375 }]) {
   test(`small arcade games complete and replay with touch at ${viewport.width}×${viewport.height}`, async ({ browser }) => {
     const context = await browser.newContext({ viewport, hasTouch: true, reducedMotion: 'reduce' });
     const page = await context.newPage(), errors = [];
     page.on('pageerror', error => errors.push(error.message));
     try {
       await page.goto(test.info().project.use.baseURL || 'http://127.0.0.1:4178');
-      await command(page, 'ki');
+      await command(page, 'arcade');
+      await expect(page.locator('#arcade-picker .game-choice')).toHaveCount(5);
+      await hitTarget(page.locator('#game-pick-ki')); await page.locator('#game-pick-ki').tap();
       const charge = page.locator('#ki-charge'); await charge.waitFor(); await hitTarget(charge);
       await controlledClock(page);
       const times = [1474, 500, 1672, 1232, 1738];
@@ -43,17 +45,21 @@ for (const viewport of [{ width: 320, height: 568 }, { width: 844, height: 375 }
         if (round === 1) await expect(page.locator('#arcade-status')).toContainText('Hold a little longer');
       }
       await expect(page.locator('#arcade-status')).toContainText('Training complete: 4 of 5 hits');
-      await charge.tap(); await expect(page.locator('#arcade-score')).toHaveText('1 / 5 · 0 hits');
+      await expect(page.locator('#arcade-record')).toContainText('best 4/5 hits · 4 perfect');
+      await charge.tap(); await expect(page.locator('#arcade-score')).toHaveText('1 / 5 · 0 hits · 0 perfect');
       // A trusted short tap begins a charge; a second tap releases it.
       await charge.tap(); await page.clock.runFor(1474); await charge.tap();
       await expect(page.locator('#arcade-status')).toContainText('Perfect control!');
       await page.locator('#arcade-close').tap();
-      await command(page, 'radar');
+      await command(page, 'arcade');
+      await hitTarget(page.locator('#game-pick-radar')); await page.locator('#game-pick-radar').tap();
       const cells = page.locator('#hunt-grid button'); let reread = false;
       // Complete a real random board using visible grid controls. No targets or state are injected/read.
       for (let index = 0; index < 36; index++) {
         const cell = cells.nth(index); await hitTarget(cell); await cell.tap();
         if (!reread && await cell.getAttribute('data-signal') !== 'found') {
+          await expect(cell).toHaveText(/^[1-9][0-9]?$/);
+          await expect(cell).toHaveAttribute('aria-label', /steps? to the nearest ball/);
           const before = await page.locator('#arcade-score').textContent(); await cell.tap();
           await expect(page.locator('#arcade-score')).toHaveText(before); reread = true;
         }
@@ -61,6 +67,8 @@ for (const viewport of [{ width: 320, height: 568 }, { width: 844, height: 375 }
       }
       await expect(page.locator('#arcade-status')).toContainText('All seven found');
       await expect(page.locator('#hunt-dragon')).toBeVisible();
+      await page.locator('#hunt-dragon').evaluate(image => image.decode());
+      await expect(page.locator('#arcade-record')).toContainText('best');
       await page.locator('#arcade-reset').tap(); await expect(page.locator('#arcade-score')).toHaveText('0 / 7 · 0 scans');
       await cells.first().focus(); await page.keyboard.press('ArrowLeft'); await expect(cells.first()).toBeFocused();
       await page.keyboard.press('ArrowDown'); await expect(cells.nth(6)).toBeFocused();
@@ -80,12 +88,12 @@ test('Ki capture loss cancels cleanly and keyboard repeat cannot spend extra rou
   // Exercise a browser cancellation boundary; this is not a claim of a physical touch test.
   await charge.dispatchEvent('lostpointercapture', { pointerId: 1 }); await page.mouse.up();
   await expect(charge).toHaveText('charge ki');
-  await expect(page.locator('#arcade-score')).toHaveText('1 / 5 · 0 hits');
+  await expect(page.locator('#arcade-score')).toHaveText('1 / 5 · 0 hits · 0 perfect');
   await charge.press('Enter'); await page.clock.runFor(500);
   await charge.dispatchEvent('keydown', { key: 'Enter', repeat: true });
   await expect(charge).toHaveText('release ki');
   await page.locator('#arcade-reset').focus(); await expect(charge).toHaveText('charge ki');
-  await expect(page.locator('#arcade-score')).toHaveText('1 / 5 · 0 hits');
+  await expect(page.locator('#arcade-score')).toHaveText('1 / 5 · 0 hits · 0 perfect');
   for (const interruption of ['window', 'focus']) {
     await charge.scrollIntoViewIfNeeded(); const rect = await charge.boundingBox();
     await page.mouse.move(rect.x + rect.width / 2, rect.y + rect.height / 2); await page.mouse.down();
@@ -94,8 +102,32 @@ test('Ki capture loss cancels cleanly and keyboard repeat cannot spend extra rou
     else await page.locator('#arcade-reset').focus();
     await page.mouse.up(); await page.clock.runFor(2500);
     await expect(charge).toHaveText('charge ki');
-    await expect(page.locator('#arcade-score')).toHaveText('1 / 5 · 0 hits');
+    await expect(page.locator('#arcade-score')).toHaveText('1 / 5 · 0 hits · 0 perfect');
   }
+});
+
+test('Ki native touch hold releases once and cancellation preserves the next round', async ({ browser, browserName, baseURL }) => {
+  test.skip(browserName !== 'chromium', 'Native touch cancellation requires Chromium CDP; both engines cover ordinary taps.');
+  const context = await browser.newContext({viewport:{width:390,height:844},hasTouch:true,reducedMotion:'reduce'});
+  try {
+    const page=await context.newPage(); await page.goto(baseURL); await command(page,'ki');
+    const charge=page.locator('#ki-charge'); await hitTarget(charge); await controlledClock(page);
+    const cdp=await context.newCDPSession(page), box=await charge.boundingBox();
+    const point={id:1,x:box.x+box.width/2,y:box.y+box.height/2};
+    await cdp.send('Input.dispatchTouchEvent',{type:'touchStart',touchPoints:[point]});
+    await page.clock.runFor(1474);
+    await cdp.send('Input.dispatchTouchEvent',{type:'touchEnd',touchPoints:[]});
+    await expect(page.locator('#arcade-status')).toContainText('Perfect control!');
+    await expect(charge).toHaveText('charge ki');
+    const result=await page.locator('#arcade-score').textContent();
+    await cdp.send('Input.dispatchTouchEvent',{type:'touchStart',touchPoints:[point]});
+    await page.clock.runFor(400);
+    await cdp.send('Input.dispatchTouchEvent',{type:'touchCancel',touchPoints:[]});
+    await page.clock.runFor(2500);
+    await expect(charge).toHaveText('charge ki');
+    await expect(page.locator('#arcade-score')).toHaveText(result);
+    await expect(page.locator('#ki-power')).toHaveText('0%');
+  } finally { await context.close(); }
 });
 
 test('Brick Breaker normal controls produce a perfect return, fair loss, and immediate retry', async ({ page }) => {

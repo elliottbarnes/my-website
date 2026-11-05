@@ -76,6 +76,31 @@ test('guard shots are telegraphed, damage has a grace period, and death freezes 
   run(game, 2, { x: 1, action: true }); assert.equal(JSON.stringify(game), ended);
   const fresh = engine.create(); assert.equal(fresh.hearts, 4); assert.equal(fresh.room, 0); assert.equal(fresh.phase, 'ready'); assert.ok(fresh.rooms[1].guards.every(guard => guard.hp === 2));
 });
+test('a warden commits to the warned position and reacquires only for its next attack', () => {
+  const game = engine.create(); engine.start(game); game.room = 1;
+  const [guard, other] = game.rooms[1].guards; other.hp = 0;
+  Object.assign(game.player, { x: 200, y: 96 }); guard.timer = .5;
+  engine.step(game); const locked = { ...guard.aim }, origin = { x: guard.x, y: guard.y };
+  run(game, .3, { y: 1 });
+  assert.deepEqual(guard.aim, locked, 'stepping aside cannot move the committed warning');
+  assert.ok(game.player.y > locked.y + 15);
+  run(game, .22);
+  const shot = game.projectiles.find(shot => shot.enemy); assert.ok(shot);
+  const expected = Math.atan2(locked.y - origin.y, locked.x - origin.x);
+  assert.ok(Math.abs(Math.atan2(shot.vy, shot.vx) - expected) < 1e-9, 'the shot follows the displayed warning');
+  assert.equal(guard.aim, null, 'finished windup does not leave a stale line');
+  run(game, 2.2);
+  assert.ok(guard.aim); assert.notDeepEqual(guard.aim, locked, 'the next attack can aim at the new position');
+});
+test('a linked beam keeps its earned reward through the room-clear message without changing score', () => {
+  const game = engine.create(); engine.start(game); beam(game);
+  assert.equal(game.beamReward.targets, 2); assert.equal(game.beamReward.bonus, 80);
+  assert.match(game.event, /2 linked! \+80 alignment.*Room restored/);
+  assert.equal(game.alignment, 80); assert.equal(engine.scoreBreakdown(game).rooms, 100);
+  run(game, 1.7); assert.equal(game.beamReward, null, 'the small celebration expires');
+  beam(game); assert.equal(game.beamReward, null, 'already-lit rings cannot repeat the reward');
+  assert.equal(game.alignment, 80);
+});
 test('diagonal movement keeps the same speed and invalid timing cannot advance the game', () => {
   const straight = engine.create(), diagonal = engine.create(); engine.start(straight); engine.start(diagonal);
   Object.assign(straight.player, { x: 160, y: 144 }); Object.assign(diagonal.player, { x: 160, y: 144 });

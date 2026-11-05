@@ -439,7 +439,7 @@ test('only valid finishes write a record and blocked or quota-limited storage is
   const result = platform.recordFinish(blocked, finishFixture()); assert.equal(result.saved, false); assert.equal(result.record.best.score, 4000);
   for (const store of [storage, blocked, new Error('storage getter blocked')]) {
     const h = controlsHarness({ storage: store }); h.start(); h.pump(25);
-    assert.equal(h.dialog.querySelector('#platform-record').textContent, 'first run');
+    assert.equal(h.dialog.querySelector('#platform-record').textContent, '◇ goal: chain 3');
     assert.equal(h.dialog.querySelector('#platform-results').hidden, true);
   }
   assert.equal(storage.writes(), 0, 'opening and playing never write completed records');

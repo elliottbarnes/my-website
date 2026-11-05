@@ -27,6 +27,15 @@ test('radar distances do not wrap rows and exclude collected targets', () => {
   assert.equal(rules.ping([6, 35], [6], 7).distance, 8);
   assert.equal(rules.ping([6, 35], [], 6).found, true);
   assert.equal(rules.ping([6, 35], [6], 6).found, false);
+  assert.equal(rules.ping([35], [], 0).label, '10 steps to the nearest ball');
+  assert.equal(rules.ping([1], [], 0).label, '1 step to the nearest ball');
+});
+
+test('only bounded completed arcade records survive storage validation', () => {
+  assert.deepEqual(rules.validRecords(null), {ki:null, radar:null});
+  assert.deepEqual(rules.validRecords({ki:{hits:4,perfects:3},radar:{scans:19},extra:'discard'}), {ki:{hits:4,perfects:3},radar:{scans:19}});
+  for (const ki of [{hits:6,perfects:1},{hits:3,perfects:4},{hits:3.5,perfects:1},{hits:'4',perfects:1}]) assert.equal(rules.validRecords({ki}).ki,null);
+  for (const scans of [6,253,-1,Infinity,'20',12.5]) assert.equal(rules.validRecords({radar:{scans}}).radar,null);
 });
 test('a full grid search always finishes with seven discoveries', () => {
   const targets = rules.field(() => .5), found = [];

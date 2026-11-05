@@ -24,7 +24,9 @@ async function clearHit(control) {
   })).toBe(true);
 }
 
-test('Goku: normal keyboard play completes the course and an immediate retry starts fresh', async ({ page }, testInfo) => {
+for (const controls of ['keyboard', 'touch']) test(`Goku: normal ${controls} play completes the course and an immediate retry starts fresh`, async ({ page, browserName }, testInfo) => {
+  test.skip(controls === 'touch' && browserName !== 'chromium', 'Full multitouch input needs CDP; native touch reachability is covered on both engines.');
+  if (controls === 'touch') await page.setViewportSize({ width: 390, height: 844 });
   test.setTimeout(90_000);
   const errors = []; page.on('pageerror', error => errors.push(error.message));
   await openGame(page);
@@ -34,9 +36,18 @@ test('Goku: normal keyboard play completes the course and an immediate retry sta
   await page.clock.install(); await page.clock.pauseAt(new Date());
   await page.locator('#platform-action').click(); await page.clock.runFor(32);
   const held = new Set(), events = [], bankedChains = new Map(); let lastEvent = -1;
+  const cdp = controls === 'touch' ? await page.context().newCDPSession(page) : null, contacts = new Map();
+  const touchControls = { ArrowRight: ['right', 1], ArrowLeft: ['left', 2], Space: ['jump', 3], x: ['attack', 4] };
   const key = async (name, on) => {
     if (on === held.has(name)) return;
-    if (on) { await page.keyboard.down(name); held.add(name); }
+    if (cdp) {
+      if (on) {
+        const [control, id] = touchControls[name], r = await page.locator(`[data-platform-hold="${control}"]`).boundingBox();
+        contacts.set(name, { id, x: r.x + r.width / 2, y: r.y + r.height / 2, radiusX: 2, radiusY: 2 }); held.add(name);
+      } else held.delete(name);
+      // CDP touchEnd identifies the ended contacts, not those still held.
+      await cdp.send('Input.dispatchTouchEvent', { type: on ? 'touchStart' : 'touchEnd', touchPoints: on ? [...held].map(key => contacts.get(key)) : [contacts.get(name)] });
+    } else if (on) { await page.keyboard.down(name); held.add(name); }
     else { await page.keyboard.up(name); held.delete(name); }
   };
   const start = Date.now();
@@ -49,7 +60,7 @@ test('Goku: normal keyboard play completes the course and an immediate retry sta
     if (game.phase !== 'playing') break;
     // Focus can change during a browser run. Resume only through the same P key
     // a player uses; inputs cleared by pause must receive fresh physical edges.
-    if (paused) { for (const name of held) await page.keyboard.up(name); held.clear(); await page.locator('#platform-canvas').focus(); await page.keyboard.press('p'); continue; }
+    if (paused) { for (const name of [...held]) await key(name, false); held.clear(); await page.locator('#platform-canvas').focus(); await page.keyboard.press('p'); continue; }
     const ball = game.orbs.find(orb => !orb.collected), guardian = game.enemies.find(enemy => enemy.kind === 'guardian');
     const goal = ball ? ball.x : guardian.alive ? 5480 : 5890;
     let direction = Math.abs(goal - p.x) > (!ball && guardian.alive ? 12 : 4) ? Math.sign(goal - p.x) : 0;
@@ -68,7 +79,7 @@ test('Goku: normal keyboard play completes the course and an immediate retry sta
     await key('x', !p.attackHeld && (p.grounded ? p.cooldown === 0 : Boolean(rush)));
     await page.clock.runFor(32);
   }
-  for (const name of held) await page.keyboard.up(name);
+  for (const name of [...held]) await key(name, false);
   const { game } = await snapshot(page);
   await testInfo.attach('normal-input-run', { body: JSON.stringify({ events, bankedChains: [...bankedChains.values()], phase: game.phase, score: game.score, longestChain: game.longestChain, time: game.time }), contentType: 'application/json' });
   expect(game.phase).toBe('won'); expect(game.orbs.filter(orb => orb.collected)).toHaveLength(7);
@@ -83,6 +94,7 @@ test('Goku: normal keyboard play completes the course and an immediate retry sta
   await page.keyboard.press('p'); await expect(page.locator('#platform-pause')).toHaveAttribute('aria-pressed', 'true');
   await page.keyboard.press('Escape'); await expect(page.locator('#arcade-picker')).toBeVisible();
   expect(errors).toEqual([]);
+  if (cdp) await cdp.detach();
 });
 
 test('Goku: collision failure, retry and cleared held inputs are visible to the player', async ({ page }) => {
@@ -142,4 +154,49 @@ test('Goku: a cancelled real multitouch hold releases movement and jump', async 
     await page.waitForTimeout(200); expect((await snapshot(page)).game.player.x).toBe(released.game.player.x);
     await cdp.detach();
   } finally { await context.close(); }
+});
+
+
+// Queue a real second input just before the first connection. The observer is
+// read-only; the character starts on the same ground as every new player.
+async function approachFirstConnection(page) {
+  await openGame(page); await page.clock.install(); await page.clock.pauseAt(new Date());
+  await page.locator('#platform-action').click();
+  await page.keyboard.down('ArrowRight'); await page.keyboard.down('Space');
+  for (let i = 0; i < 60 && !(await snapshot(page)).lock; i++) await page.clock.runFor(8);
+  expect((await snapshot(page)).lock).toBeTruthy();
+  await page.keyboard.press('x');
+  for (let i = 0; i < 8 && !(await snapshot(page)).game.rushes; i++) await page.clock.runFor(8);
+  for (let i = 0; i < 60; i++) {
+    const { game } = await snapshot(page), p = game.player;
+    expect(p.dash).toBeTruthy();
+    const ring = game.rings.find(target => target.id === p.dash.target);
+    const distance = Math.hypot(ring.x + 7 - p.x - p.w / 2, ring.y + 7 - p.y - p.h / 2);
+    if (distance < 34) return;
+    await page.clock.runFor(8);
+  }
+  throw new Error('The starting ring was not reached through ordinary input.');
+}
+
+test('Goku: an early second rush connects once and a held key never chains itself', async ({ page }, testInfo) => {
+  await approachFirstConnection(page);
+  await page.keyboard.down('x'); await page.clock.runFor(240);
+  const { game } = await snapshot(page);
+  expect(game.connections).toBe(2); expect(game.rushes).toBe(2);
+  expect(game.player.rushBuffer).toBe(0); expect(game.orbs[0].collected).toBe(true);
+  await expect(page.locator('#platform-record')).toHaveText('◇ goal: chain 3');
+  await page.screenshot({ path: testInfo.outputPath('goku-chain.png') });
+  await page.keyboard.up('x'); await page.keyboard.up('ArrowRight'); await page.keyboard.up('Space');
+});
+
+test('Goku: pausing a queued rush cancels it before resuming', async ({ page }) => {
+  await approachFirstConnection(page);
+  await page.keyboard.press('x'); await page.clock.runFor(16);
+  expect((await snapshot(page)).game.player.rushBuffer).toBeGreaterThan(0);
+  await page.keyboard.press('p');
+  expect((await snapshot(page)).game.player.rushBuffer).toBe(0);
+  await page.keyboard.up('ArrowRight'); await page.keyboard.up('Space');
+  await page.clock.runFor(150); await page.keyboard.press('p'); await page.clock.runFor(240);
+  const { game } = await snapshot(page);
+  expect(game.connections).toBe(1); expect(game.rushes).toBe(1);
 });

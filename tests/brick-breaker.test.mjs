@@ -78,6 +78,51 @@ test("ordinary paddle and pulse inputs can complete all three arenas without sta
   assert.equal(state.wave, 3);
 });
 
+test("only an earned perfect return widens the final three targets, without steering the ball", () => {
+  for (const remaining of [3, 4]) for (const perfect of [false, true]) {
+    const state = engine.create(), brick = state.bricks[0];
+    for (const other of state.bricks) other.active = other.id < remaining;
+    engine.launch(state);
+    Object.assign(state.ball, { x: state.paddle.x, y: state.paddle.y - 10, vx: 0, vy: state.ball.speed });
+    if (perfect) engine.pulse(state);
+    engine.step(state, .03);
+    assert.equal(state.perfects, Number(perfect), "the reward is earned through a real timed catch");
+    const before = snapshot(state.ball), bounds = engine.shieldBounds(state, brick);
+    assert.deepEqual(snapshot(state.ball), before, "asking for a target cannot alter flight");
+    assert.equal(bounds !== brick, perfect && remaining === 3);
+    // The ball clears the ordinary left edge by three pixels, but meets the
+    // visible gold wing when the last-three reward is active.
+    Object.assign(state.ball, { x: brick.x - 8, y: brick.y + brick.height + state.ball.radius + 6,
+      vx: 0, vy: -state.ball.speed });
+    engine.step(state, .04);
+    assert.equal(brick.active, !(perfect && remaining === 3));
+    if (!brick.active) {
+      assert.equal(state.score, 50, "one hit and the existing ×2 chain keep the same score formula");
+      assert.equal(state.powerHits, 2, "the larger target still spends one powered hit");
+    } else assert.equal(state.score, 0, "an ordinary near miss stays a miss");
+  }
+});
+
+test("gold finishing targets stay in bounds with separate hit areas, and end with the reward", () => {
+  const state = engine.create();
+  const final = [state.bricks[0], state.bricks[1], state.bricks[6]];
+  for (const brick of state.bricks) brick.active = final.includes(brick);
+  state.powerHits = 3;
+  const bounds = final.map(brick => engine.shieldBounds(state, brick));
+  for (const target of bounds) {
+    assert.ok(target.x >= 6 && target.x + target.width <= state.width - 6);
+    assert.ok(target.width > 42 && target.height === 24);
+  }
+  assert.ok(bounds[0].x + bounds[0].width < bounds[1].x, "adjacent gold wings retain a visible gap");
+  state.powerHits = 0;
+  assert.equal(engine.shieldBounds(state, final[0]), final[0]);
+  state.powerHits = 3; state.phase = "playing";
+  Object.assign(state.ball, { y: state.height + 10, vx: 0, vy: 260 });
+  engine.step(state, .01);
+  assert.equal(state.phase, "ready");
+  assert.equal(engine.shieldBounds(state, final[0]), final[0], "a missed catch cannot retain the larger targets");
+});
+
 test("the chamber starts ready with three lives and seven complete columns", () => {
   const state = engine.create();
   assert.equal(state.width, 360);

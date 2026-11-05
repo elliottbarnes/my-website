@@ -122,6 +122,22 @@
 
   function cancelPulse(state) { state.pulseUntil = 0; }
 
+  // A perfect return earns a larger finishing target, not a different ball
+  // trajectory. The renderer uses these exact bounds for the gold shield.
+  function shieldBounds(state, brick) {
+    if (!brick.active || state.powerHits <= 0) return brick;
+    let remaining = 0;
+    for (const other of state.bricks) if (other.active && ++remaining > 3) return brick;
+    let left = Math.max(6, brick.x - 12), right = Math.min(state.width - 6, brick.x + brick.width + 12);
+    // Adjacent final targets keep a visible gap; their wings never overlap.
+    for (const other of state.bricks) {
+      if (!other.active || other === brick || other.y !== brick.y) continue;
+      if (other.x > brick.x) right = Math.min(right, (brick.x + brick.width + other.x) / 2 - .5);
+      else left = Math.max(left, (other.x + other.width + brick.x) / 2 + .5);
+    }
+    return { ...brick, x: left, y: brick.y - 3, width: right - left, height: brick.height + 6 };
+  }
+
   // The nearest point gives the correct normal for both faces and round corners.
   function contact(ball, rectangle) {
     const nearestX = clamp(ball.x, rectangle.x, rectangle.x + rectangle.width);
@@ -228,7 +244,7 @@
       const candidates = [];
       for (const brick of state.bricks) {
         if (!brick.active || touched.has(brick.id)) continue;
-        const hit = contact(ball, brick);
+        const hit = contact(ball, shieldBounds(state, brick));
         if (!hit) continue;
         const collision = { brick, hit };
         candidates.push(collision);
@@ -285,5 +301,5 @@
     return state;
   }
 
-  window.PortfolioBreakerEngine = Object.freeze({ arenas, create, reset, nextArena, launch, pulse, cancelPulse, movePaddle, returnGuide, step });
+  window.PortfolioBreakerEngine = Object.freeze({ arenas, create, reset, nextArena, launch, pulse, cancelPulse, movePaddle, returnGuide, shieldBounds, step });
 })();
