@@ -12,7 +12,12 @@
 #arcade-dialog #arcade-close{padding:4px 11px;min-width:44px}
 .arcade-panorama{height:150px;border:2px solid #a7eee4;border-radius:12px;background:#39bfe8 url('/assets/arcade-lookout.webp') center 48%/cover no-repeat;box-shadow:0 4px 0 #0b1b31;margin-bottom:15px}
 #arcade-dialog .arcade-picker-intro{color:#c4e2e6;margin:10px 0 17px;font-size:12px}
-.arcade-choice-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}
+.arcade-choice-grid{display:grid;grid-template-columns:minmax(0,1fr);gap:10px}
+.arcade-bonus{margin-top:17px;border-top:1px solid #527c8d;padding-top:8px}
+.arcade-bonus summary{min-height:44px;box-sizing:border-box;padding:9px 3px;cursor:pointer;color:#fff1bd;font-size:12px;line-height:1.5}
+.arcade-bonus summary span{color:#bedee4;font-size:10px;margin-left:7px}
+.arcade-bonus summary:focus-visible{outline:3px solid #ffdc75;outline-offset:2px;border-radius:4px}
+.arcade-bonus[open] summary{margin-bottom:8px}
 #arcade-dialog .game-choice{display:grid;grid-template-columns:65px minmax(0,1fr) 12px;gap:10px;align-items:center;width:100%;margin:0;padding:10px;text-align:left;background:#eff9ec;border:2px solid #a9e0ce;border-radius:12px;box-shadow:0 4px 0 #091d35;transition:background-color .12s,border-color .12s}
 #arcade-dialog .game-choice:hover{background:#fff9db;border-color:#ffcf63}
 #arcade-dialog .game-choice strong{display:block;color:#172e48;font-size:15px;font-weight:700;line-height:1.25;margin-bottom:4px}
@@ -64,3 +69,5 @@
 @media(max-width:360px){#arcade-dialog{width:calc(100vw - 16px);padding:12px}#arcade-dialog[data-mode=choose]{width:calc(100vw - 16px)}.arcade-panorama{height:96px}#arcade-dialog .game-choice strong{font-size:14px}.hunt-screen{padding:5px}#hunt-grid{gap:3px}#arcade-dialog #hunt-grid button{min-height:42px}.cartridge-art{width:58px;height:58px}}
 @media(max-height:500px) and (min-width:480px){.arcade-panorama{height:100px}#ki-canvas{max-height:160px;object-fit:contain}#hunt-grid{max-width:310px;margin:auto}}
 @media(prefers-reduced-motion:reduce){#arcade-dialog .game-choice{transition:none}}
+@media(max-height:650px){#arcade-dialog[data-mode=choose] .arcade-panorama{display:none}#arcade-dialog[data-mode=choose] #arcade-title{font-size:25px;margin:4px 0 10px}#arcade-dialog .arcade-picker-intro{margin:6px 0 12px}.arcade-bonus{margin-top:12px}}
+@media(max-height:650px) and (max-width:620px){#arcade-dialog .game-choice{grid-template-columns:48px minmax(0,1fr) 10px;gap:8px;padding:8px}#arcade-dialog .cartridge-art{width:46px;height:46px}#arcade-dialog .game-choice strong{font-size:13px}#arcade-dialog .game-choice small{line-height:1.4}#arcade-dialog .cartridge-generation{margin-bottom:3px}}

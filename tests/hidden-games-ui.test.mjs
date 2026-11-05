@@ -80,6 +80,7 @@ test('the game chooser starts no game and opens either small game through its ca
   h.get('game-pick-ki').fire('click'); assert.equal(h.get('ki-game').hidden,false); assert.equal(h.focus(),h.get('ki-charge'));
   h.get('ki-charge').fire('click',{detail:0}); h.advance(500);
   h.get('arcade-back').fire('click'); assert.equal(h.frames.size,0); assert.equal(h.get('arcade-picker').hidden,false);
+  assert.equal(h.focus(),h.get('game-pick-ki')); assert.equal(h.get('arcade-bonus').open,true);
   h.get('game-pick-radar').fire('click'); assert.equal(h.get('radar-game').hidden,false); assert.equal(h.focus(),h.get('hunt-grid').children[0]);
 });
 test('brick breaker handoff retains the original trigger and survives deferred close cleanup', () => {

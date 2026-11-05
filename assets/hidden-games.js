@@ -47,6 +47,8 @@
   const action = document.getElementById('ki-charge'), meter = document.getElementById('ki-meter');
   const powerText = document.getElementById('ki-power'), target = document.getElementById('ki-target');
   const picker = document.getElementById('arcade-picker'), back = document.getElementById('arcade-back');
+  const bonus = document.getElementById('arcade-bonus');
+  let lastPicked = 'piccolo';
   const score = document.getElementById('arcade-score'), grid = document.getElementById('hunt-grid');
   const record = document.getElementById('arcade-record');
   const canvas = document.getElementById('ki-canvas'), ctx = canvas.getContext('2d');
@@ -227,6 +229,7 @@
     else { renderGrid(); announce('Find seven hidden balls. Scan a square; its reading points toward the nearest remaining ball.'); }
   }
   function select(next) {
+    if (next === 'ki' || next === 'radar') lastPicked = next;
     mode = next; const choosing = mode === 'choose';
     ki.hidden = mode !== 'ki'; radar.hidden = mode !== 'radar'; picker.hidden = !choosing;
     back.hidden = choosing; score.hidden = choosing; status.hidden = choosing; record.hidden = choosing;
@@ -242,8 +245,12 @@
     window.dispatchEvent(new CustomEvent('portfolio:training', { detail: { open: true } }));
     focusGame();
   }
-  function focusGame() { (mode === 'choose' ? (document.getElementById('game-pick-piccolo') || document.getElementById('game-pick-breaker')) : mode === 'ki' ? action : grid.children[0]).focus(); }
+  function focusGame() {
+    if (mode === 'choose' && ['ki', 'radar'].includes(lastPicked) && bonus) bonus.open = true;
+    (mode === 'choose' ? document.getElementById(`game-pick-${lastPicked}`) : mode === 'ki' ? action : grid.children[0]).focus();
+  }
   for (const game of ['breaker', 'piccolo', 'platformer', 'ki', 'radar']) document.getElementById(`game-pick-${game}`)?.addEventListener('click', () => {
+    lastPicked = game;
     if (['breaker', 'piccolo', 'platformer'].includes(game)) {
       if (window.PortfolioGames) window.PortfolioGames.run(game, opener);
       else if (game === 'breaker') { const trigger = opener; dialog.close(); window.PortfolioTraining?.open(trigger); }

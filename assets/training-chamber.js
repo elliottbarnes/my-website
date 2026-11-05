@@ -120,7 +120,7 @@
     text(chain, `×${1 + Math.min(4, game.chain)}`);
     saveResult();
     if (action) {
-      text(action, game.phase === "clear" ? "next arena ↵" : terminal() ? "beat your run ↵" : game.phase === "ready" ? "release ki ↵" : game.time < game.pulseReadyAt ? "pulse cooling…" : "pulse · space");
+      text(action, game.phase === "clear" ? "next arena ↵" : terminal() ? "try again ↵" : game.phase === "ready" ? "launch · space" : game.time < game.pulseReadyAt ? "pulse cooling…" : "pulse · space");
       action.disabled = paused || game.phase === "playing" && game.time < game.pulseReadyAt;
     }
     if (pause) {
@@ -133,9 +133,10 @@
     if (paused) announce("training paused");
     else if (game.phase === "clear") announce(`${engine.arenas[game.wave - 1]} cleared. Seven Dragon Balls collected. Continue to ${engine.arenas[game.wave]}; recover one life, up to three.`);
     else if (["won", "lost"].includes(game.phase)) announce(`${game.phase === "won" ? "All three arenas cleared!" : "Run complete."} ${game.score * 15} power · ${game.perfects} perfect returns · best chain ${game.bestChain}. ${newBest ? "New personal best!" : best ? `Best ${best.score}.` : "Time your pulse just before the return."}`);
-    else if (game.phase === "ready") announce(`${game.lives < 3 ? "Ki lost. " : ""}${engine.arenas[game.wave - 1]} · arena ${game.wave} of ${game.totalWaves}. Launch, then pulse just before the ball lands: three powered hits and a multiplier.${best ? ` Best ${best.score}.` : ""}`);
+    else if (game.phase === "ready") announce(`${game.lives < 3 ? "Missed the paddle. " : ""}${engine.arenas[game.wave - 1]} · arena ${game.wave} of ${game.totalWaves}. Catch off-centre to aim. Pulse just before contact for three powered hits.${best ? ` Best ${best.score}.` : ""}`);
     else if (game.feedbackAt !== lastFeedback && game.feedback === "perfect") announce(`Perfect return! Multiplier ×${1 + Math.min(4, game.chain)}. ${game.bricks.filter(brick => brick.active).length <= 3 ? "Final targets expanded!" : "Three powered shield hits."} Chain ${game.chain}.`);
     else if (game.feedbackAt !== lastFeedback && game.feedback === "early") announce("Pulse too early. Try just before the ball meets the paddle.");
+    else if (game.feedbackAt !== lastFeedback && game.feedback === "return") announce("Safe return. Catch off-centre to steer; pulse just before contact for power.");
     else if (game.bricks.filter(brick => brick.active).length <= 3 && game.phase === "playing" && previousRemaining > 3) announce("Final shields! Perfect returns expand the gold targets. Aim with the dashed return guide.");
     else if (game.collected.length !== lastCollected) announce(`${game.collected.length} of seven dragon balls collected.`);
     else if (game.phase !== previousPhase || lastAnnouncement === "training paused") announce("Aim with the paddle. Tap pulse or Space as the ball enters the return zone.");
@@ -336,9 +337,10 @@
   }
 
   function drawReturnGuide() {
-    if (paused || game.bricks.filter(brick => brick.active).length > 3) return;
+    if (paused) return;
     const aim = engine.returnGuide(game);
     if (!aim) return;
+    const finishing = game.bricks.filter(brick => brick.active).length <= 3;
     const { radius } = game.ball;
     // A quiet, short-lived aiming aid uses the actual return-angle rule. It
     // never steers the ball, changes collisions, or promises a moving catch.
@@ -347,8 +349,9 @@
     context.globalAlpha = .58; context.setLineDash([4, 6]);
     context.beginPath(); context.moveTo(aim.x, aim.y);
     let x = aim.x, y = aim.y, vx = aim.vx;
-    for (let bounce = 0; bounce < 3 && y > 54; bounce++) {
-      const untilTop = (54 - y) / aim.vy;
+    const top = finishing ? 54 : aim.y - 100;
+    for (let bounce = 0; bounce < 3 && y > top; bounce++) {
+      const untilTop = (top - y) / aim.vy;
       const wall = vx > 0 ? game.width - radius : radius;
       const untilWall = (wall - x) / vx;
       const seconds = Math.min(untilTop, untilWall);
@@ -357,7 +360,22 @@
       if (untilTop <= untilWall) break;
       vx = -vx;
     }
-    context.stroke(); context.restore();
+    if (!finishing) {
+      context.globalAlpha = .9; context.strokeStyle = "#07172e"; context.lineWidth = 4; context.stroke();
+      context.strokeStyle = palette.blue; context.lineWidth = 1.5;
+    }
+    context.stroke();
+    // A short arrow teaches that paddle position chooses the outgoing shot.
+    // Only the final shields need the full board-length guide.
+    if (!finishing) {
+      const length = Math.hypot(vx, aim.vy), dx = vx / length, dy = aim.vy / length;
+      context.setLineDash([]); context.globalAlpha = .9;
+      context.beginPath(); context.moveTo(x - dx * 8 - dy * 4, y - dy * 8 + dx * 4);
+      context.lineTo(x, y); context.lineTo(x - dx * 8 + dy * 4, y - dy * 8 - dx * 4); context.stroke();
+      context.fillStyle = palette.white; context.strokeStyle = "#07172e"; context.lineWidth = 1.5;
+      context.beginPath(); context.arc(aim.x, aim.y, 3, 0, Math.PI * 2); context.fill(); context.stroke();
+    }
+    context.restore();
   }
 
   function draw() {
@@ -462,7 +480,7 @@
 
     context.font = '11px "Plex Mono", monospace'; context.textAlign = "center";
     context.fillStyle = palette.muted;
-    context.fillText("drag anywhere to guide", width / 2, height - 12);
+    context.fillText("move paddle · catch off-centre to aim", width / 2, height - 12);
     if (paused || game.phase !== "playing") {
       const title = paused ? "time stands still" : game.phase === "clear" ? "arena cleared" : game.phase === "won" ? "wish granted" : game.phase === "lost" ? "another round?" : game.lives < 3 ? "ki scattered" : "master the return";
       const subtitle = paused ? "resume when you’re ready" : game.phase === "clear" ? `${engine.arenas[game.wave - 1]} mastered · next / +1 life` : game.phase === "won" ? `${game.perfects} perfect returns · ${game.score * 15} power` : game.phase === "lost" ? "even saiyans need practice" : game.lives < 3 ? `${game.lives} ${game.lives === 1 ? "life" : "lives"} left · tap / space to release` : "launch / pulse just before contact";

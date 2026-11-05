@@ -242,14 +242,19 @@ output color * (0.35 + 0.65 * glow);</code></pre></div>
       <h2 id="arcade-title">ki control</h2>
       <section id="arcade-picker" aria-label="Choose a training game" hidden>
         <div class="arcade-panorama" aria-hidden="true"></div>
-        <p class="arcade-picker-intro">Five little worlds. Pick your next challenge.</p>
-        <div class="arcade-choice-grid">
+        <p class="arcade-picker-intro">Three games to get good at. Pick your kind of challenge.</p>
+        <div class="arcade-choice-grid" role="group" aria-label="Main games">
           <button id="game-pick-piccolo" class="game-choice" data-game="piccolo" type="button"><span class="cartridge-art cartridge-piccolo" aria-hidden="true"></span><span><span class="cartridge-generation">aim + explore</span><strong>Piccolo’s Lookout</strong><small>Read the room. Line up a brilliant beam.</small></span><span class="cartridge-arrow" aria-hidden="true">→</span></button>
           <button id="game-pick-platformer" class="game-choice" data-game="platformer" type="button"><span class="cartridge-art cartridge-platformer" aria-hidden="true"></span><span><span class="cartridge-generation">jump + chain</span><strong>Goku Ki Rush</strong><small>Catch the next ring. Make the sky your route.</small></span><span class="cartridge-arrow" aria-hidden="true">→</span></button>
           <button id="game-pick-breaker" class="game-choice" data-game="breaker" type="button"><span class="cartridge-art cartridge-breaker" aria-hidden="true"></span><span><span class="cartridge-generation">aim + rebound</span><strong>Brick Breaker</strong><small>Perfect the return. Light up the last shields.</small></span><span class="cartridge-arrow" aria-hidden="true">→</span></button>
-          <button id="game-pick-ki" class="game-choice" data-game="ki" type="button"><span class="cartridge-art cartridge-ki" aria-hidden="true"></span><span><span class="cartridge-generation">hold + release</span><strong>Ki Control</strong><small>Find your rhythm. Land five precise releases.</small></span><span class="cartridge-arrow" aria-hidden="true">→</span></button>
-          <button id="game-pick-radar" class="game-choice" data-game="radar" type="button"><span class="cartridge-art cartridge-radar" aria-hidden="true"></span><span><span class="cartridge-generation">scan + discover</span><strong>Radar Hunt</strong><small>Follow the numbers. Find all seven balls.</small></span><span class="cartridge-arrow" aria-hidden="true">→</span></button>
         </div>
+        <details id="arcade-bonus" class="arcade-bonus">
+          <summary>Bonus challenges <span>Ki Control · Radar Hunt</span></summary>
+          <div class="arcade-choice-grid">
+            <button id="game-pick-ki" class="game-choice" data-game="ki" type="button"><span class="cartridge-art cartridge-ki" aria-hidden="true"></span><span><span class="cartridge-generation">hold + release</span><strong>Ki Control</strong><small>A five-shot precision warm-up.</small></span><span class="cartridge-arrow" aria-hidden="true">→</span></button>
+            <button id="game-pick-radar" class="game-choice" data-game="radar" type="button"><span class="cartridge-art cartridge-radar" aria-hidden="true"></span><span><span class="cartridge-generation">scan + discover</span><strong>Radar Hunt</strong><small>A quiet hunt. Read clues; find all seven.</small></span><span class="cartridge-arrow" aria-hidden="true">→</span></button>
+          </div>
+        </details>
       </section>
       <button id="arcade-back" type="button" hidden>← choose a game</button>
       <p id="arcade-score"></p>

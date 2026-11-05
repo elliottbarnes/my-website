@@ -11,7 +11,9 @@ test('bright arcade artwork stays optional and each game has readable accessible
   await expect(page.locator('#arcade-picker .game-choice')).toHaveCount(5);
   await expect.poll(() => artwork.some(url => /arcade-lookout/.test(url))).toBe(true);
   await expect.poll(() => artwork.some(url => /arcade-icons/.test(url))).toBe(true);
+  expect((await new AxeBuilder({ page }).include('#arcade-dialog').analyze()).violations).toEqual([]);
   for (const [game, dialog] of [['piccolo', '#piccolo-dialog'], ['platformer', '#platformer-dialog'], ['breaker', '#training-dialog'], ['ki', '#arcade-dialog'], ['radar', '#arcade-dialog']]) {
+    if (game === 'ki') await page.locator('#arcade-bonus summary').click();
     await page.locator(`#game-pick-${game}`).click();
     await expect(page.locator(dialog)).toBeVisible();
     const report = await new AxeBuilder({ page }).include(dialog).analyze();
@@ -19,5 +21,6 @@ test('bright arcade artwork stays optional and each game has readable accessible
     expect(report.violations, `${game} control accessibility`).toEqual([]);
     await page.keyboard.press('Escape');
     await expect(page.locator('#arcade-picker')).toBeVisible();
+    await expect(page.locator(`#game-pick-${game}`)).toBeFocused();
   }
 });
