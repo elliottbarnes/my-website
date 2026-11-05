@@ -82,3 +82,7 @@
 }
 
 #piccolo-dialog #piccolo-start { background:#ffd455; border-color:#60532f; font-weight:bold; }
+
+/* The checkpoint cost stays visible before retry, including narrow controls. */
+#piccolo-dialog .piccolo-actions #piccolo-start { min-width:0; white-space:normal; }
+#piccolo-dialog #piccolo-new-run { margin-top:9px; padding:6px 10px; font-size:10px; }

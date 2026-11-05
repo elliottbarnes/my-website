@@ -217,3 +217,40 @@ test('Goku: pausing a queued rush cancels it before resuming', async ({ page }) 
   const { game } = await snapshot(page);
   expect(game.connections).toBe(1); expect(game.rushes).toBe(1);
 });
+
+// A first-session success should matter even if the full course is still hard.
+// Earn the chain, lose through ordinary controls, and retry through a real tap.
+test('Goku: a short earned chain survives failure, touch retry and reload', async ({ browser, baseURL }, testInfo) => {
+  const context = await browser.newContext({ baseURL, viewport: { width: 390, height: 844 }, hasTouch: true, reducedMotion: 'reduce' });
+  const page = await context.newPage();
+  try {
+    await openGame(page); await page.clock.install(); await page.clock.pauseAt(new Date());
+    await page.locator('#platform-action').tap();
+    await page.keyboard.down('ArrowRight'); await page.keyboard.down('Space');
+    for (let i = 0; i < 500; i++) {
+      const { game, lock } = await snapshot(page);
+      if (game.longestChain >= 3) break;
+      if (lock && !game.player.attackHeld) await page.keyboard.down('x'); else await page.keyboard.up('x');
+      await page.clock.runFor(16);
+    }
+    expect((await snapshot(page)).game.longestChain).toBe(3);
+    await page.keyboard.up('Space'); await page.keyboard.up('x');
+    for (let i = 0; i < 200 && (await snapshot(page)).game.phase !== 'lost'; i++) await page.clock.runFor(96);
+    await page.keyboard.up('ArrowRight');
+    await expect(page.locator('#platformer-dialog')).toHaveAttribute('data-phase', 'lost');
+    await expect(page.locator('#platform-status')).toContainText('BOT COLLISION. Jump over it or tap X / B on the ground.');
+    await expect(page.locator('#platform-result-compare')).toContainText('Chain goal 3 reached! Next goal: chain 4.');
+    await expect(page.locator('#platform-result-records')).toContainText('Best chain 3 · saved here');
+    expect(await page.evaluate(() => localStorage.getItem('portfolio:goku-ki-rush:v1'))).toBeNull();
+    await page.screenshot({ path: testInfo.outputPath('short-run-mastery.png') });
+    const retry = page.locator('#platform-action'); await clearHit(retry); await retry.tap();
+    await expect(page.locator('#platform-record')).toHaveText('◇ goal: chain 4');
+    await expect(page.locator('#platform-chain-best')).toHaveText('3');
+    await expect(page.locator('#platform-score')).toHaveText('0');
+    await page.keyboard.press('Escape'); await page.reload();
+    await page.locator('.scene-body').focus(); await page.keyboard.press('/');
+    await page.locator('#command-input').fill('platformer'); await page.locator('#command-input').press('Enter');
+    await expect(page.locator('#platform-record')).toHaveText('◇ goal: chain 4');
+    await expect(page.locator('#platform-chain-best')).toHaveText('3');
+  } finally { await context.close(); }
+});

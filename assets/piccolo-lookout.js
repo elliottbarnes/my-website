@@ -186,12 +186,12 @@
     say(game, `Room ${room + 1} saved. ${ROOMS[room].intro}`);
   }
   function retry(game) {
-    if (game.phase !== 'lost') return game;
+    if (game.phase !== 'lost' && !(game.phase === 'playing' && game.checkpoint > 0)) return game;
     for (let room = game.checkpoint; room < ROOMS.length; room++) game.rooms[room] = freshRoom(ROOMS[room]);
     game.phase = 'playing'; game.hearts = 4; game.attempts++; game.player = freshPlayer();
     enter(game, game.checkpoint);
     if (game.room === 0) Object.assign(game.player, { x: 40, y: 144, facing: 'up' });
-    say(game, `Room ${game.room + 1} checkpoint. Four hearts; try a new approach.`);
+    say(game, `Room ${game.room + 1} checkpoint. Four hearts; retry −100. Try a new approach.`);
     return game;
   }
   function shootGuard(game, guard) {
@@ -303,7 +303,7 @@
     <ol class="piccolo-route" aria-label="Adventure progress">${ROOMS.map((room, index) => `<li data-piccolo-room="${index}" title="${room.name}">${index + 1}</li>`).join('')}</ol><p id="piccolo-objective">Hold Z / touch A → READY → release ↑</p><p id="piccolo-status" role="status" aria-live="polite" aria-atomic="true">You face both rings. Hold Space or Z on the keyboard, or A on screen. Release when READY.</p>
     <div class="piccolo-controller"><div class="piccolo-dpad" role="group" aria-label="Movement controls"><button type="button" data-piccolo-hold="up" aria-label="Move up">▲</button><button type="button" data-piccolo-hold="left" aria-label="Move left">◀</button><span aria-hidden="true"></span><button type="button" data-piccolo-hold="right" aria-label="Move right">▶</button><button type="button" data-piccolo-hold="down" aria-label="Move down">▼</button></div><div class="piccolo-ab"><button type="button" data-piccolo-hold="action" aria-label="A: tap for ki; hold and release for beam. Enter toggles charge and release." aria-pressed="false">A</button><span id="piccolo-charge">HOLD → BEAM</span><span id="piccolo-score">SCORE 0</span></div><div class="piccolo-speaker" aria-hidden="true">▰▰▰<br>▰▰▰<br>▰▰▰</div></div>
     <div class="piccolo-actions"><button type="button" data-piccolo-back>← cartridges</button><button type="button" id="piccolo-start">start ↵</button><button type="button" id="piccolo-pause" aria-pressed="false">pause</button></div>
-    <details class="piccolo-help"><summary>controls / score / personal best</summary><p id="piccolo-help">Keyboard: arrows or WASD move and aim; Space or Z controls ki. On screen: use A for ki. Tap for quick ki and nearby interactions; hold for 0.8 seconds, then release a Special Beam Cannon. Charging locks your aim and slows movement. The dotted sight stops at walls; corner marks show targets in its path. Move sideways to line up both rings. With the on-screen A button focused, Enter or assistive activation toggles charge and release without holding. Link paired rings with one beam. Wardens commit to their warning line: step aside, then counter. The keeper opens after its fan. P pauses; Escape returns to cartridges. Pausing cancels your charge. Continue at the current room after defeat, or restart a new run.</p><p>Score: 100 per restored room; +80 per extra new target in one beam; up to 400 at completion for avoiding damage (−50 per hit); −100 per checkpoint retry. Each target earns alignment credit once per run. Higher score wins; faster time breaks ties. Personal best is saved only on this device.</p><p id="piccolo-record">Complete a run to set your first personal best.</p></details>`;
+    <details class="piccolo-help"><summary>controls / score / personal best</summary><p id="piccolo-help">Keyboard: arrows or WASD move and aim; Space or Z controls ki. On screen: use A for ki. Tap for quick ki and nearby interactions; hold for 0.8 seconds, then release a Special Beam Cannon. Charging locks your aim and slows movement. The dotted sight stops at walls; corner marks show targets in its path. Move sideways to line up both rings. With the on-screen A button focused, Enter or assistive activation toggles charge and release without holding. Link paired rings with one beam. Wardens commit to their warning line: step aside, then counter. The keeper opens after its fan. P pauses; Escape returns to cartridges. Pausing cancels your charge. Continue at the saved room after defeat. Once you reach room 2, retry room lets you practise that checkpoint immediately for the same 100-point cost; earlier rooms stay restored. Time, hits and earned alignment remain. Start a new adventure below to reset the full run.</p><p>Score: 100 per restored room; +80 per extra new target in one beam; up to 400 at completion for avoiding damage (−50 per hit); −100 per checkpoint retry. Each target earns alignment credit once per run. Higher score wins; faster time breaks ties. Personal best is saved only on this device.</p><p id="piccolo-record">Complete a run to set your first personal best.</p><button type="button" id="piccolo-new-run">new adventure · reset all rooms</button></details>`;
   const root = document.documentElement, canvas = dialog.querySelector('#piccolo-canvas'), ctx = canvas.getContext('2d'); if (!ctx) return;
   const status = dialog.querySelector('#piccolo-status'), objectiveNode = dialog.querySelector('#piccolo-objective'), startButton = dialog.querySelector('#piccolo-start'), pauseButton = dialog.querySelector('#piccolo-pause');
   const reduced = matchMedia('(prefers-reduced-motion: reduce)');
@@ -333,7 +333,7 @@
     setText(dialog.querySelector('#piccolo-hearts'), `${game.hearts} ${game.hearts === 1 ? 'HEART' : 'HEARTS'}`);
     setText(objectiveNode, game.phase === 'won' ? `${breakdown.score} points · ${timeLabel(Math.round(game.time * 1000))}` : game.phase === 'lost' ? `Continue from room ${game.checkpoint + 1} / ${ROOMS.length}` : objective(game));
     dialog.querySelectorAll('[data-piccolo-room]').forEach(node => { const index = Number(node.dataset.piccoloRoom); node.dataset.cleared = String(game.rooms[index].cleared); node.setAttribute('aria-current', index === game.room ? 'step' : 'false'); });
-    setText(startButton, game.phase === 'ready' ? 'start ↵' : game.phase === 'lost' ? 'continue ↵' : game.phase === 'won' ? 'play again ↵' : 'restart ↻');
+    setText(startButton, game.phase === 'ready' ? 'start ↵' : game.phase === 'lost' ? 'continue ↵' : game.phase === 'won' ? 'play again ↵' : game.checkpoint > 0 ? 'retry room · −100' : 'restart ↻');
     setText(pauseButton, paused ? 'resume' : 'pause'); pauseButton.disabled = game.phase !== 'playing';
     if (pauseButton.getAttribute('aria-pressed') !== String(paused)) pauseButton.setAttribute('aria-pressed', String(paused));
     if (paused) setText(status, 'Paused. Your adventure will wait for you.');
@@ -510,7 +510,7 @@
     while (debt >= 1 / 120) { step(game, input(), 1 / 120); pendingAction = false; debt -= 1 / 120; }
     update(); draw(); schedule();
   }
-  function begin() { stop(); clearInput(); if (game.phase === 'lost') retry(game); else { game = create(); start(game); } resultHandled = false; resultNote = ''; dialog.querySelector('.piccolo-help').open = false; paused = false; eventId = -1; update(); draw(); schedule(); canvas.focus({ preventScroll: true }); }
+  function begin(options = {}) { stop(); clearInput(); if (!options.fresh && (game.phase === 'lost' || game.phase === 'playing' && game.checkpoint > 0)) retry(game); else { game = create(); start(game); } resultHandled = false; resultNote = ''; dialog.querySelector('.piccolo-help').open = false; paused = false; eventId = -1; update(); draw(); schedule(); canvas.focus({ preventScroll: true }); }
   function setPaused(next) { if (game.phase !== 'playing') return; paused = next; clearInput(); stop(); eventId = -1; update(); draw(); if (!paused) schedule(); }
   function toggleAction() { if (!paused && game.phase === 'playing') { toggledAction = !toggledAction; if (toggledAction) { pendingAction = true; game.player.actionBlocked = false; } } }
   const keyControl = key => ({ ArrowUp: 'up', w: 'up', ArrowDown: 'down', s: 'down', ArrowLeft: 'left', a: 'left', ArrowRight: 'right', d: 'right', ' ': 'action', z: 'action' }[key]);
@@ -549,7 +549,7 @@
     button.addEventListener('pointerup', event => releasePointer(event)); button.addEventListener('pointercancel', event => releasePointer(event, true)); button.addEventListener('lostpointercapture', event => releasePointer(event, true));
     button.addEventListener('click', event => { if (event.detail === 0 && !paused && game.phase === 'playing') { if (button.dataset.piccoloHold === 'action') toggleAction(); else pulses.set(button.dataset.piccoloHold, performance.now() + 200); } });
   });
-  startButton.addEventListener('click', begin); pauseButton.addEventListener('click', () => setPaused(!paused));
+  startButton.addEventListener('click', begin); dialog.querySelector('#piccolo-new-run').addEventListener('click', () => begin({ fresh: true })); pauseButton.addEventListener('click', () => setPaused(!paused));
   const back = () => window.PortfolioGames?.run('choose', opener);
   dialog.querySelector('[data-piccolo-back]').addEventListener('click', back); dialog.querySelector('[data-piccolo-close]').addEventListener('click', () => dialog.close());
   dialog.addEventListener('cancel', event => { event.preventDefault(); event.stopPropagation(); back(); });

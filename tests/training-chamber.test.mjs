@@ -18,6 +18,32 @@ const frameText = page => page.drawing.filter(call => call.method === "fillText"
 const frameDrawing = page => JSON.stringify(page.drawing.map(({ font, ...call }) =>
   call.method === "fillText" ? { ...call, font } : call));
 
+test("early returns teach aiming with a short truthful guide, while final shields retain the long guide", () => {
+  const page = chamber(); page.open(); page.action.emit("click");
+  Object.assign(page.state.ball, { x: 188, y: 385, vx: 0, vy: 260, speed: 260 });
+  const original = JSON.stringify(page.snapshot());
+  page.window.emit("portfolio:preferences");
+  const guide = () => page.drawing.filter(call => call.method === "lineTo" && call.globalAlpha === .58);
+  assert.ok(guide().some(call => call.args[1] === 337), "the first return previews only 100 pixels of the outgoing direction");
+  assert.equal(JSON.stringify(page.snapshot()), original, "rendering cannot aim the ball for the player");
+  for (let i = 3; i < page.state.bricks.length; i++) page.state.bricks[i].active = false;
+  page.window.emit("portfolio:preferences");
+  assert.ok(guide().some(call => Math.abs(call.args[1] - 54) < 1e-6), "the final shields retain the full-height guide");
+  page.pause.emit("click"); assert.equal(guide().length, 0);
+  page.pause.emit("click"); page.state.ball.vy = -260; page.window.emit("portfolio:preferences");
+  assert.equal(guide().length, 0, "an outgoing ball must not receive a catch prediction");
+});
+
+test("safe returns replace an old perfect announcement and missed catches explain the retry", () => {
+  const page = chamber(); page.open(); page.action.emit("click");
+  page.state.feedback = "perfect"; page.state.feedbackAt = 1; page.state.perfects = 1;
+  page.displayFrame(16); assert.match(page.status.textContent, /Perfect return/);
+  page.state.feedback = "return"; page.state.feedbackAt = 2;
+  page.displayFrame(32); assert.match(page.status.textContent, /Safe return.*off-centre/);
+  page.state.phase = "ready"; page.state.lives = 2;
+  page.displayFrame(48); assert.match(page.status.textContent, /Missed the paddle/);
+});
+
 function flight(page) {
   page.open();
   page.action.emit("click");
@@ -603,7 +629,7 @@ test("a missed ball explains the lost life and clears the flight trail before th
   page.displayFrame(80);
   assert.equal(page.state.phase, "ready");
   assert.equal(page.state.lives, 2);
-  assert.match(page.status.textContent, /ki lost/i);
+  assert.match(page.status.textContent, /missed the paddle/i);
   assert.ok(frameText(page).includes("ki scattered"));
   assert.equal(page.pendingFrames, 0, "another serve still requires a deliberate launch");
 

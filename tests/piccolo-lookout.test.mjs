@@ -148,6 +148,21 @@ test('continue restores the current checkpoint with fresh inputs and keeps compl
   const { x, y } = game.player; run(game, .2); assert.equal(game.player.x, x); assert.equal(game.player.y, y);
   assert.equal(game.checkpoint, 1);
 });
+test('voluntary checkpoint retry preserves the run and cannot farm alignment or erase hits', () => {
+  const game = engine.create(); engine.start(game); beam(game);
+  Object.assign(game.player, { x: 307, y: 96 }); run(game, .04, { x: 1 });
+  game.rooms[1].guards[0].hp = 0; game.hearts = 2; game.hits = 2;
+  Object.assign(game.player, { actionHeld: true, charge: .8 });
+  const before = { previous: JSON.stringify(game.rooms[0]), time: game.time, alignment: game.alignment, targets: [...game.rewardedTargets] };
+  engine.retry(game);
+  assert.equal(game.phase, 'playing'); assert.equal(game.room, 1); assert.equal(game.hearts, 4); assert.equal(game.attempts, 2);
+  assert.equal(JSON.stringify(game.rooms[0]), before.previous); assert.equal(game.time, before.time); assert.equal(game.hits, 2);
+  assert.equal(game.alignment, before.alignment); assert.deepEqual(game.rewardedTargets, before.targets);
+  assert.equal(engine.scoreBreakdown(game).retries, 100); assert.ok(game.rooms[1].guards.every(guard => guard.hp === 2));
+  assert.equal(game.player.actionHeld, false); assert.equal(game.player.charge, 0); assert.equal(game.beam, null);
+  game.phase = 'won'; engine.retry(game); assert.equal(game.phase, 'won'); assert.equal(game.attempts, 2);
+  const firstRoom = engine.create(); engine.start(firstRoom); engine.retry(firstRoom); assert.equal(firstRoom.attempts, 1);
+});
 test('ki deflects one incoming bolt, lit seals do not absorb shots, and lethal damage freezes later contacts', () => {
   const game = engine.create(); engine.start(game);
   const bolt = { x: 160, y: 96, vx: 0, vy: 0, life: 1 };

@@ -31,16 +31,22 @@
     enemies.push({ kind: 'guardian', x: 5660, y: GROUND - 52, w: 44, h: 52, left: 5610, right: 5740, vx: -24, alive: true, hp: 6, maxHp: 6, hit: 0, cooldown: 1.7 });
     enemies.forEach((enemy, index) => { enemy.id = `enemy-${index}`; });
     return { width: WIDTH, height: HEIGHT, phase: 'ready', time: 0, lives: 3, score: 0, chain: 0, chainScore: 0, bankedChain: null, longestChain: 0, scored: [],
-      breakdown: { targets: 0, chain: 0, finish: 0 }, rushes: 0, connections: 0, checkpoint: 80, event: 'ready', eventId: 0, camera: 0, shots: [], hazards: [], bursts: [],
+      breakdown: { targets: 0, chain: 0, finish: 0 }, rushes: 0, connections: 0, checkpoint: 80, lastDamage: null, damageAt: -10, event: 'ready', eventId: 0, camera: 0, shots: [], hazards: [], bursts: [],
       player: { rushBuffer: 0, connected: -10, x: 80, y: GROUND - 31, w: 20, h: 31, vx: 0, vy: 0, grounded: true, facing: 1, coyote: .1, buffer: 0, jumpHeld: false, attackHeld: false, dashReady: true, dash: null, airTargets: [], immune: 0, cooldown: 0, fired: -10, landed: -10 },
       orbs: orbLocations.map(([x, y], i) => ({ id: `ball-${i}`, x, y, w: 16, h: 16, collected: false, star: i + 1 })),
       rings: ringLocations.map(([x, y], i) => ({ id: `ring-${i}`, x, y, w: 14, h: 14 })), enemies,
     };
   }
+  const damageFeedback = Object.freeze({
+    fall: ['FELL OFF THE TRAIL', 'Jump earlier; hold A / Space for height.'],
+    contact: ['BOT COLLISION', 'Jump over it or tap X / B on the ground.'],
+    projectile: ['CAUGHT BY A SHOT', 'Jump over the low shot or fire back.'],
+  });
   function event(game, name) { game.event = name; game.eventId++; }
   function start(game) { if (game.phase === 'ready') { game.phase = 'playing'; event(game, 'start'); } }
-  function hurt(game) {
+  function hurt(game, cause) {
     if (game.player.immune > 0 || game.phase !== 'playing') return false;
+    game.lastDamage = cause; game.damageAt = game.time;
     game.lives--; event(game, game.lives ? 'respawn' : 'lost');
     game.shots = []; game.hazards = []; game.chain = 0; game.chainScore = 0; game.bankedChain = null; game.player.dash = null; game.player.rushBuffer = 0; game.player.airTargets = []; game.player.dashReady = true;
     if (!game.lives) { game.phase = 'lost'; return true; }
@@ -218,14 +224,14 @@
       return true;
     });
     // Resolve damage outside filter: respawn clears every projectile reliably.
-    if (damaged && hurt(game)) return game;
+    if (damaged && hurt(game, 'projectile')) return game;
     for (const enemy of game.enemies) {
       if (!enemy.alive || p.dash || !overlaps(p, enemy)) continue;
       if (p.vy > 0 && oldY + p.h <= enemy.y + 8) {
         hitEnemy(game, enemy, 'stomp'); p.vy = input.jump ? -440 : -330;
-      } else if (hurt(game)) return game;
+      } else if (hurt(game, 'contact')) return game;
     }
-    if (p.y > HEIGHT + 70) { p.immune = 0; hurt(game); return game; }
+    if (p.y > HEIGHT + 70) { p.immune = 0; hurt(game, 'fall'); return game; }
     for (const orb of game.orbs) if (!orb.collected && overlaps(p, orb)) {
       if (p.dash) connectDash(game, { id: orb.id, kind: 'ball', actor: orb });
       else { orb.collected = true; award(game, orb.id, 250, false); event(game, 'orb'); }
@@ -255,6 +261,26 @@
   }
   const RECORD_KEY = 'portfolio:goku-ki-rush:v1';
   const MAX_CHAIN = ringLocations.length + orbLocations.length + 9;
+  // Short attempts can teach a chain without completing the entire course.
+  // Keep this mastery best separate from completed score/time records.
+  const CHAIN_RECORD_KEY = 'portfolio:goku-ki-rush:chain:v1';
+  const validChain = chain => Number.isSafeInteger(chain) && chain >= 0 && chain <= MAX_CHAIN;
+  function loadChainRecord(storage) {
+    try {
+      const raw = storage?.getItem(CHAIN_RECORD_KEY);
+      if (typeof raw !== 'string' || raw.length > 128) return 0;
+      const value = JSON.parse(raw);
+      return value?.version === 1 && validChain(value.longestChain) ? value.longestChain : 0;
+    } catch { return 0; }
+  }
+  function recordChain(storage, game, previous = 0) {
+    const stored = loadChainRecord(storage), completed = loadRecord(storage)?.longestChain || 0;
+    const earned = ['playing', 'lost', 'won'].includes(game?.phase) && game.time > 0 && validChain(game.longestChain) ? game.longestChain : 0;
+    const longestChain = Math.max(stored, completed, validChain(previous) ? previous : 0, earned);
+    let saved = longestChain === 0 || stored >= longestChain || completed >= longestChain;
+    if (!saved) try { if (storage) { storage.setItem(CHAIN_RECORD_KEY, JSON.stringify({ version: 1, longestChain })); saved = true; } } catch { /* A short run remains rewarding with session-only storage. */ }
+    return { longestChain, saved };
+  }
   const validRun = run => Boolean(run && Number.isSafeInteger(run.score) && run.score >= 0 && run.score <= 1000000
     && Number.isSafeInteger(run.chain) && run.chain >= 0 && run.chain <= MAX_CHAIN
     && Number.isSafeInteger(run.timeMs) && run.timeMs >= 1000 && run.timeMs <= 3600000);
@@ -289,7 +315,7 @@
     try { if (storage) { storage.setItem(RECORD_KEY, JSON.stringify(record)); saved = true; } } catch { /* A full or disabled store never interrupts play. */ }
     return { record, previous: priorRun, previousBest, result, saved };
   }
-  const engine = Object.freeze({ WIDTH, HEIGHT, GROUND, GOAL, DASH_RANGE, solids, regions, checkpoints, create, start, step, overlaps, targetForDash, clearDashPath, pose, interpolatePose, RECORD_KEY, MAX_CHAIN, validateRecord, loadRecord, completedRun, recordFinish });
+  const engine = Object.freeze({ WIDTH, HEIGHT, GROUND, GOAL, DASH_RANGE, solids, regions, checkpoints, create, start, step, overlaps, targetForDash, clearDashPath, pose, interpolatePose, RECORD_KEY, CHAIN_RECORD_KEY, MAX_CHAIN, loadChainRecord, recordChain, validateRecord, loadRecord, completedRun, recordFinish });
   if (typeof module !== 'undefined') module.exports = engine;
   if (typeof document === 'undefined') return;
   const dialog = document.getElementById('platformer-dialog'); if (!dialog) return;
@@ -301,15 +327,20 @@
     <section id="platform-results" class="platform-results" hidden aria-label="Run results"><strong id="platform-result-total"></strong><span id="platform-result-run"></span><span id="platform-result-points"></span><span id="platform-result-compare"></span><span id="platform-result-records"></span></section>
     <div class="platform-touch" aria-label="Game controls"><div><button type="button" data-platform-hold="left" aria-label="Move left">◀</button><button type="button" data-platform-hold="right" aria-label="Move right">▶</button></div><div class="platform-buttons"><button type="button" data-platform-hold="attack" aria-label="B rush: ki shot on ground; rush in air">B <span>rush</span></button><button type="button" data-platform-hold="jump" aria-label="A: jump">A <span>jump</span></button></div></div>
     <div class="console-actions"><button type="button" data-platform-back>← cartridges</button><button id="platform-action" type="button">start game ↵</button><button id="platform-pause" type="button" aria-pressed="false">pause</button></div>
-    <details class="console-help"><summary>how to play / controls</summary><p id="platform-help">Keyboard: ← → or A/D to run · Space, ↑ or W to jump · X: ground shot or air rush · P to pause. Touch: A jumps, B shoots or rushes. Tap X / B again after jumping; holding it never auto-rushes. A fresh tap just before a connection queues the next clear target for 120 ms. A target ring marks a clear dash path. Each connection lifts you and restores ki; a miss needs a landing. Landing banks the chain; every point already earned stays yours, even after a hit. Hold jump for height; release early for a short hop. Each target scores once per run, ×1 up to ×8 in a chain. Hollow rings still refill ki. Collect seven balls, defeat the guardian, then enter the red gate. Three flags save progress. Completed score, chain and time records stay on this device. Escape returns to cartridges.</p></details>`;
+    <details class="console-help"><summary>how to play / controls</summary><p id="platform-help">Keyboard: ← → or A/D to run · Space, ↑ or W to jump · X: ground shot or air rush · P to pause. Touch: A jumps, B shoots or rushes. Tap X / B again after jumping; holding it never auto-rushes. A fresh tap just before a connection queues the next clear target for 120 ms. A target ring marks a clear dash path. Each connection lifts you and restores ki; a miss needs a landing. Landing banks the chain; every point already earned stays yours, even after a hit. Hold jump for height; release early for a short hop. Each target scores once per run, ×1 up to ×8 in a chain. Hollow rings still refill ki. Collect seven balls, defeat the guardian, then enter the red gate. Three flags save progress. Your best chain is kept after any attempt; score and time records require a full clear. Records stay on this device. Escape returns to cartridges.</p></details>`;
   const root = document.documentElement, canvas = dialog.querySelector('#platform-canvas'), context = canvas.getContext('2d');
   if (!context) return;
   const status = dialog.querySelector('#platform-status'), action = dialog.querySelector('#platform-action'), pause = dialog.querySelector('#platform-pause');
   const reduced = matchMedia('(prefers-reduced-motion: reduce)');
   const storage = () => { try { return window.localStorage; } catch { return null; } };
   let record = loadRecord(storage()), recordSaved = true, finish = null;
+  let chainRecord = Math.max(record?.longestChain || 0, loadChainRecord(storage())), chainRecordSaved = true, chainSettled = false;
+  function rememberChain() {
+    const result = recordChain(storage(), game, chainRecord);
+    chainRecord = result.longestChain; chainRecordSaved = result.saved;
+  }
   // A small, optional goal uses existing records; no new currency or score tier.
-  const nextChainGoal = () => Math.max(3, Math.min(8, (record?.longestChain || 0) + 1));
+  const nextChainGoal = () => Math.max(3, Math.min(8, chainRecord + 1));
   let chainGoal = nextChainGoal();
   let game = create(), opener, frame = 0, lastTime = null, accumulator = 0, paused = false, lastEvent = -1, previousPose = null;
   const keys = new Set(), pointers = new Map(), pendingActions = new Set(), pulses = new Set(), pulseTimers = new Map();
@@ -329,10 +360,11 @@
   const formatTime = ms => `${Math.floor(ms / 60000)}:${String(Math.floor(ms / 1000) % 60).padStart(2, '0')}.${String(Math.floor(ms / 10) % 100).padStart(2, '0')}`;
   function announce() {
     const count = game.orbs.filter(orb => orb.collected).length;
+    if (terminal() && !chainSettled) { rememberChain(); chainSettled = true; }
     dialog.dataset.phase = game.phase;
     if (game.phase === 'won' && !finish) { finish = recordFinish(storage(), game, record, recordSaved); if (finish) { record = finish.record; recordSaved = finish.saved; } }
     setText(dialog.querySelector('#platform-chain'), String(game.chain));
-    setText(dialog.querySelector('#platform-chain-best'), String(game.longestChain));
+    setText(dialog.querySelector('#platform-chain-best'), String(Math.max(chainRecord, game.longestChain)));
     const ki = dialog.querySelector('#platform-ki'); ki.dataset.ready = String(game.player.dashReady);
     setText(ki, game.player.rushBuffer > 0 ? '◆ NEXT RUSH QUEUED' : game.player.dash ? '◆ RUSHING' : game.player.dashReady ? '● KI READY' : '○ LAND TO REFILL');
     setText(dialog.querySelector('#platform-record'), `${game.longestChain >= chainGoal ? '✓' : '◇'} goal: chain ${chainGoal}`);
@@ -341,8 +373,8 @@
       setText(dialog.querySelector('#platform-result-total'), `${game.phase === 'won' ? 'CLEAR' : 'TRY AGAIN'} · ${game.score} POINTS`);
       setText(dialog.querySelector('#platform-result-run'), `chain ${game.longestChain} · ${formatTime(game.time * 1000)}`);
       setText(dialog.querySelector('#platform-result-points'), `${game.breakdown.targets} targets + ${game.breakdown.chain} chain + ${game.breakdown.finish} finish`);
-      setText(dialog.querySelector('#platform-result-compare'), finish?.previous ? `Previous ${finish.previous.score} (${game.score - finish.previous.score >= 0 ? '+' : ''}${game.score - finish.previous.score}) · best ${record.best.score}${game.score > (finish.previousBest?.score ?? -1) ? ' NEW' : ''}` : finish ? `First clear · best ${record.best.score}` : `Chain goal ${chainGoal}${game.longestChain >= chainGoal ? ' reached!' : ' — try the high rings.'} Finish to save a record.`);
-      setText(dialog.querySelector('#platform-result-records'), finish ? `Best chain ${record.longestChain} · fastest ${formatTime(record.fastestMs)} · ${finish.saved ? 'saved here' : 'session only'}` : record ? `Best clear ${record.best.score} · chain ${record.longestChain}` : 'Land safely, then build another chain.');
+      setText(dialog.querySelector('#platform-result-compare'), finish?.previous ? `Previous ${finish.previous.score} (${game.score - finish.previous.score >= 0 ? '+' : ''}${game.score - finish.previous.score}) · best ${record.best.score}${game.score > (finish.previousBest?.score ?? -1) ? ' NEW' : ''}` : finish ? `First clear · best ${record.best.score}` : `Chain goal ${chainGoal}${game.longestChain >= chainGoal ? ' reached!' : ' — try the high rings.'} Next goal: chain ${nextChainGoal()}.`);
+      setText(dialog.querySelector('#platform-result-records'), finish ? `Best clear chain ${record.longestChain} · fastest ${formatTime(record.fastestMs)} · ${finish.saved ? 'saved here' : 'session only'}` : chainRecord ? `Best chain ${chainRecord} · ${chainRecordSaved ? 'saved here' : 'session only'}. Clear the course for score/time records.` : 'No chain yet. Jump, then tap X / B at a target.');
     }
     setText(dialog.querySelector('#platform-score'), String(game.score)); setText(dialog.querySelector('#platform-orbs'), `${count} / 7`); setText(dialog.querySelector('#platform-lives'), String(game.lives));
     setText(dialog.querySelector('#platform-region'), `${regions.filter(region => game.player.x >= region.x).length} / 4`);
@@ -351,7 +383,8 @@
     if (paused) status.textContent = 'Paused. Resume when you are ready.';
     else if (game.eventId !== lastEvent) {
       lastEvent = game.eventId;
-      const messages = { ready: 'Jump with Space / touch A, then tap X / touch B toward a glowing target. Chain targets for points; collect seven balls and beat the guardian.', start: 'First lesson: jump toward the blue ring, then tap B / X. A connection lifts you and refills ki.', rush: 'Ki Rush! Release X / B, then tap again at the next target. An early tap can queue it.', 'rush-miss': 'Free rush used. Land to refill ki.', 'rush-blocked': 'Ledge blocked the rush. Land to refill ki.', chain: `${game.chain === chainGoal ? 'Chain goal reached! ' : ''}${game.chain}-target chain. Ki refilled — tap X / B toward the next target.`, 'chain-land': `${game.bankedChain?.count}-target chain banked: ${game.bankedChain?.points} points. Jump to start the next chain.`, refill: 'Ki refilled. This target already scored; find a bright new one.', orb: `Dragon Ball ${count} of 7 collected.`, stomp: 'Bot bounced! Keep moving.', blast: 'Ki hit! Target cleared.', respawn: `${game.lives} ${game.lives === 1 ? 'life' : 'lives'} left. Back at your checkpoint; collected balls are safe.`, checkpoint: `Checkpoint ${checkpoints.indexOf(game.checkpoint) + 1} of 3 reached. Balls and defeated enemies stay saved.`, missing: `${7 - count} Dragon ${7 - count === 1 ? 'Ball remains' : 'Balls remain'}. Follow the trail back to find them.`, 'armor-hit': 'Armored bot hit. Keep firing or bounce again.', 'guardian-hit': `Sky Guardian hit. ${game.enemies.find(enemy => enemy.kind === 'guardian').hp} hits remain.`, 'guardian-down': 'Sky Guardian defeated! Reach the red gate to complete your journey.', guardian: 'The Sky Guardian still stands. Turn back and use ki or jump on its head.', won: `Wish granted! All seven Dragon Balls collected. ${game.score} points.`, lost: `Run ended. ${count} of seven Dragon Balls, ${game.score} points. Play again to try a new run.` };
+      const failure = damageFeedback[game.lastDamage]?.join('. ') || '';
+      const messages = { ready: 'Jump with Space / touch A, then tap X / touch B toward a glowing target. Chain targets for points; collect seven balls and beat the guardian.', start: 'First lesson: jump toward the blue ring, then tap B / X. A connection lifts you and refills ki.', rush: 'Ki Rush! Release X / B, then tap again at the next target. An early tap can queue it.', 'rush-miss': 'Free rush used. Land to refill ki.', 'rush-blocked': 'Ledge blocked the rush. Land to refill ki.', chain: `${game.chain === chainGoal ? 'Chain goal reached! ' : ''}${game.chain}-target chain. Ki refilled — tap X / B toward the next target.`, 'chain-land': `${game.bankedChain?.count}-target chain banked: ${game.bankedChain?.points} points. Jump to start the next chain.`, refill: 'Ki refilled. This target already scored; find a bright new one.', orb: `Dragon Ball ${count} of 7 collected.`, stomp: 'Bot bounced! Keep moving.', blast: 'Ki hit! Target cleared.', respawn: `${failure} ${game.lives} ${game.lives === 1 ? 'life' : 'lives'} left. Back at your checkpoint; collected balls are safe.`, checkpoint: `Checkpoint ${checkpoints.indexOf(game.checkpoint) + 1} of 3 reached. Balls and defeated enemies stay saved.`, missing: `${7 - count} Dragon ${7 - count === 1 ? 'Ball remains' : 'Balls remain'}. Follow the trail back to find them.`, 'armor-hit': 'Armored bot hit. Keep firing or bounce again.', 'guardian-hit': `Sky Guardian hit. ${game.enemies.find(enemy => enemy.kind === 'guardian').hp} hits remain.`, 'guardian-down': 'Sky Guardian defeated! Reach the red gate to complete your journey.', guardian: 'The Sky Guardian still stands. Turn back and use ki or jump on its head.', won: `Wish granted! All seven Dragon Balls collected. ${game.score} points.`, lost: `Run ended. ${failure} ${count} of seven Dragon Balls, ${game.score} points. Play again to try a new run.` };
       status.textContent = messages[game.event] || messages.start;
     }
   }
@@ -581,7 +614,10 @@
       text(`${game.chain >= chainGoal ? '★' : '◆'} ${game.chain} CHAIN · ×${Math.min(8,game.chain)}`,320,30,14,'#203e59');
     }
     const banked = game.bankedChain;
-    if (game.phase === 'playing' && !paused && banked && game.time - banked.at < 1.4) {
+    if (game.phase === 'playing' && !paused && damageFeedback[game.lastDamage] && game.time - game.damageAt < 1.5) {
+      const feedback = damageFeedback[game.lastDamage];
+      rect(16,66,295,44,'#173f5af2'); text(feedback[0],27,85,14,'#fff1a6','left'); text(feedback[1],27,101,11,'#d8fff0','left');
+    } else if (game.phase === 'playing' && !paused && banked && game.time - banked.at < 1.4) {
       rect(16,66,255,44,'#173f5af2'); text(`${banked.count}-TARGET CHAIN BANKED`,27,85,14,'#fff1a6','left'); text(`${banked.points} points · jump to go again`,27,101,11,'#d8fff0','left');
     } else if(game.phase==='playing'&&!paused&&game.player.x<680&&game.connections<2){
       rect(16,66,245,44,'#173f5aee');text(game.connections?'KI REFILLED — RUSH AGAIN':'SPACE / A → JUMP',27,85,14,'#fff1a6','left');text(game.connections?'Release X / B, then tap at the next ◆.':'X / B → RUSH TOWARD ◆',27,101,11,'#d8fff0','left');
@@ -592,7 +628,7 @@
       poly([[107,97],[541,97],[537,118],[105,118]],'#5e6d9c','#a7b9d0',1);
       text(paused?'SYSTEM / PAUSE':terminal()?'MISSION / RESULTS':'ONE COURSE / BUILD YOUR BEST CHAIN',320,112,10,'#e7f0e5');
       text(paused?'TAKE A BREATHER':game.phase==='won'?'WISH GRANTED':game.phase==='lost'?'ONE MORE JOURNEY?':'GOKU / KI RUSH',320,158,25,'#ffdf9f');
-      text(paused?'The trail will be here when you return.':game.phase==='won'?`${game.score} POINTS · LONGEST CHAIN ${game.longestChain}`:game.phase==='lost'?'Your next journey starts with a fresh slate.':`Jump → X / B at ◆ → rise. Try a ${chainGoal}-target chain.`,320,188,12,'#e0eae7');
+      text(paused?'The trail will be here when you return.':game.phase==='won'?`${game.score} POINTS · LONGEST CHAIN ${game.longestChain}`:game.phase==='lost'?(damageFeedback[game.lastDamage]?.[1] || 'Jump, then rush toward the next bright target.'):`Jump → X / B at ◆ → rise. Try a ${chainGoal}-target chain.`,320,188,12,'#e0eae7');
       oval(242,219,10,10,'#48bc94','#c5f3ca',1);text('A',242,223,12,'#163e42');
       text(paused?'P / RESUME':terminal()?'ENTER / PLAY AGAIN':'SPACE / A JUMP · X / B RUSH',338,224,11,'#dae5f0');
     }
@@ -607,11 +643,12 @@
     announce(); draw(accumulator * 120); schedule();
   }
   function begin() {
-    stop(); releaseControls(); if (game.phase !== 'ready') game = create(); finish = null; chainGoal = nextChainGoal(); paused = false; lastEvent = -1;
+    rememberChain(); stop(); releaseControls(); if (game.phase !== 'ready') game = create(); finish = null; chainSettled = false; chainGoal = nextChainGoal(); paused = false; lastEvent = -1;
     start(game); announce(); draw(); schedule(); canvas.focus({ preventScroll: true });
   }
   function setPaused(next) {
     if (game.phase !== 'playing') return;
+    if (next) rememberChain();
     paused = next; releaseControls(); stop(); lastEvent = -1; announce(); draw(); if (!paused) schedule();
   }
   dialog.addEventListener('keydown', event => {
@@ -671,7 +708,7 @@
   dialog.querySelector('[data-platform-close]').addEventListener('click', () => dialog.close());
   dialog.addEventListener('cancel', event => { event.preventDefault(); event.stopPropagation(); back(); });
   dialog.addEventListener('close', () => {
-    if (dialog.open) return; stop(); releaseControls(); if (game.phase === 'playing') paused = true;
+    if (dialog.open) return; rememberChain(); stop(); releaseControls(); if (game.phase === 'playing') paused = true;
     const other = ['arcade-dialog', 'training-dialog', 'piccolo-dialog', 'goku-dialog', 'game-loading-dialog'].some(id => document.getElementById(id)?.open);
     if (!other) { delete root.dataset.training; opener?.focus({ preventScroll: true }); }
     window.dispatchEvent(new CustomEvent('portfolio:training', { detail: { open: other } }));

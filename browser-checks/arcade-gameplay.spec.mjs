@@ -39,6 +39,10 @@ for (const viewport of [{ width: 1280, height: 800 }, { width: 320, height: 568 
       await page.goto(test.info().project.use.baseURL || 'http://127.0.0.1:4178');
       await command(page, 'arcade');
       await expect(page.locator('#arcade-picker .game-choice')).toHaveCount(5);
+      await expect(page.locator('#arcade-picker > .arcade-choice-grid .game-choice')).toHaveCount(3);
+      await expect(page.locator('#game-pick-ki')).toBeHidden();
+      await expect(page.locator('#game-pick-radar')).toBeHidden();
+      await hitTarget(page.locator('#arcade-bonus summary')); await page.locator('#arcade-bonus summary').tap();
       await hitTarget(page.locator('#game-pick-ki')); await page.locator('#game-pick-ki').tap();
       const charge = page.locator('#ki-charge'); await charge.waitFor(); await hitTarget(charge);
       await controlledClock(page);
@@ -57,6 +61,9 @@ for (const viewport of [{ width: 1280, height: 800 }, { width: 320, height: 568 
       // A trusted short tap begins a charge; a second tap releases it.
       await charge.tap(); await runCallbacks(page, 1474); await charge.tap();
       await expect(page.locator('#arcade-status')).toContainText('Perfect control!');
+      await page.keyboard.press('Escape');
+      await expect(page.locator('#game-pick-ki')).toBeFocused();
+      await expect(page.locator('#arcade-bonus')).toHaveAttribute('open', '');
       await page.locator('#arcade-close').tap();
       await command(page, 'arcade');
       await hitTarget(page.locator('#game-pick-radar')); await page.locator('#game-pick-radar').tap();

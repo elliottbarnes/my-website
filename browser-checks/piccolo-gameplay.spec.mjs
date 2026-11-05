@@ -31,7 +31,17 @@ test('Piccolo: six rooms and the bell are reachable through ordinary keyboard in
 test('Piccolo: a real defeat continues at the earned checkpoint with no stale held input', async ({ page }) => {
   test.setTimeout(60_000);
   await openPiccolo(page); const driver = piccoloDriver(page);
-  await driver.charge(); await driver.next(1); await driver.walkTo(152, 96);
+  await driver.charge(); await driver.next(1);
+  const checkpoint = await driver.state();
+  await page.keyboard.down('z'); await runCallbacks(page, 900);
+  await expect(page.locator('#piccolo-start')).toHaveText('retry room · −100');
+  await page.locator('#piccolo-start').click(); await runCallbacks(page, 32);
+  const practised = await driver.state();
+  expect(practised.room).toBe(1); expect(practised.attempts).toBe(2);
+  expect(practised.rooms[0]).toEqual(checkpoint.rooms[0]);
+  expect(practised.alignment).toBe(checkpoint.alignment); expect(practised.time).toBeGreaterThan(checkpoint.time);
+  expect(practised.player.charge).toBe(0); expect(practised.beamsFired).toBe(checkpoint.beamsFired);
+  await page.keyboard.up('z'); await driver.walkTo(152, 96);
   let game = await driver.state();
   for (let i = 0; i < 18 && game.phase !== 'lost'; i++) game = await driver.input({}, 2000);
   expect(game.phase).toBe('lost'); expect(game.checkpoint).toBe(1);
@@ -40,7 +50,7 @@ test('Piccolo: a real defeat continues at the earned checkpoint with no stale he
   await page.keyboard.down('ArrowRight');
   await page.locator('#piccolo-start').click(); await runCallbacks(page, 256);
   const continued = await driver.state();
-  expect(continued.room).toBe(1); expect(continued.attempts).toBe(2); expect(continued.hearts).toBe(4);
+  expect(continued.room).toBe(1); expect(continued.attempts).toBe(3); expect(continued.hearts).toBe(4);
   expect(continued.rooms[0].cleared).toBe(true); expect(continued.player.x).toBe(28);
   await page.keyboard.up('ArrowRight');
   await page.keyboard.down('z'); await runCallbacks(page, 900);
@@ -51,10 +61,23 @@ test('Piccolo: a real defeat continues at the earned checkpoint with no stale he
   expect((await driver.state()).beamsFired).toBe(game.beamsFired);
 });
 
+async function retryCheckpoint(page, driver) {
+  await driver.next(1);
+  const button = page.locator('#piccolo-start');
+  await expect(button).toHaveText('retry room · −100'); await button.scrollIntoViewIfNeeded();
+  expect(await button.evaluate(element => {
+    const box = element.getBoundingClientRect(), hit = document.elementFromPoint(box.x + box.width / 2, box.y + box.height / 2);
+    return (hit === element || element.contains(hit)) && box.left >= 0 && box.right <= innerWidth;
+  })).toBe(true);
+  await button.click(); await runCallbacks(page, 32);
+  const game = await driver.state(); expect(game.room).toBe(1); expect(game.attempts).toBe(2); expect(game.rooms[0].cleared).toBe(true);
+}
+
 for (const viewport of [{ width: 390, height: 844 }, { width: 320, height: 568 }, { width: 844, height: 375 }]) {
   test(`Piccolo: ${viewport.width}×${viewport.height} controls are reachable and a cancelled charge is safe`, async ({ page, browserName }, testInfo) => {
     await page.setViewportSize(viewport); await openPiccolo(page);
     const driver = piccoloDriver(page);
+    await page.locator('.piccolo-help summary').click();
     for (const button of await page.locator('#piccolo-dialog button').all()) {
       await button.scrollIntoViewIfNeeded();
       expect(await button.evaluate(element => {
@@ -62,6 +85,8 @@ for (const viewport of [{ width: 390, height: 844 }, { width: 320, height: 568 }
         return element === hit || element.contains(hit);
       })).toBe(true);
     }
+    await page.locator('#piccolo-new-run').click(); await runCallbacks(page, 32);
+    expect((await driver.state()).attempts).toBe(1);
     const action = page.locator('[data-piccolo-hold="action"]');
     await action.scrollIntoViewIfNeeded();
     if (browserName !== 'chromium') {
@@ -76,7 +101,7 @@ for (const viewport of [{ width: 390, height: 844 }, { width: 320, height: 568 }
       await page.keyboard.press('Enter'); await runCallbacks(page, 32);
       await expect(page.locator('#piccolo-objective')).toHaveText('Eastern gate →');
       expect((await driver.state()).beamsFired).toBe(1);
-      return;
+      await retryCheckpoint(page, driver); return;
     }
     const box = await action.boundingBox();
     const session = await page.context().newCDPSession(page);
@@ -93,5 +118,6 @@ for (const viewport of [{ width: 390, height: 844 }, { width: 320, height: 568 }
     await expect(page.locator('#piccolo-objective')).toHaveText('Eastern gate →');
     expect((await driver.state()).beamsFired).toBe(1);
     await session.detach();
+    await retryCheckpoint(page, driver);
   });
 }
