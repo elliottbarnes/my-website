@@ -14,7 +14,7 @@ test('Brick Breaker touch drag earns a perfect return and cancellation releases 
         } }; },
       });
     });
-    await page.goto(baseURL); await page.locator('.scene-body').focus(); await page.keyboard.press('/');
+    await page.goto(new URL('/playground.html', baseURL).href); await page.locator('.scene-body').focus(); await page.keyboard.press('/');
     await page.locator('#command-input').fill('breaker'); await page.keyboard.press('Enter');
     const canvas = page.locator('#training-canvas'); await canvas.waitFor();
     await page.clock.install(); await page.clock.pauseAt(new Date());

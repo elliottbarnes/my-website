@@ -10,7 +10,9 @@ const person = JSON.parse(html.match(/<script type="application\/ld\+json">([\s\
 test("identity and role agree across the visible entrance, structured data and share metadata", () => {
   const title = html.match(/<title>(.*?)<\/title>/)[1];
   assert.equal(person["@type"], "Person");
-  assert.equal(html.match(/<h1 id="entrance-title">([^<]+)<\/h1>/)[1], person.name);
+  const nameMarkup = html.match(/<h1 id="entrance-title">([\s\S]*?)<\/h1>/)[1];
+  const name = nameMarkup.replace(/<span[^>]*aria-hidden="true"[^>]*>[\s\S]*?<\/span>/g, "").replace(/<[^>]+>/g, "").trim();
+  assert.equal(name, person.name);
   assert.equal(html.match(/<p class="entrance-role">([^<]+)<\/p>/)[1], person.jobTitle);
   for (const value of [title, metadata.get("description"), metadata.get("og:title"), metadata.get("twitter:title")]) {
     assert.ok(value.includes(person.name), "public metadata identifies the same person");
