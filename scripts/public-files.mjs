@@ -4,7 +4,7 @@ import { extname, join } from "node:path";
 // This is the complete publication boundary. Source files outside this list
 // remain local even when they are tracked in the repository.
 export const PUBLIC_FILES = Object.freeze([
-  "index.html", "404.html", "styles.css", "script.js", "robots.txt",
+  "index.html", "playground.html", "404.html", "assets/studio.css", "assets/studio-orbit.js", "styles.css", "script.js", "robots.txt",
   "sitemap.xml", "site.webmanifest", "assets/favicon.svg", "assets/social-card.svg", "assets/social-card.png",
   "assets/dragon-ball.png", "assets/dragon-ball-1.webp", "assets/dragon-ball-2.webp", "assets/dragon-ball-3.webp", "assets/dragon-ball-4.webp", "assets/dragon-ball-5.webp", "assets/dragon-ball-6.webp", "assets/dragon-ball-7.webp",
   "assets/themes.css", "assets/themes.js", "assets/workspace.js", "assets/arcade-lookout.webp", "assets/arcade-icons.svg",

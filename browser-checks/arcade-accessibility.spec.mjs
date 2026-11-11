@@ -4,7 +4,7 @@ import AxeBuilder from '@axe-core/playwright';
 test('bright arcade artwork stays optional and each game has readable accessible controls', async ({ page }, testInfo) => {
   const artwork = [];
   page.on('request', request => { if (/arcade-(?:lookout|icons)[./]/.test(request.url())) artwork.push(request.url()); });
-  await page.goto('/');
+  await page.goto('/playground.html');
   expect(artwork).toEqual([]);
   await page.locator('.scene-body').focus(); await page.keyboard.press('/');
   await page.locator('#command-input').fill('arcade'); await page.locator('#command-input').press('Enter');

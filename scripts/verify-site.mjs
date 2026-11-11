@@ -57,7 +57,7 @@ export async function verifySite(directory, { sourceRoot } = {}) {
   }
 
   const documents = new Map();
-  for (const file of ["index.html", "404.html"]) {
+  for (const file of ["index.html", "playground.html", "404.html"]) {
     const parsed = tags(content.get(file));
     const ids = new Set();
     for (const tag of parsed) {

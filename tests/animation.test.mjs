@@ -774,7 +774,7 @@ test("history discovery does not advance the source-effect rotation", () => {
   tap(controls); assert.equal(controls.api.state.effect,"tokens");
 });
 test("the sketch selector is absent from the published entrance", async () => {
-  const html = await readFile(new URL("../index.html",import.meta.url),"utf8");
+  const html = await readFile(new URL("../playground.html",import.meta.url),"utf8");
   assert.equal(html.includes('scene-experiment'),false);
   assert.equal(source.includes('scene-experiment'),false);
 });

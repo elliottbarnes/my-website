@@ -29,7 +29,7 @@ async function sample(page, milliseconds = 300) {
 test('radar follows display callbacks and stops while paused or outside the reading pane', async ({ page }, testInfo) => {
   const errors = [];
   page.on('pageerror', error => errors.push(error.message));
-  await page.goto('/#about');
+  await page.goto('/playground.html#about');
   await page.locator('.dragon-radar').scrollIntoViewIfNeeded();
   await expect(page.locator('html')).toHaveAttribute('data-motion', 'running');
   await page.waitForTimeout(100);
@@ -64,7 +64,7 @@ for (const viewport of [{ width:1280, height:800 }, { width:320, height:568 }]) 
     const errors = [];
     page.on('pageerror', error => errors.push(error.message));
     await page.setViewportSize(viewport);
-    await page.goto('/#about');
+    await page.goto('/playground.html#about');
     await page.locator('.dragon-radar').scrollIntoViewIfNeeded();
     for (let index = 0; index < 7; index++) {
       const signal = page.locator('[data-radar-route]').nth(index);
@@ -93,7 +93,7 @@ for (const viewport of [{ width:1280, height:800 }, { width:320, height:568 }]) 
 
 test('reduced-motion radar remains a useful static project navigator', async ({ page }) => {
   await page.emulateMedia({ reducedMotion: 'reduce' });
-  await page.goto('/#about');
+  await page.goto('/playground.html#about');
   await expect(page.locator('html')).toHaveAttribute('data-motion', 'paused');
   await page.locator('.dragon-radar').scrollIntoViewIfNeeded();
   expect((await sample(page)).draws).toBe(0);

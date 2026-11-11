@@ -18,6 +18,10 @@ The browser suite starts the existing allowlisted preview server for `dist/` on 
 
 ## Coverage
 
+- The studio at `/`: all seven manifest-backed projects, full descriptions and screenshots, exact demo/source destinations, stationary identity, keyboard focus, 44px project-link targets, and no-JavaScript access.
+- The orbital composition: reduced-motion defaults, pause/resume, keyboard arrows and reset, drag/release, and horizontal touch dragging that preserves vertical page scrolling. Its controls are optional and never gate project access.
+- Studio screenshots and axe checks at 1440px, 390px, 320px, and short landscape sizes; candidate security headers and local loading/layout-shift diagnostics.
+- The retained terminal, source discoveries, and games below run at `/playground.html`; their existing coverage remains intact.
 - Desktop, 390px and 320px portrait, and short landscape layouts; ordinary demo/source links, project navigation, reloads, and browser history.
 - Keyboard command search, dialog Escape, restored focus, and cancellation of a theme preview.
 - Emulated mobile touch contexts and tap input for navigation, themes, and arcade controls; these checks do not substitute for a physical device.

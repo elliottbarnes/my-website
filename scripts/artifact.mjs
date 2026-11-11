@@ -3,8 +3,9 @@ import { lstat, readFile } from "node:fs/promises";
 import { extname, join } from "node:path";
 import { PUBLIC_FILES, CONTENT_TYPES, assertRegularPublicFile } from "./public-files.mjs";
 import { renderProjects } from "./generate-projects.mjs";
+import { renderStudio } from "./generate-studio.mjs";
 
-export const ROOT_FILES = Object.freeze(["index.html", "404.html", "robots.txt", "sitemap.xml", "site.webmanifest"]);
+export const ROOT_FILES = Object.freeze(["index.html", "playground.html", "404.html", "robots.txt", "sitemap.xml", "site.webmanifest"]);
 export const digest = (bytes) => createHash("sha256").update(bytes).digest("hex");
 export const manifestPath = (directory) => `${directory.replace(/\/$/, "")}.manifest.json`;
 export const cacheControl = (file) => ROOT_FILES.includes(file)
@@ -58,7 +59,8 @@ export async function createArtifact(root) {
     await assertRegularPublicFile(root, source);
     sources.set(source, await readFile(join(root, source)));
   }
-  sources.set("index.html", Buffer.from(renderProjects(sources.get("index.html").toString("utf8"))));
+  sources.set("index.html", Buffer.from(renderStudio(sources.get("index.html").toString("utf8"))));
+  sources.set("playground.html", Buffer.from(renderProjects(sources.get("playground.html").toString("utf8"))));
   const assets = {}, contents = new Map(), active = new Set();
   function compile(source) {
     if (assets[source]) return assets[source];

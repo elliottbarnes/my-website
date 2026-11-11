@@ -74,7 +74,7 @@ test("nested changes alter dependent filenames while unrelated assets stay stabl
   await buildSite({ root });
   const next = await readArtifactManifest(directory);
   for (const file of ["assets/piccolo-lookout.js", "assets/optional-games.js"]) assert.notEqual(next.assets[file].path, manifest.assets[file].path);
-  assert.notEqual(next.assets["index.html"].sha256, manifest.assets["index.html"].sha256);
+  assert.notEqual(next.assets["playground.html"].sha256, manifest.assets["playground.html"].sha256);
   assert.equal(next.assets["assets/dragon-ball.png"].path, manifest.assets["assets/dragon-ball.png"].path);
   await assert.rejects(readFile(join(directory, manifest.assets["assets/piccolo-lookout.js"].path)), { code: "ENOENT" });
   await verifySite(directory, { sourceRoot: root });
@@ -148,7 +148,7 @@ test("build refuses dynamic URLs and cyclic asset dependencies", async t => {
 
 test("source validation catches broken references, metadata, and eager script attributes", async t => {
   const cases = [
-    ["index.html", text => text.replace('href="#about"', 'href="#missing"'), /missing fragment/],
+    ["index.html", text => text.replace('href="#work"', 'href="#missing"'), /missing fragment/],
     ["index.html", text => text.replace('"@type": "Person"', '"@type":'), /invalid Person JSON-LD/],
     ["index.html", text => text.replace(/ defer><\/script>/, ' async></script>'), /must use defer/],
     ["site.webmanifest", () => "{broken", /invalid JSON/],
@@ -179,7 +179,7 @@ test("changing a cartridge stylesheet updates its lazy loader and entrypoint wit
   const next = await readArtifactManifest(directory);
   assert.notEqual(next.assets[css].path, manifest.assets[css].path);
   assert.notEqual(next.assets["assets/optional-games.js"].path, manifest.assets["assets/optional-games.js"].path);
-  assert.notEqual(next.assets["index.html"].sha256, manifest.assets["index.html"].sha256);
+  assert.notEqual(next.assets["playground.html"].sha256, manifest.assets["playground.html"].sha256);
   for (const source of ["assets/piccolo-lookout.js", "assets/goku-platformer.js", "assets/goku-platformer.css", "assets/brick-breaker.js", "assets/training-chamber.js"]) {
     assert.equal(next.assets[source].path, manifest.assets[source].path, source);
   }

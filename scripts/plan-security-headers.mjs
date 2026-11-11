@@ -8,8 +8,13 @@ import { fileURLToPath } from "node:url";
 export async function generateSecurityHeaders(directory) {
   const scripts = new Set();
   const documents = {};
-  for (const name of ["index.html", "404.html"]) {
-    const html = await readFile(resolve(directory, name), "utf8");
+  for (const name of ["index.html", "playground.html", "404.html"]) {
+    const html = await readFile(resolve(directory, name), "utf8").catch(error => {
+      // Historical artifacts predate the optional Playground page.
+      if (name === "playground.html" && error.code === "ENOENT") return null;
+      throw error;
+    });
+    if (html === null) continue;
     documents[name] = createHash("sha256").update(html).digest("hex");
     for (const [, attributes, body] of html.matchAll(/<script\b([^>]*)>([\s\S]*?)<\/script\s*>/gi)) {
       if (/\bsrc\s*=/i.test(attributes) || !body.trim()) continue;
