@@ -1,143 +1,27 @@
-# Personalized terminal design QA
+# Reference comparison — circular portfolio
 
-Verified locally on 11 October 2026 at http://127.0.0.1:4175/.
+Reference: https://iansilber.com/ (2026-11-11). Scope: faithful independent recreation using Elliott's verified content. Evidence: `docs/replica-review/`; additional interaction captures remain in the sibling, non-public `ian-replica-evidence-2026-11-11` folder.
 
-## Comparison evidence
+## Comparison method
 
-Source: https://hancore.dev/ and its entered `/site/` view. Saved source captures: `.design/reference-entrance.jpg`, `reference-theme.jpg`, `reference-workspace.jpg` (1280×720 pixels), and `reference-mobile.jpg` (390×844 pixels).
+Reference and implementation screenshots were inspected together at matching 1440×1000 and 390×844 viewport sizes. Both initial states use a black background and a circular Helvetica biography. The implementation capture is paused immediately after load to make it reviewable; the reference continues moving. This accounts for small positional/rotational differences. The 320px scene, game, results and scrolling content panel were also inspected.
 
-Implementation: `.design/desktop-avatar.jpg`, `desktop-theme.jpg`, `desktop-workspace.jpg` (1280×720); `mobile-avatar.jpg`, `mobile-project.jpg` (390×844). CSS viewports match these pixel dimensions; density normalization was unnecessary. Both use the blackmoney theme. Portrait/typing captures sample different moments in their loops; timing and code text are personalized rather than pixel-diff comparable.
+## Findings and corrections
 
-Source and implementation were joined and visually inspected in the same comparison inputs: `.design/comparison-entrance.jpg`, `comparison-workspace.jpg`, and `comparison-mobile.jpg`. `.design/comparison-theme-detail.jpg` compares the picker at native pixel scale; full picker comparison is in `comparison-theme.jpg`.
+- P2: filled puck cut off the outer half of its text. Expanded its solid fill beyond the glyph centerline.
+- P2: the reference's white-on-orange/red treatment is insufficient for small text. Kept those background colours and used dark ink; secondary text opacity strengthened throughout, with a stronger results scrim so the blurred puck cannot reduce contrast behind labels.
+- P2: explicit Resume under reduced motion changed the label without moving. Explicit opt-in now enables movement; reset and system preference changes restore the preference behavior.
+- P2: assistive activation of the native ring button had no click path. Added a synthesized-click path in addition to pointer and keyboard gestures.
+- P2: content behind the open portfolio panel stayed keyboard-accessible. The scene and its controls are now inert while the panel is open.
 
-## Findings and fixes
+- P1: WebKit slow frames extended the 15-second game because the countdown shared the physics timestep cap. Countdown now uses actual active elapsed time; movement remains bounded. Uneven-frame unit regressions and real-time WebKit expiry checks pass.
 
-- Resolved P1: The initial adaptation omitted the reference’s editor sequence and used a substantially different entrance layout. Replaced it with boot, typed source excerpts, NORMAL/INSERT modes, avatar reveal/collapse, procedural graphics, local input visualization, and a full-viewport Enter transition. Header/editor/footer geometry now follows the captured source. Revised evidence: desktop-avatar and comparison-entrance.
-- Resolved P1: A three-theme cycle did not match the reference’s picker. Added all 28 named palettes, eight visible options/swatches, search, arrow preview, Enter/click commit, and Escape rollback. Revised evidence: desktop-theme and comparison-theme-detail.
-- Resolved P2: The flat main-site navigation differed from the rotating selector. Added screenshot thumbnails, curved wheel arrangement, wheel/drag input, and a personalized EB contour graphic. Revised evidence: desktop-workspace and comparison-workspace.
-- Resolved P2: The first phone layout had too little code height and omitted the lower input graphics. Matched the taller editor, 12px/13px code, compact header/footer, and small input diagrams. Revised evidence: mobile-avatar and comparison-mobile.
-- Resolved P2: Offscreen wheel buttons were tabbable; switching panels retained scroll position; opening themes from commands nested dialogs; an in-progress entry could overwrite newer navigation. Roving focus, scroll reset, modal handoff, and cancellable entry fix these behaviors.
+## Intentional differences
 
-## Required visual surfaces
+Elliott's biography replaces Ian's and naturally changes letter spacing. All seven actual projects and social links are accessible through a compact panel and without JavaScript. Persistent pause/reset/play/sound controls and keyboard support are retained. The results table contains local scores rather than a shared service. Sound is opt-in synthesis, not copied recordings. Motion trajectories are independently implemented approximations. No device-motion permission is requested.
 
-- Typography: locally served IBM Plex Mono Regular, matching the reference family. Editor text is 12px with 13px line spacing; UI retains the compact monospace treatment. Personalized filenames wrap differently from the reference’s longer source excerpts.
-- Layout: sparse centered entrance, narrow header/footer, 806px desktop editor, full-window glyph transition, left rotating selector, central scrollable terminal, right portrait/readout, and bottom stats. Tall phones retain the lower input visualization; short phones omit it to keep Enter visible.
-- Colors: blackmoney default matches the source’s #0c0c0c background and #d8d4b4 foreground. All 28 palette values come from the reference catalog; theme changes recolor the canvas and interface together.
-- Imagery: Elliott’s actual GitHub avatar is locally rendered as code characters. The source creator’s video portrait and personal HC artwork are intentionally replaced by Elliott’s avatar and an original animated EB contour study. Project previews are screenshots of Elliott’s real playgrounds. The reference’s visitor counter and camera-like labels are not presented as Elliott’s data; local pointer readouts and dated public GitHub counts are used.
-- Copy: approved “ai wizard” and “bicycle for the mind” remain intact. Personal role, links, project descriptions, and code excerpts come from the existing portfolio or verified public GitHub sources.
+## Final validation
 
-## Interaction and build verification
-
-- Browser checked desktop 1280×720, phone 390×844, and short phone 320×568; no horizontal page overflow in measured states.
-- Verified code/portrait graphics and full-screen transition; Enter opens the site, Escape cancels entry or returns home.
-- Verified searchable theme filtering, commit, reload persistence, arrow preview, Escape rollback, and command-to-theme focus restoration.
-- Verified arrow-key selection, single visible navigation tab stop, panel scroll reset, and ordinary public demo/source destinations. Wheel/drag thresholds and click suppression also passed focused interaction harnesses.
-- Verified pause/resume in the browser; reduced-motion and visibility suspension passed the animation/control harnesses.
-- No site-origin warning/error logs in the final desktop check.
-- 83 Node tests and 43 Python tests passed. Final asset verification passed for exactly 21 public files. The final HUD/mobile refinement was additionally syntax-checked, exercised by the animation harness, rebuilt, and inspected in-browser.
-- JavaScript-free content visibility was reviewed in HTML/CSS; full screen-reader, disabled-JavaScript browser, and cross-browser testing remain unperformed.
-
-## Follow-up polish and limits
-
-The clone reproduces the requested entrance and navigation flow with personalized, original animation code. It is not a byte-for-byte copy of the reference’s animation engine: the source’s recorded face motion and auxiliary worm/eye/ghost effects are not reproduced. Input diagrams are decorative local pointer/typing visuals. Minor timing, artwork, swatch spacing, and line-density differences remain; these do not obstruct the implemented flow. Small terminal-style text follows the chosen reference and is not a claim of an accessibility certification.
-
-Implementation checklist complete: local source changes, source/render comparisons, primary interactions, asset provenance, build verification, and running preview. The initial redesign was published through PR #15 on 11 October 2026 (production commit `ef85a2fa79ad29ea66030e50641e49c20f28343e`), then reviewed in the live browser. Domains have not been purchased.
-
-## Review of the published site
-
-Fresh production captures are saved under `.design/live-review/` (excluded from publication). The review covered arrival and entry, theme selection, reading the profile, browsing projects and opening their demos, and phone/tablet use. The terminal identity, code animation, portrait treatment, and transitions remain intact.
-
-- Fixed: at 1280×720, the About role ended below the terminal viewport (521px versus a 478px panel boundary). Reducing the contour graphic height puts the role within the initial view (456px).
-- Fixed: project demo/source links appeared after large previews and code excerpts. Moving them directly below the description makes the Glassbox actions visible at 248px rather than 900px on desktop. All four project panels use the same order.
-- Fixed: only eight theme rows existed at a time, with 13px touch targets and no native scrolling to the rest. All 28 options now exist in a scrollable list. Touch layouts use 32px rows, 16px search, a visible Cancel button, and initial focus on Cancel. Desktop keeps its compact eight-row viewport. Phone browser checks reached and selected the last theme by scrolling and verified Cancel rollback.
-- Fixed: pointer release outside the selector before drag capture could leave a stale drag. Global release/cancel cleanup and button-state checks prevent later hovering from changing a section.
-- Refined: increased phone body text and action targets, exposed pause on coarse pointers, corrected the skip target for non-scripted content, clarified keyboard hints, increased focus-outline contrast, and aligned the manifest with the dark default.
-- Refined: at 768×1024, hiding the decorative side portrait expands the main content from 273px to 443px. Phone checks at 390×844 and 320×568 found no horizontal overflow. A final phone pass caught and fixed an overly tall theme dialog.
-
-Validation for these refinements: 91 Node tests pass, including eight new regression tests for theme focus, scrolling, selection, storage failure, and pointer cleanup. Two pointer tests reproduce the bug against the previous implementation. The 21-file build and source-aware artifact verification pass. Final refinement deployment and live evidence are recorded in the task's live-review report; the physical mobile keyboard, full screen-reader behavior, and cross-browser compatibility have not been tested.
+Full browser regression: 122 passed, 6 documented browser-protocol skips, 0 failed. Node: 496 passed; Python: 43 passed. Build, exact artifact verification and performance budgets pass. No unresolved P0/P1/P2 findings remain.
 
 final result: passed
-
-
-## Wheel and reading refinement — 11 October 2026
-
-- Separated moving cards from fixed 44px previous/next controls; added a six-section position counter and polite announcements.
-- Confirmed the original wheel drift in the browser: clicking Glassbox scrolled the clipped project tree by 66px. Using non-scrollable clipping keeps both tree and wheel at zero after selection.
-- Adapted terminal height to the viewport; added a remaining-content cue and made the details region keyboard-focusable. Arrow keys scroll details normally; arrow keys on the wheel browse, and Home/End jump to its boundaries.
-- Corrected native fragment navigation that could hide the first prompt beneath the sticky title. Long status names truncate instead of colliding with GitHub counts.
-- Made the command button available at every width, with direct shortcuts for all four projects.
-- Browser review: 320×568, 390×844, and 1280×800; no horizontal page overflow at the phone widths. Verified wraparound, wheel Home/End, command selection, native details End scrolling, the scroll cue hiding at the bottom, light/dark themes, pause, and Enter from the entrance. No browser warnings or errors observed.
-- Evidence and step-by-step review are in the ignored local `.design/refinement-pass/` folder. This is a focused browser/keyboard check, not a full assistive-technology or physical-device certification.
-
-
-## Dragon Ball radar — 11 October 2026
-
-The About graphic is now a theme-aware project radar using the existing, unmodified Dragon Ball icon. Four native hash links open the featured projects; each is named for assistive technology and has a 44×44 CSS-pixel target. The decorative canvas is excluded from the accessibility tree. The scan and signal rings stop with paused/reduced motion and while hidden; selecting a signal gives a brief, non-blocking energy pulse only when motion is enabled.
-
-Checked the 1280×800 desktop composition in Terminal and Paperwhite, the 320×568 phone layout without horizontal page overflow, all four destinations by keyboard, and paused/running states. No browser warnings or errors were observed. Existing 91 Node tests passed; source-aware verification still publishes exactly 21 files. Existing artwork attribution remains in the footer. Physical-device and full screen-reader testing were not performed.
-
-
-## Saiyan terminal styling — 11 October 2026
-
-Added an original Saiyan palette under the existing default theme ID, preserving saved selections and all 28 picker options. The former Terminal palette now has navy surfaces, orange actions, energy-blue chrome, and green scouter details. Capsule-tech frames style the entrance, project cards, radar, avatar, and reading pane; other palettes use the same framing with their own colours.
-
-Verified the default theme through the picker, 1280×800 desktop overview, 390×844 phone overview/project actions, and 320×568 project/entrance layouts without horizontal overflow. Adjusted the entrance's top spacing to clear the taller badge header on short phones. The 91 Node tests passed, including updated theme-label expectations. No project destinations or factual profile copy changed.
-
-## Frameless entrance and animation response — 11 October 2026
-
-Removed the added outer terminal borders and backgrounds from the entrance and main reading pane. The entrance starts directly in code, forms the selected Memoji after 2.2 seconds, and enters the main site in 420 ms with a 500 ms fallback. Paused/reduced motion skips this transition. Mobile rendering uses fewer glyphs/particles and a lower canvas pixel cap; pointer events request the next frame and settle with time-based smoothing. Source wrapping and tokenization are cached. Project-wheel transitions are shorter.
-
-Verified phone layouts at 390×844 and 320×568, and desktop at 1280×800. The short phone keeps header, scene, command, pause, and entry controls separate with no horizontal overflow. Confirmed the new full-silhouette Memoji and the unframed workspace. Browser console showed no errors or warnings. All 98 Node tests pass, including seven new animation lifecycle, navigation, and input regression checks. Physical iPhone frame-rate profiling was not performed.
-
-## Direct tap interaction — 11 October 2026
-
-Reviewed the public reference entrance and its `glimpse.js` interaction handling. Implemented equivalent tap semantics around Elliott’s existing procedural graphics: sub-500 ms taps with less than 25 px travel select visible source rows; a damped spring unfolds the graphic from the selected row. Tapping its area or blank entrance space retracts it; touch/pen holds last six seconds, mouse holds nine. Desktop hover activates after 900 ms. The automatic sequence retains its clock while interrupted and resumes after three seconds. This uses original local graphics, rather than the reference’s project-specific demos.
-
-All 107 Node tests pass, including tap/pen release-before-frame, hold/retract, scroll/long-press/cancel/multitouch rejection, excluded controls/dialogs, stale hover cancellation, pause/reduced-motion, and navigation lifecycle checks. Browser checks at 390×844 confirmed code tap → interactive graphic, blank tap → code, theme dialog controls, and successful Enter navigation. No browser errors or warnings observed. Touch sequences are exercised at the event boundary; physical iPhone Safari profiling was not performed.
-
-## Continuous typing with tap-only effects — 11 October 2026
-
-Supersedes the automatic sequence and hover activation described above. Idle playback now types project code continuously; Memoji, interference, and framebuffer effects require a deliberate source tap or click. Code continues typing behind an active effect. Pause and reduced motion remain respected. Regression coverage exercises 48 seconds of unattended playback and confirms hover never activates effects.
-
-## Rich source interactions — 11 October 2026
-
-1. Live hancore entrance: captured source, pointer input, portrait/eye tracking, and source-linked object behavior (`.design/reference-taps-01.jpg`, `reference-taps-02.jpg`). The effects share the code layer and appear near the source. This creates direct, compact interaction; discoverability depends on exploration.
-2. Elliott's supplied recording: its four-digit chain is the OmaQ ratchet effect (verified against public `glimpse.js` mapping and renderer), not a Git commit tree. The recording also shows source-character face tracking. Screenshot evidence: `.design/reference-taps-03-ratchet.png`. Touch markers are absent, so individual recorded touch positions cannot be reconstructed.
-3. Implementation: added original public-commit history and a source-token compile sketch, unfolding from the tap position. Filename activation is keyboard-accessible; line-number and token taps are touch-accessible. Typing stays active; idle and hover do not launch effects. Existing pause/reduced motion and gesture exclusions remain. Git SHA/parent records are a public snapshot; the compile sketch is explanatory rather than measured compiler output.
-
-Screenshots cannot establish full accessibility or physical iPhone frame performance. Local tests cover history authenticity, source token content, mobile bounds, gesture handling, and lifecycle.
-
-## Training chamber and character transformation — 12 October 2026
-
-Added a hidden footer trigger and secret command for the local brick-breaker game. The modal uses existing Dragon Ball artwork and the Saiyan Memoji, three lives, a collected-ball display, energy trails, keyboard/touch input, pause/resume, and a replay flow. It starts only on an explicit launch. Background entrance/radar drawing suspends while the chamber is open; visibility loss pauses the game.
-
-Source morphing now lifts actual visible characters, blends them into effect labels and connection particles, and reverses toward their current code positions. Individual character paths have a curved flight and stagger, rather than scaling the entire diagram. Typing remains continuous and only taps/clicks trigger effects.
-
-Local validation: physics tests cover collisions, tunneling, aiming, win/loss, all-seven collection, and restart; renderer tests cover real source glyphs and return positions. Mobile-width browser checks cover drag, launch/hit, pause, Escape, secret command, keyboard input, and source morphing. Physical iPhone frame profiling was not performed.
-
-
-## Source interaction and loading refinement — 13 October 2026
-
-Fresh reference research and before/after captures are recorded in `.design/refinement-research.md`. Extended source-letter transport to the portrait and procedural fields, added bounded graphic pull and real-commit selection, and made the code surface keyboard accessible. Static previews work while paused/reduced; resuming restores a finite animated hold. Underlying code fades only beneath diagram labels, without a painted frame. Continuous typing and tap-only activation remain unchanged.
-
-Lossless, pixel-identical WebP encodings reduce generated artwork 40.2%; hidden workspace images are lazy and game sprites load on first opening. Phone-width browser checks verify filename focus, commit keys/taps, Escape, pause/preview/resume, graphic dragging, Enter, all seven decoded radar assets, one-card wheel navigation, and explicit game launch/closure. 147 Node tests and 34-file publication checks pass. Physical iPhone frame profiling and full assistive-technology testing remain unperformed.
-
-## Mobile fit and interaction continuity — 13 October 2026
-
-A fresh live audit reproduced entrance controls below the viewport at 844×390. A compact-height layout now fits the masthead, code, command, pause, theme and Enter controls at that size and at 320×568 without horizontal scrolling. Keyboard focus outlines no longer overlap the command area. Portrait layout remains unchanged at 390×844.
-
-Pausing freezes the current code and effect position, including a partial reveal, and resuming preserves the remaining hold. Paused/reduced-motion visitors can use ordinary code taps and history selection for static previews. Gesture cancellation releases a pulled graphic, including a second pointer and lost capture. The renderer indexes source rows once per draw to avoid repeating a full scan for each transported glyph.
-
-Removed radar listeners that accumulated on resize. Completed training results survive blur/visibility events. The theme picker supports Home/End with an empty filter while preserving text-caret behavior in typed filters.
-
-Production artwork is now 237,408 bytes, 95.3% smaller than the previous full-resolution WebPs, with retained PNG masters and reproducible, transparent display copies. Intrinsic image sizes reserve layout space, project images decode asynchronously, and the local typeface is preloaded.
-
-Browser checks cover 320×568, 390×844, 844×390, 568×320 and 1280×800; entry/home, static preview, pause/resume, theme boundary selection/Escape, seven-ball radar, one-card wheel drag, and game launch/pause/close. Compact history and token layouts keep hashes, source paths and subjects in separate readable bands. All 157 Node tests and 43 Python tests pass; build and source-aware verification pass for 34 public files. Physical iPhone profiling and full screen-reader testing remain unperformed.
-
-## Seven signals and project search — 13 October 2026
-
-Explored projects leave a subtle ring on their Dragon Balls. All seven distinct project visits unlock an explicit summon action; no reward starts automatically. The reveal gathers 909 artwork particles into a centered, theme-colored wish dragon while the radar fades away. The new 124 KB display image loads on first summon only. Session storage retains progress in the current tab and safely ignores invalid values or denied access. Return, navigation, and Escape dismiss the reveal; Escape works from any focused workspace element and preserves focus. Open dialogs retain their own Escape behavior. Paused/reduced motion produces a static reveal, and hidden panels suspend the clock.
-
-The command menu now searches real project copy plus factual aliases. Matching buttons include their project kind, rank by relevance, and retain native keyboard activation with Tab order matching the visible order. Up/Down and Enter work with both an empty query and ranked results. Exact commands and theme aliases remain authoritative; unknown or punctuation-only input cannot accidentally navigate. Hidden wish/training commands remain absent from results.
-
-Local browser checks cover 320×568, 390×844, and 1280×800: semantic queries open the expected seven projects; completing the set reveals the summon action; reload retains that tab's progress; the hidden wish command opens the reveal; Escape returns to signals without leaving About; static summon/resume, focus retention, native Tab order, and compact search fit work. No horizontal overflow or browser warnings/errors were observed. The unlocked radar reserves a full 44px header row to avoid overlapping its canvas. All 176 Node tests and 43 Python tests pass; build and source-aware verification pass for 35 public files. Physical iPhone and full screen-reader testing remain unperformed.

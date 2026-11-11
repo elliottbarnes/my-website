@@ -4,7 +4,7 @@ import test from "node:test";
 import vm from "node:vm";
 
 const source = await readFile(new URL("../script.js", import.meta.url), "utf8");
-const html = await readFile(new URL("../index.html", import.meta.url), "utf8");
+const html = await readFile(new URL("../playground.html", import.meta.url), "utf8");
 const text = value => value.replace(/<[^>]+>/g, "").replace(/&amp;/g, "&").trim();
 
 // Run the actual controller against the current public project copy. This

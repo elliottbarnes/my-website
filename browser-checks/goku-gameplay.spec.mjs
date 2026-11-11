@@ -11,7 +11,7 @@ async function openGame(page) {
     const body = source.replace(anchor, `  Object.defineProperty(window, '__gokuSnapshot', { get() { return JSON.parse(JSON.stringify({game, lock: targetForDash(game), solids, paused})); } });\n${anchor}`);
     await route.fulfill({ response, body });
   });
-  await page.goto('/');
+  await page.goto('/playground.html');
   await page.locator('.scene-body').focus(); await page.keyboard.press('/');
   await page.locator('#command-input').fill('platformer'); await page.locator('#command-input').press('Enter');
   await expect(page.locator('#platformer-dialog')).toBeVisible();

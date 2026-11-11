@@ -37,7 +37,7 @@ test("preview serves the artifact and versioned assets with correct types and HE
   const css = await fetch(`${url}/${asset("styles.css")}`);
   assert.match(css.headers.get("content-type"), /^text\/css/);
   await css.arrayBuffer();
-  for (const [file, type] of [["styles.css", "text/css"], ["script.js", "text/javascript"]]) {
+  for (const [file, type] of [["assets/replica.css", "text/css"], ["assets/replica.js", "text/javascript"]]) {
     const path = "/" + asset(file);
     assert.ok(content.includes(path));
     assert.ok(path, `HTML must reference versioned ${file}`);
@@ -46,6 +46,14 @@ test("preview serves the artifact and versioned assets with correct types and HE
     assert.ok(response.headers.get("content-type").startsWith(type));
     assert.equal(await response.text(), await readFile(join(root, asset(file)), "utf8"));
   }
+  const playground = await fetch(`${url}/playground.html`);
+  assert.equal(playground.status, 200);
+  const legacy = await playground.text();
+  for (const file of ["styles.css", "script.js"]) assert.ok(legacy.includes("/" + asset(file)));
+  const module = await fetch(url + "/" + asset("assets/ring-physics.mjs"));
+  assert.equal(module.status, 200);
+  assert.match(module.headers.get("content-type"), /^text\/javascript/);
+  await module.text();
 });
 
 test("preview serves the PNG favicon as unchanged binary bytes with the correct MIME type", async (t) => {

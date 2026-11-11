@@ -12,7 +12,7 @@ test('Brick teaches an aimed safe catch before asking for a perfect return', asy
       } }; },
     });
   });
-  await page.goto('/'); await page.locator('.scene-body').focus();
+  await page.goto('/playground.html'); await page.locator('.scene-body').focus();
   await page.keyboard.press('/'); await page.locator('#command-input').fill('breaker');
   await page.locator('#command-input').press('Enter');
   const canvas = page.locator('#training-canvas'); await canvas.waitFor();

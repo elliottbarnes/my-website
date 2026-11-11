@@ -12,6 +12,7 @@ async function fixture(t) {
   const directory = await mkdtemp(join(tmpdir(), "portfolio-operations-"));
   t.after(() => rm(directory, { recursive: true, force: true }));
   await mkdir(join(directory, "assets"));
+  await writeFile(join(directory, "playground.html"), "<title>Playground fixture</title>");
   return directory;
 }
 async function recoveryFixture(t) {
