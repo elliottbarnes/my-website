@@ -15,12 +15,12 @@ The Playground preserves the previous terminal, source experiments and Capsule A
 ## Rendered previews
 
 - [Desktop entry](desktop.jpg)
-- [Desktop full page](desktop-full.jpg)
+- [Desktop full page](desktop-full.png)
 - [Mobile entry, 390px](mobile.jpg)
-- [Mobile full page, 390px](mobile-full.jpg)
+- [Mobile full page, 390px](mobile-full.png)
 - [Narrow mobile, 320px](mobile-320.jpg)
 
-Screenshots use paused/reset motion for a stable comparison. These notes and images are excluded from the exact public build allowlist.
+Screenshots use paused/reset motion for a stable comparison. Entry views are from manual browser review; full-page views are from the final automated browser pass, with all lazy-loaded project images verified. These notes and images are excluded from the exact public build allowlist.
 
 ## Run locally
 
