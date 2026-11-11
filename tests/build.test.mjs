@@ -8,6 +8,7 @@ import { buildSite } from "../build.mjs";
 import { PUBLIC_FILES, VERSIONED_FILES, inspectPublicTree } from "../scripts/public-files.mjs";
 import { cacheControl, digest, manifestPath, publishedPath, readArtifactManifest, ROOT_FILES } from "../scripts/artifact.mjs";
 import { verifySite } from "../scripts/verify-site.mjs";
+import { measureArtifact } from "../scripts/check-performance.mjs";
 
 const project = fileURLToPath(new URL("..", import.meta.url));
 async function fixture(t) {
@@ -31,7 +32,7 @@ test("deterministic build publishes only declared content under safe hashed path
   const directory = await buildSite({ root });
   const first = await readArtifactManifest(directory);
   assert.deepEqual(Object.keys(first.assets), PUBLIC_FILES);
-  assert.deepEqual(VERSIONED_FILES, PUBLIC_FILES.filter(file => /\.(?:css|js)$/.test(file)));
+  assert.deepEqual(VERSIONED_FILES, PUBLIC_FILES.filter(file => /\.(?:css|m?js)$/.test(file)));
   for (const [source, { path, sha256 }] of Object.entries(first.assets)) {
     assert.equal(path, publishedPath(source, sha256));
     assert.equal(digest(await readFile(join(directory, path))), sha256);
@@ -49,7 +50,7 @@ test("deterministic build publishes only declared content under safe hashed path
 
 test("build rewrites CSS fonts, HTML images, and lazy script/style dependency URLs", async t => {
   const { directory, manifest, path } = await built(t);
-  const html = await readFile(path("index.html"), "utf8");
+  const html = await readFile(path("playground.html"), "utf8");
   const css = await readFile(path("styles.css"), "utf8");
   assert.ok(html.includes('/' + manifest.assets["assets/fonts/IBMPlexMono-Regular.woff2"].path));
   assert.ok(css.includes('/' + manifest.assets["assets/fonts/IBMPlexMono-Regular.woff2"].path));
@@ -74,9 +75,28 @@ test("nested changes alter dependent filenames while unrelated assets stay stabl
   await buildSite({ root });
   const next = await readArtifactManifest(directory);
   for (const file of ["assets/piccolo-lookout.js", "assets/optional-games.js"]) assert.notEqual(next.assets[file].path, manifest.assets[file].path);
-  assert.notEqual(next.assets["index.html"].sha256, manifest.assets["index.html"].sha256);
+  assert.notEqual(next.assets["playground.html"].sha256, manifest.assets["playground.html"].sha256);
   assert.equal(next.assets["assets/dragon-ball.png"].path, manifest.assets["assets/dragon-ball.png"].path);
   await assert.rejects(readFile(join(directory, manifest.assets["assets/piccolo-lookout.js"].path)), { code: "ENOENT" });
+  await verifySite(directory, { sourceRoot: root });
+});
+
+test("static module dependencies are hashed transitively and invalidate the replica entry", async t => {
+  const { root, directory, manifest } = await built(t);
+  const module = "assets/ring-physics.mjs";
+  const controller = "assets/replica.js";
+  const compiled = await readFile(join(directory, manifest.assets[controller].path), "utf8");
+  assert.ok(compiled.includes('/' + manifest.assets[module].path));
+  const measurement = await measureArtifact(directory);
+  for (const source of [module, controller]) {
+    assert.ok(measurement.eagerJavaScript.files.some(file => file.path === '/' + manifest.assets[source].path));
+  }
+  await writeFile(join(root, module), await readFile(join(root, module), "utf8") + "\n// verification revision\n");
+  await buildSite({ root });
+  const next = await readArtifactManifest(directory);
+  for (const file of [module, controller]) assert.notEqual(next.assets[file].path, manifest.assets[file].path);
+  assert.notEqual(next.assets["index.html"].sha256, manifest.assets["index.html"].sha256);
+  assert.equal(next.assets["playground.html"].sha256, manifest.assets["playground.html"].sha256);
   await verifySite(directory, { sourceRoot: root });
 });
 
@@ -148,9 +168,9 @@ test("build refuses dynamic URLs and cyclic asset dependencies", async t => {
 
 test("source validation catches broken references, metadata, and eager script attributes", async t => {
   const cases = [
-    ["index.html", text => text.replace('href="#about"', 'href="#missing"'), /missing fragment/],
+    ["playground.html", text => text.replace('href="#about"', 'href="#missing"'), /missing fragment/],
     ["index.html", text => text.replace('"@type": "Person"', '"@type":'), /invalid Person JSON-LD/],
-    ["index.html", text => text.replace(/ defer><\/script>/, ' async></script>'), /must use defer/],
+    ["playground.html", text => text.replace(/ defer><\/script>/, ' async></script>'), /must use defer/],
     ["site.webmanifest", () => "{broken", /invalid JSON/],
     ["styles.css", text => text + '\nbody{background:url("/missing.png")}', /not published/],
     ["assets/optional-games.js", text => text + '\nconst missing = "/assets/missing.js";', /not published/],
@@ -179,7 +199,7 @@ test("changing a cartridge stylesheet updates its lazy loader and entrypoint wit
   const next = await readArtifactManifest(directory);
   assert.notEqual(next.assets[css].path, manifest.assets[css].path);
   assert.notEqual(next.assets["assets/optional-games.js"].path, manifest.assets["assets/optional-games.js"].path);
-  assert.notEqual(next.assets["index.html"].sha256, manifest.assets["index.html"].sha256);
+  assert.notEqual(next.assets["playground.html"].sha256, manifest.assets["playground.html"].sha256);
   for (const source of ["assets/piccolo-lookout.js", "assets/goku-platformer.js", "assets/goku-platformer.css", "assets/brick-breaker.js", "assets/training-chamber.js"]) {
     assert.equal(next.assets[source].path, manifest.assets[source].path, source);
   }

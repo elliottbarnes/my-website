@@ -57,7 +57,7 @@ export async function verifySite(directory, { sourceRoot } = {}) {
   }
 
   const documents = new Map();
-  for (const file of ["index.html", "404.html"]) {
+  for (const file of ["index.html", "playground.html", "404.html"]) {
     const parsed = tags(content.get(file));
     const ids = new Set();
     for (const tag of parsed) {
@@ -141,13 +141,13 @@ export async function verifySite(directory, { sourceRoot } = {}) {
   // Every code asset must be referenced by HTML or another published asset.
   // Optional games load through literal URLs in the loader, not eager script tags.
   const incoming = new Map(VERSIONED_FILES.map(file => [paths[file], 0]));
-  for (const file of PUBLIC_FILES.filter(file => /\.(?:html|css|js)$/.test(file))) {
+  for (const file of PUBLIC_FILES.filter(file => /\.(?:html|css|m?js)$/.test(file))) {
     for (const raw of resourceReferences(content.get(file))) {
       if (!/^(?:\/assets\/|\/script\.js|\/styles\.css|\.\.?\/)/.test(raw)) continue;
       const url = new URL(raw, `${origin}/${paths[file]}`);
       const target = decodeURIComponent(url.pathname).slice(1);
       // Relative require calls are checked too. Non-resource strings are ignored.
-      if (!/\.(?:css|js|png|jpg|webp|svg|ttf|woff2)$/.test(target)) continue;
+      if (!/\.(?:css|m?js|png|jpg|webp|svg|ttf|woff2)$/.test(target)) continue;
       if (raw.includes("${")) throw new Error(`${file}: dynamic resource URL is not verifiable: ${raw}`);
       reference(raw, paths[file], { localOnly: true });
       if (incoming.has(target)) incoming.set(target, incoming.get(target) + 1);

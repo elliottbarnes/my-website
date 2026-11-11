@@ -1,4 +1,12 @@
-# Elliott Barnes / terminal portfolio
+# Elliott Barnes / circular portfolio
+
+This review-only alternative recreates the circular biography and air-hockey interaction of [iansilber.com](https://iansilber.com/) with an independent implementation and Elliott’s verified information. The homepage has no runtime dependencies or external services. All seven projects and contact links work without JavaScript.
+
+See [review notes, screenshots and the exact local preview command](docs/replica-review/README.md), and [design QA](design-qa.md). This branch is for review; do not deploy it.
+
+## Preserved Playground
+
+The original terminal portfolio remains at `/playground.html`. The following notes describe that preserved experience.
 
 A static terminal portfolio for [elliottbarnes.ca](https://elliottbarnes.ca), with no runtime dependencies. The terminal, source discoveries, and Dragon Ball arcade remain optional ways to explore the projects; the header also links directly to the connection panel.
 

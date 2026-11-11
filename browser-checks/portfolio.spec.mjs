@@ -26,7 +26,7 @@ const test = base.extend({
   },
 });
 
-async function loaded(page, path = '/') {
+async function loaded(page, path = '/playground.html') {
   await page.goto(path);
   await expect(page.locator('html')).toHaveAttribute('data-motion', 'paused');
 }
@@ -145,7 +145,7 @@ test('short entrance keeps pending and failed source-load controls unobstructed'
 });
 
 test('keyboard commands, Escape, and theme cancellation restore focus', async ({ page }) => {
-  await loaded(page, '/#architecture-lab');
+  await loaded(page, '/playground.html#architecture-lab');
   const commandButton = page.locator('.command-access');
   await commandButton.focus();
   await page.keyboard.press('Enter');
@@ -196,7 +196,7 @@ test('all project destinations remain available without JavaScript', async ({ br
   const context = await browser.newContext({ javaScriptEnabled: false, viewport: { width: 390, height: 844 } });
   const page = await context.newPage();
   try {
-    await page.goto(baseURL);
+    await page.goto(new URL('/playground.html', baseURL).href);
     await expect(page.locator('[data-demo]')).toHaveCount(7);
     for (const link of await page.locator('[data-demo]').all()) await expect(link).toBeVisible();
     const preview = page.locator('#architecture-lab img');
@@ -230,7 +230,7 @@ test('slow core startup does not fetch hidden project previews', async ({ page }
 test('failed core script preserves project and connection links', async ({ page }, testInfo) => {
   testInfo.annotations.push({ type: 'expected-resource-failure', description: 'script' });
   await page.route(/\/assets\/script\.[a-f0-9]+\.js$/, route => route.abort());
-  await page.goto('/');
+  await page.goto('/playground.html');
   await expect(page.locator('[data-demo]')).toHaveCount(7);
   for (const link of await page.locator('[data-demo]').all()) await expect(link).toBeVisible();
   await expect(page.locator('#connect a[href*="linkedin"]')).toBeVisible();
@@ -239,7 +239,7 @@ test('failed core script preserves project and connection links', async ({ page 
 
 test('failed lazy game loads can retry without trapping focus', async ({ page }, testInfo) => {
   testInfo.annotations.push({ type: 'expected-resource-failure', description: 'hidden-games' });
-  await loaded(page, '/#about');
+  await loaded(page, '/playground.html#about');
   let failed = false;
   await page.route(/\/assets\/hidden-games\.[a-f0-9]+\.js$/, async route => {
     if (!failed) { failed = true; await route.abort(); } else await route.continue();
@@ -255,7 +255,7 @@ test('failed lazy game loads can retry without trapping focus', async ({ page },
 });
 
 test('closing a pending game load cannot reopen its dialog', async ({ page }) => {
-  await loaded(page, '/#about');
+  await loaded(page, '/playground.html#about');
   let release;
   const gate = new Promise(resolve => { release = resolve; });
   await page.route(/\/assets\/hidden-games\.[a-f0-9]+\.js$/, async route => { await gate; await route.continue(); });
@@ -368,7 +368,7 @@ test('entrance, project, and dialogs pass representative accessibility checks', 
 });
 
 test('representative dark and light palettes keep content readable', async ({ page }, testInfo) => {
-  await loaded(page, '/#architecture-lab');
+  await loaded(page, '/playground.html#architecture-lab');
   for (const name of ['blackmoney', 'batou', 'harbor', 'whitegold']) {
     await page.evaluate(name => window.PortfolioThemes.apply(name), name);
     await accessible(page, testInfo, name);
@@ -449,7 +449,7 @@ test('records animation CPU and heap before and after pause', async ({ page, bro
       }).observe({ type, buffered: true });
     }
   });
-  await page.goto('/');
+  await page.goto('/playground.html');
   await expect(page.locator('html')).toHaveAttribute('data-motion', 'running');
   await page.evaluate(() => document.fonts.ready);
   const session = await page.context().newCDPSession(page);

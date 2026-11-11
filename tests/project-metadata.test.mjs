@@ -4,7 +4,7 @@ import test from "node:test";
 import { PROJECTS, FEATURED_PROJECT_ID } from "../data/projects.mjs";
 import { renderProjects } from "../scripts/generate-projects.mjs";
 
-const html = await readFile(new URL("../index.html", import.meta.url), "utf8");
+const html = await readFile(new URL("../playground.html", import.meta.url), "utf8");
 
 test("checked-in project HTML matches the manifest and generation is idempotent", () => {
   const generated = renderProjects(html);

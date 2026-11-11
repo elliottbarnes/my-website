@@ -13,7 +13,7 @@ export async function openPiccolo(page) {
     assert.ok(body.includes('let storage;'), 'read-only observer insertion point');
     await route.fulfill({ response, body: body.replace('let storage;', "Object.defineProperty(window, '__piccoloSnapshot', { value: () => JSON.parse(JSON.stringify(game)) }); let storage;") });
   });
-  await page.goto('/');
+  await page.goto('/playground.html');
   await page.locator('.scene-body').focus();
   await page.keyboard.press('/');
   await page.locator('#command-input').fill('piccolo');

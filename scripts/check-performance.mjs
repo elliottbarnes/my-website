@@ -22,6 +22,12 @@ export function entryResourcePaths(html) {
   return { scripts, styles };
 }
 
+export function staticModuleImports(source) {
+  // Dynamic import() stays outside the eager budget. Static imports are part of
+  // the initial module graph even though they do not have their own script tag.
+  return [...source.matchAll(/\bimport\s+(?:[\w*$,\s{}]+?\s+from\s+)?["']([^"']+)["']/g)].map(match => match[1]);
+}
+
 export async function measureArtifact(directory) {
   const manifest = await readArtifactManifest(directory);
   const entries = await Promise.all(Object.entries(manifest.assets).map(async ([source, entry]) => {
@@ -31,6 +37,18 @@ export async function measureArtifact(directory) {
   const html = entries.find(entry => entry.source === "index.html");
   const text = html.bytes.toString("utf8");
   const { scripts, styles } = entryResourcePaths(text);
+  const modulePaths = new Set(scripts);
+  for (const path of modulePaths) {
+    const entry = entries.find(candidate => `/${candidate.path}` === path);
+    if (!entry) throw new Error(`Entry resource is outside the artifact: ${path}`);
+    for (const dependency of staticModuleImports(entry.bytes.toString("utf8"))) {
+      const resolved = new URL(dependency, `https://elliottbarnes.ca${path}`);
+      if (resolved.origin !== "https://elliottbarnes.ca" || !/\.m?js$/.test(resolved.pathname)) {
+        throw new Error(`Static module dependency is outside the artifact: ${dependency}`);
+      }
+      modulePaths.add(resolved.pathname);
+    }
+  }
   const summarize = paths => {
     const files = [...new Set(paths)].map(path => {
       const entry = entries.find(candidate => `/${candidate.path}` === path);
@@ -40,7 +58,7 @@ export async function measureArtifact(directory) {
     return { count: files.length, rawBytes: files.reduce((sum, file) => sum + file.rawBytes, 0),
       gzipBytes: files.reduce((sum, file) => sum + file.gzipBytes, 0), files };
   };
-  return { htmlBytes: html.rawBytes, eagerJavaScript: summarize(scripts), eagerCSS: summarize(styles),
+  return { htmlBytes: html.rawBytes, eagerJavaScript: summarize([...modulePaths]), eagerCSS: summarize(styles),
     publicFiles: entries.length, publicBytes: entries.reduce((sum, entry) => sum + entry.rawBytes, 0),
     note: "Raw artifact bytes and local gzip estimates; excludes fonts/images from entry totals and is not a browser performance measurement." };
 }

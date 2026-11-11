@@ -36,7 +36,7 @@ for (const viewport of [{ width: 1280, height: 800 }, { width: 320, height: 568 
     const page = await context.newPage(), errors = [];
     page.on('pageerror', error => errors.push(error.message));
     try {
-      await page.goto(test.info().project.use.baseURL || 'http://127.0.0.1:4178');
+      await page.goto(new URL('/playground.html', test.info().project.use.baseURL || 'http://127.0.0.1:4178').href);
       await command(page, 'arcade');
       await expect(page.locator('#arcade-picker .game-choice')).toHaveCount(5);
       await expect(page.locator('#arcade-picker > .arcade-choice-grid .game-choice')).toHaveCount(3);
@@ -103,7 +103,7 @@ for (const viewport of [{ width: 1280, height: 800 }, { width: 320, height: 568 
 }
 
 test('Ki capture loss cancels cleanly and keyboard repeat cannot spend extra rounds', async ({ page }) => {
-  await page.goto('/'); await command(page, 'ki'); const charge = page.locator('#ki-charge');
+  await page.goto('/playground.html'); await command(page, 'ki'); const charge = page.locator('#ki-charge');
   await charge.waitFor(); await controlledClock(page);
   const bounds = await charge.boundingBox();
   await page.mouse.move(bounds.x + bounds.width / 2, bounds.y + bounds.height / 2); await page.mouse.down();
@@ -133,7 +133,7 @@ test('Ki native touch hold releases once and cancellation preserves the next rou
   test.skip(browserName !== 'chromium', 'Native touch cancellation requires Chromium CDP; both engines cover ordinary taps.');
   const context = await browser.newContext({viewport:{width:390,height:844},hasTouch:true,reducedMotion:'reduce'});
   try {
-    const page=await context.newPage(); await page.goto(baseURL); await command(page,'ki');
+    const page=await context.newPage(); await page.goto(new URL('/playground.html', baseURL).href); await command(page,'ki');
     const charge=page.locator('#ki-charge'); await hitTarget(charge); await controlledClock(page);
     const cdp=await context.newCDPSession(page), box=await charge.boundingBox();
     const point={id:1,x:box.x+box.width/2,y:box.y+box.height/2};
@@ -164,7 +164,7 @@ test('Brick Breaker normal controls produce a perfect return, fair loss, and imm
       } }; },
     });
   });
-  await page.goto('/'); await command(page, 'breaker');
+  await page.goto('/playground.html'); await command(page, 'breaker');
   const canvas = page.locator('#training-canvas'); await canvas.waitFor(); await controlledClock(page);
   const snapshot = () => page.evaluate(() => {
     const g = window.__observedBreaker;
@@ -237,7 +237,7 @@ test('Brick Breaker touch launch, pause, and controls remain reachable on short 
   for (const viewport of [{ width: 320, height: 568 }, { width: 390, height: 844 }, { width: 844, height: 375 }]) {
     const context = await browser.newContext({ viewport, hasTouch: true, reducedMotion: 'reduce' });
     try {
-      const page = await context.newPage(); await page.goto(baseURL); await command(page, 'breaker');
+      const page = await context.newPage(); await page.goto(new URL('/playground.html', baseURL).href); await command(page, 'breaker');
       const canvas = page.locator('#training-canvas'), pause = page.locator('#training-pause');
       await canvas.waitFor(); await controlledClock(page); await hitTarget(canvas); await canvas.tap();
       await expect(page.locator('#training-action')).toHaveText('pulse · space');

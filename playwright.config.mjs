@@ -17,7 +17,7 @@ export default defineConfig({
   workers: 1,
   timeout: 30_000,
   // Hosted runner speed varies. Keep all browser coverage within a bounded suite.
-  globalTimeout: (process.env.CI ? 8 : 6) * 60_000,
+  globalTimeout: (process.env.CI ? 10 : 8) * 60_000,
   expect: { timeout: 5_000 },
   reporter: [['list'], ['html', { open: 'never' }]],
   outputDir: 'test-results',

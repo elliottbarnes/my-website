@@ -2,9 +2,10 @@ import { createHash } from "node:crypto";
 import { lstat, readFile } from "node:fs/promises";
 import { extname, join } from "node:path";
 import { PUBLIC_FILES, CONTENT_TYPES, assertRegularPublicFile } from "./public-files.mjs";
+import { renderReplica } from "./generate-replica.mjs";
 import { renderProjects } from "./generate-projects.mjs";
 
-export const ROOT_FILES = Object.freeze(["index.html", "404.html", "robots.txt", "sitemap.xml", "site.webmanifest"]);
+export const ROOT_FILES = Object.freeze(["index.html", "playground.html", "404.html", "robots.txt", "sitemap.xml", "site.webmanifest"]);
 export const digest = (bytes) => createHash("sha256").update(bytes).digest("hex");
 export const manifestPath = (directory) => `${directory.replace(/\/$/, "")}.manifest.json`;
 export const cacheControl = (file) => ROOT_FILES.includes(file)
@@ -58,7 +59,8 @@ export async function createArtifact(root) {
     await assertRegularPublicFile(root, source);
     sources.set(source, await readFile(join(root, source)));
   }
-  sources.set("index.html", Buffer.from(renderProjects(sources.get("index.html").toString("utf8"))));
+  sources.set("index.html", Buffer.from(renderReplica(sources.get("index.html").toString("utf8"))));
+  sources.set("playground.html", Buffer.from(renderProjects(sources.get("playground.html").toString("utf8"))));
   const assets = {}, contents = new Map(), active = new Set();
   function compile(source) {
     if (assets[source]) return assets[source];
@@ -68,7 +70,7 @@ export async function createArtifact(root) {
     function rewrite(raw) {
       if (raw.includes("${") && raw.startsWith("/assets/")) throw new Error(`${source}: resource URL must be a complete literal: ${raw}`);
       if (!/^(?:\/|\.\.?\/|https:\/\/elliottbarnes\.ca\/)/.test(raw) || /\s/.test(raw)
-        || !/\.(?:html|css|js|png|jpg|webp|svg|ttf|woff2|txt|xml|webmanifest)(?:[?#].*)?$/.test(raw)) return raw;
+        || !/\.(?:html|css|m?js|png|jpg|webp|svg|ttf|woff2|txt|xml|webmanifest)(?:[?#].*)?$/.test(raw)) return raw;
       let url;
       try { url = new URL(raw, `https://elliottbarnes.ca/${source}`); } catch { return raw; }
       if (url.origin !== "https://elliottbarnes.ca") return raw;
@@ -77,7 +79,7 @@ export async function createArtifact(root) {
       const compiled = compile(target);
       return `${raw.startsWith("https://elliottbarnes.ca/") ? "https://elliottbarnes.ca" : ""}/${compiled.path}${url.hash}`;
     }
-    if (/\.(?:html|css|js|svg|webmanifest|xml|txt)$/.test(source)) {
+    if (/\.(?:html|css|m?js|svg|webmanifest|xml|txt)$/.test(source)) {
       let text = bytes.toString("utf8");
       text = text.replace(/(["'`])([^"'`\r\n]*?)\1/g, (match, quote, raw) => `${quote}${rewrite(raw)}${quote}`);
       text = text.replace(/url\(\s*([^"'\s)][^\s)]*)\s*\)/g, (match, raw) => `url(${rewrite(raw)})`);

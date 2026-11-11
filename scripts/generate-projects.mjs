@@ -49,13 +49,13 @@ export function renderProjects(html, projects = PROJECTS, featuredId = FEATURED_
   return html;
 }
 
-export async function generateProjects({ root = projectRoot, destination = join(root, "index.html") } = {}) {
-  const html = renderProjects(await readFile(join(root, "index.html"), "utf8"));
+export async function generateProjects({ root = projectRoot, destination = join(root, "playground.html") } = {}) {
+  const html = renderProjects(await readFile(join(root, "playground.html"), "utf8"));
   await writeFile(destination, html);
   return html;
 }
 
 if (process.argv[1] && resolve(process.argv[1]) === fileURLToPath(import.meta.url)) {
   await generateProjects();
-  console.log(`Generated ${PROJECTS.length} projects in index.html.`);
+  console.log(`Generated ${PROJECTS.length} projects in playground.html.`);
 }

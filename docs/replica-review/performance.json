@@ -1,0 +1,62 @@
+{
+  "htmlBytes": 11291,
+  "eagerJavaScript": {
+    "count": 2,
+    "rawBytes": 34144,
+    "gzipBytes": 10328,
+    "files": [
+      {
+        "path": "/assets/replica.a026dc36c64c.js",
+        "rawBytes": 15899,
+        "gzipBytes": 5236
+      },
+      {
+        "path": "/assets/ring-physics.646adf25b4dc.mjs",
+        "rawBytes": 18245,
+        "gzipBytes": 5092
+      }
+    ]
+  },
+  "eagerCSS": {
+    "count": 1,
+    "rawBytes": 7541,
+    "gzipBytes": 2339,
+    "files": [
+      {
+        "path": "/assets/replica.86df97205354.css",
+        "rawBytes": 7541,
+        "gzipBytes": 2339
+      }
+    ]
+  },
+  "publicFiles": 58,
+  "publicBytes": 1921664,
+  "note": "Raw artifact bytes and local gzip estimates; excludes fonts/images from entry totals and is not a browser performance measurement.",
+  "checks": [
+    {
+      "name": "eager JavaScript bytes",
+      "actual": 34144,
+      "limit": 175000
+    },
+    {
+      "name": "eager script requests",
+      "actual": 2,
+      "limit": 6
+    },
+    {
+      "name": "eager stylesheet bytes",
+      "actual": 7541,
+      "limit": 70000
+    },
+    {
+      "name": "homepage HTML bytes",
+      "actual": 11291,
+      "limit": 43000
+    },
+    {
+      "name": "complete artifact bytes",
+      "actual": 1921664,
+      "limit": 2000000
+    }
+  ]
+}

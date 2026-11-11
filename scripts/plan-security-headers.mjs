@@ -8,7 +8,7 @@ import { fileURLToPath } from "node:url";
 export async function generateSecurityHeaders(directory) {
   const scripts = new Set();
   const documents = {};
-  for (const name of ["index.html", "404.html"]) {
+  for (const name of ["index.html", "playground.html", "404.html"]) {
     const html = await readFile(resolve(directory, name), "utf8");
     documents[name] = createHash("sha256").update(html).digest("hex");
     for (const [, attributes, body] of html.matchAll(/<script\b([^>]*)>([\s\S]*?)<\/script\s*>/gi)) {

@@ -4,7 +4,7 @@ import { extname, join } from "node:path";
 // This is the complete publication boundary. Source files outside this list
 // remain local even when they are tracked in the repository.
 export const PUBLIC_FILES = Object.freeze([
-  "index.html", "404.html", "styles.css", "script.js", "robots.txt",
+  "index.html", "playground.html", "404.html", "assets/replica.css", "assets/replica.js", "assets/ring-physics.mjs", "styles.css", "script.js", "robots.txt",
   "sitemap.xml", "site.webmanifest", "assets/favicon.svg", "assets/social-card.svg", "assets/social-card.png",
   "assets/dragon-ball.png", "assets/dragon-ball-1.webp", "assets/dragon-ball-2.webp", "assets/dragon-ball-3.webp", "assets/dragon-ball-4.webp", "assets/dragon-ball-5.webp", "assets/dragon-ball-6.webp", "assets/dragon-ball-7.webp",
   "assets/themes.css", "assets/themes.js", "assets/workspace.js", "assets/arcade-lookout.webp", "assets/arcade-icons.svg",
@@ -13,12 +13,13 @@ export const PUBLIC_FILES = Object.freeze([
   "assets/animation.js", "assets/entrance-effects.js", "assets/ecdsa-math.js", "assets/ecdsa-effect.js", "assets/source-signal-effects.js", "assets/source-structure-effects.js", "assets/hidden-games.js", "assets/goku-story.js", "assets/goku-terminal.js", "assets/goku-adventure.js", "assets/brick-breaker.js", "assets/training-chamber.js", "assets/training-arena.webp", "assets/memoji-saiyan.webp", "assets/shenron.webp", "assets/fonts/IBMPlexMono-Regular.woff2", "assets/fonts/OFL.txt",
 ]);
 
-export const VERSIONED_FILES = Object.freeze(PUBLIC_FILES.filter((file) => /\.(?:css|js)$/.test(file)));
+export const VERSIONED_FILES = Object.freeze(PUBLIC_FILES.filter((file) => /\.(?:css|m?js)$/.test(file)));
 
 export const CONTENT_TYPES = Object.freeze({
   ".css": "text/css; charset=utf-8",
   ".html": "text/html; charset=utf-8",
   ".js": "text/javascript; charset=utf-8",
+  ".mjs": "text/javascript; charset=utf-8",
   ".jpg": "image/jpeg",
   ".png": "image/png",
   ".webp": "image/webp",
